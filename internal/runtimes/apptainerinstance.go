@@ -1,0 +1,112 @@
+package runtimes
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/AaltoRSE/shark-tank/internal/utils"
+	"github.com/spf13/viper"
+)
+
+type ApptainerInstanceRuntime struct {
+}
+
+type ApptainerImage struct {
+	Name string
+	Path string
+	Url  string
+}
+
+func (f *ApptainerInstanceRuntime) GetImage() (ApptainerImage, error) {
+
+	runtimeConfig := viper.GetStringMapString("defaults.runtimeconfig")
+	cacheDir, err := filepath.Abs(os.ExpandEnv(runtimeConfig["cachedir"]))
+	if err != nil {
+		fmt.Println("Invalid cache directory: ", cacheDir)
+		return ApptainerImage{}, err
+	}
+
+	if !utils.CheckFolderExists(cacheDir) {
+		err := os.MkdirAll(cacheDir, 0755)
+		if err != nil {
+			fmt.Println("Could not create cache directory: ", cacheDir)
+			return ApptainerImage{}, err
+		}
+	}
+
+	imageUrl := runtimeConfig["imageUrl"]
+
+	var (
+		name     string
+		protocol string
+	)
+
+	imageUrlSplit := strings.Split(imageUrl, "://")
+	if len(imageUrlSplit) > 1 {
+		protocol = imageUrlSplit[0]
+		name = imageUrlSplit[1]
+	} else {
+		protocol = "docker://"
+		name = imageUrl
+		imageUrl = protocol + imageUrl
+	}
+
+	name = strings.Replace(name, ":", "_", -1)
+	name = strings.Replace(name, "/", "_", -1)
+	name = name + ".sif"
+	path := filepath.Join(cacheDir, name)
+
+	return ApptainerImage{Name: name, Url: imageUrl, Path: path}, nil
+}
+
+func (f *ApptainerInstanceRuntime) Pull() error {
+
+	var (
+		args []string
+	)
+	image, err := f.GetImage()
+	if err != nil {
+		return err
+	}
+
+	args = append(args, "pull", image.Path, image.Url)
+
+	err = utils.Run(utils.RunArgs{Command: "apptainer", Args: args, Env: []string{}, AddOsEnv: true})
+	return err
+}
+
+func (f *ApptainerInstanceRuntime) Exec() (int, error) {
+	log.Print("Exec called")
+	cmd := "echo"
+	var (
+		args []string
+		env  []string
+	)
+
+	f.Pull()
+
+	args = append(args, "something")
+	env = append(os.Environ(),
+		"FOO=duplicate_value", // ignored
+	)
+	utils.Run(utils.RunArgs{Command: cmd, Args: args, Env: env, AddOsEnv: true})
+	return 0, nil
+}
+
+func (f *ApptainerInstanceRuntime) Shell() (int, error) {
+	log.Print("Shell called")
+	return 0, nil
+}
+
+func (f *ApptainerInstanceRuntime) Start() (int, error) {
+	log.Print("Start called")
+	return 0, nil
+}
+
+func (f *ApptainerInstanceRuntime) Stop() (int, error) {
+	log.Print("Stop called")
+	return 0, nil
+}
