@@ -6,7 +6,7 @@ package cmd
 import (
 	"fmt"
 
-	internal_config "github.com/AaltoRSE/shark-tank/internal/config"
+	"github.com/AaltoRSE/shark-tank/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +19,7 @@ var viewCmd = &cobra.Command{
 
 This command allows you to view all your current shark-tank configurations in a structured format.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(internal_config.GetConfigAsString())
+		fmt.Println(config.GetConfigAsString())
 	},
 }
 

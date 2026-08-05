@@ -5,34 +5,36 @@ import (
 	"os"
 	"path/filepath"
 
-	config "github.com/AaltoRSE/shark-tank/internal/config"
-	utils "github.com/AaltoRSE/shark-tank/internal/utils"
+	"github.com/AaltoRSE/shark-tank/internal/config"
+	"github.com/AaltoRSE/shark-tank/internal/types"
+	"github.com/AaltoRSE/shark-tank/internal/utils"
+
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/spf13/viper"
 )
 
 // CreateEnvironment creates a new environment configuration in the viper config.
-func CreateEnvironment(name string, fakeHome string, projectMounts []string) error {
+func CreateEnvironment(env types.SharkEnv) error {
 
 	var envs map[string]any
 
 	// Determine if the environment already exists
 	envs = viper.GetStringMap("envs")
 
-	if envs[name] != nil {
+	if envs[env.Name] != nil {
 		fmt.Println("Environment already exists.")
 		return nil
 	}
 
 	// Validate the environment name
-	if !utils.CheckEnvironmentName(name) {
-		fmt.Println("Invalid environment name:", name)
+	if !utils.CheckEnvironmentName(env.Name) {
+		fmt.Println("Invalid environment name:", env.Name)
 		fmt.Println("Environment name must be non-empty and contain only alphanumeric characters and underscores.")
 		return nil
 	}
 
 	// Get the absolute path of the fake home directory
-	absFakeHome, err := filepath.Abs(fakeHome)
+	absFakeHome, err := filepath.Abs(env.FakeHome)
 	if err != nil {
 		fmt.Println("Error getting absolute path for fake home directory:", err)
 		return err
@@ -62,7 +64,7 @@ func CreateEnvironment(name string, fakeHome string, projectMounts []string) err
 	}
 
 	// Validate that all project mounts exist
-	for i, mount := range projectMounts {
+	for i, mount := range env.Mounts {
 		absMount, err := filepath.Abs(mount)
 		if err != nil {
 			fmt.Println("Error getting absolute path for project mount:", mount, err)
@@ -72,14 +74,14 @@ func CreateEnvironment(name string, fakeHome string, projectMounts []string) err
 			fmt.Println("Project mount does not exist:", absMount)
 			return nil
 		}
-		projectMounts[i] = absMount
+		env.Mounts[i] = absMount
 	}
 
 	// Create environment configuration
-	fmt.Println("Creating environment with name:", name)
-	viper.Set("envs."+name, map[string]interface{}{
+	fmt.Println("Creating environment with name:", env.Name)
+	viper.Set("envs."+env.Name, map[string]interface{}{
 		"home":   absFakeHome,
-		"mounts": projectMounts,
+		"mounts": env.Mounts,
 	})
 
 	// Write the updated configuration back to the config file

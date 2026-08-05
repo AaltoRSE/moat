@@ -2,35 +2,16 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
+	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	yaml "go.yaml.in/yaml/v3"
 )
 
-type Config struct {
-	Defaults Defaults    `validate:"required"`
-	Envs     []EnvConfig `validate:""`
-}
-
-type ApptainerInstanceRuntime struct {
-	ImageUrl string `validate:"required"`
-	CacheDir string `validate:"required,filepath"`
-}
-
-type Defaults struct {
-	Runtime       string                   `validate:"required"`
-	RuntimeConfig ApptainerInstanceRuntime `validate:"required_if=Runtime apptainerinstance"`
-}
-
-type EnvConfig struct {
-	Name   string   `validate:"required"`
-	Home   string   `validate:"required"`
-	Mounts []string `validate:"required,dive,required"`
-}
-
-func InitConfig() {
+func InitConfig() error {
 	viper.SetConfigName("config")
 
 	// Set defaults if not set
@@ -48,15 +29,23 @@ func InitConfig() {
 	viper.AddConfigPath(".")
 	viper.ReadInConfig()
 
-	var C Config
+	var C types.Config
 	err := viper.Unmarshal(&C)
 	if err != nil {
-		log.Fatalf("unable to unmarshal config: %v", err)
+		fmt.Println("Unable to unmarshal config", err)
+		// Print the configuration as a string for debugging
+		configStr := GetConfigAsString()
+		log.Printf("Current configuration:\n%s", configStr)
+		return fmt.Errorf("Unable to unmarshal config: %v", err)
 	}
 
 	if err := validateConfig(&C); err != nil {
-		log.Fatalf("Config validation failed: %v", err)
+		configStr := GetConfigAsString()
+		log.Printf("Current configuration:\n%s", configStr)
+		return fmt.Errorf("Config validation failed: %v", err)
 	}
+
+	return nil
 }
 
 // WriteConfig writes the current viper configuration to the config file.
@@ -69,7 +58,7 @@ func WriteConfig() error {
 	return nil
 }
 
-func validateConfig(config *Config) error {
+func validateConfig(config *types.Config) error {
 	// Validate that the configuration struct is properly filled out
 	var validate *validator.Validate
 	validate = validator.New(validator.WithRequiredStructEnabled())
@@ -104,4 +93,25 @@ func GetConfigAsString() string {
 		log.Fatalf("unable to marshal config to YAML: %v", err)
 	}
 	return string(bs)
+}
+
+func GetEnv(name string) (types.SharkEnv, error) {
+	envMap := viper.GetStringMap("envs." + name)
+	if len(envMap) == 0 {
+		return types.SharkEnv{}, fmt.Errorf("environment %q not found", name)
+	}
+	home, _ := envMap["home"].(string)
+	var mounts []string
+	if raw, ok := envMap["mounts"].([]interface{}); ok {
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				mounts = append(mounts, s)
+			}
+		}
+	}
+	return types.SharkEnv{
+		Name:     name,
+		FakeHome: home,
+		Mounts:   mounts,
+	}, nil
 }

@@ -6,7 +6,8 @@ package cmd
 import (
 	"strings"
 
-	internal_env "github.com/AaltoRSE/shark-tank/internal/env"
+	"github.com/AaltoRSE/shark-tank/internal/env"
+	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +23,12 @@ var createCmd = &cobra.Command{
 
 This command allows you to create and configure a new environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		internal_env.CreateEnvironment(name, home, strings.Split(mountString, ","))
+		env.CreateEnvironment(types.SharkEnv{
+			Name:           name,
+			FakeHome:       home,
+			Mounts:         strings.Split(mountString, ","),
+			ReadOnlyMounts: []string{},
+		})
 	},
 }
 

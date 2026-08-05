@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/AaltoRSE/shark-tank/internal/utils"
 	"github.com/spf13/viper"
 )
@@ -78,35 +79,35 @@ func (f *ApptainerInstanceRuntime) Pull() error {
 	return err
 }
 
-func (f *ApptainerInstanceRuntime) Exec() (int, error) {
+func (f *ApptainerInstanceRuntime) Exec(env types.SharkEnv, args []string) (int, error) {
 	log.Print("Exec called")
 	cmd := "echo"
 	var (
-		args []string
-		env  []string
+		cmdArgs []string
+		cmdEnv  []string
 	)
 
 	f.Pull()
 
-	args = append(args, "something")
-	env = append(os.Environ(),
+	cmdArgs = append([]string{"echo"}, args...)
+	cmdEnv = append(os.Environ(),
 		"FOO=duplicate_value", // ignored
 	)
-	utils.Run(utils.RunArgs{Command: cmd, Args: args, Env: env, AddOsEnv: true})
+	utils.Run(utils.RunArgs{Command: cmd, Args: cmdArgs, Env: cmdEnv, AddOsEnv: true})
 	return 0, nil
 }
 
-func (f *ApptainerInstanceRuntime) Shell() (int, error) {
+func (f *ApptainerInstanceRuntime) Shell(env types.SharkEnv) (int, error) {
 	log.Print("Shell called")
 	return 0, nil
 }
 
-func (f *ApptainerInstanceRuntime) Start() (int, error) {
+func (f *ApptainerInstanceRuntime) Start(env types.SharkEnv) (int, error) {
 	log.Print("Start called")
 	return 0, nil
 }
 
-func (f *ApptainerInstanceRuntime) Stop() (int, error) {
+func (f *ApptainerInstanceRuntime) Stop(env types.SharkEnv) (int, error) {
 	log.Print("Stop called")
 	return 0, nil
 }

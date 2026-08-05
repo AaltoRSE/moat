@@ -7,7 +7,7 @@ import (
 	"github.com/AaltoRSE/shark-tank/cmd"
 	_ "github.com/AaltoRSE/shark-tank/cmd/config"
 	_ "github.com/AaltoRSE/shark-tank/cmd/env"
-	_ "github.com/AaltoRSE/shark-tank/cmd/exec"
+	_ "github.com/AaltoRSE/shark-tank/cmd/run"
 )
 
 func main() {

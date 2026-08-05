@@ -3,13 +3,15 @@ package runtimes
 import (
 	"errors"
 	"log"
+
+	"github.com/AaltoRSE/shark-tank/internal/types"
 )
 
 type Runtime interface {
-	Exec() (int, error)
-	Shell() (int, error)
-	Start() (int, error)
-	Stop() (int, error)
+	Exec(env types.SharkEnv, args []string) (int, error)
+	Shell(env types.SharkEnv) (int, error)
+	Start(env types.SharkEnv) (int, error)
+	Stop(env types.SharkEnv) (int, error)
 }
 
 func GetRuntime(name string) (Runtime, error) {
