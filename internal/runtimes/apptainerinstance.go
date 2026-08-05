@@ -40,23 +40,18 @@ func (f *ApptainerInstanceRuntime) GetImage() (ApptainerImage, error) {
 
 	imageUrl := runtimeConfig["imageUrl"]
 
-	var (
-		name     string
-		protocol string
-	)
+	var name string
 
 	imageUrlSplit := strings.Split(imageUrl, "://")
 	if len(imageUrlSplit) > 1 {
-		protocol = imageUrlSplit[0]
 		name = imageUrlSplit[1]
 	} else {
-		protocol = "docker://"
 		name = imageUrl
-		imageUrl = protocol + imageUrl
+		imageUrl = "docker://" + imageUrl
 	}
 
-	name = strings.Replace(name, ":", "_", -1)
-	name = strings.Replace(name, "/", "_", -1)
+	name = strings.ReplaceAll(name, ":", "_")
+	name = strings.ReplaceAll(name, "/", "_")
 	name = name + ".sif"
 	path := filepath.Join(cacheDir, name)
 
@@ -87,13 +82,17 @@ func (f *ApptainerInstanceRuntime) Exec(env types.SharkEnv, args []string) (int,
 		cmdEnv  []string
 	)
 
-	f.Pull()
+	if err := f.Pull(); err != nil {
+		return 0, err
+	}
 
 	cmdArgs = append([]string{"echo"}, args...)
 	cmdEnv = append(os.Environ(),
 		"FOO=duplicate_value", // ignored
 	)
-	utils.Run(utils.RunArgs{Command: cmd, Args: cmdArgs, Env: cmdEnv, AddOsEnv: true})
+	if err := utils.Run(utils.RunArgs{Command: cmd, Args: cmdArgs, Env: cmdEnv, AddOsEnv: true}); err != nil {
+		return 0, err
+	}
 	return 0, nil
 }
 

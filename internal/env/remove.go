@@ -19,7 +19,9 @@ func RemoveEnvironment(env types.SharkEnv) error {
 
 	delete(envs, env.Name)
 	viper.Set("envs", envs)
-	config.WriteConfig()
+	if err := config.WriteConfig(); err != nil {
+		return err
+	}
 	log.Println("Environment removed successfully:", env.Name)
 	return nil
 }

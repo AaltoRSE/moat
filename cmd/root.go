@@ -4,6 +4,7 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"log"
 	"os"
 
 	config "github.com/AaltoRSE/shark-tank/internal/config"
@@ -14,7 +15,7 @@ import (
 var RootCmd = &cobra.Command{
 	Use:   "shark-tank",
 	Short: "A brief description of your application",
-	Long: `Shark-tank is an application for running AI agents in 
+	Long: `Shark-tank is an application for running AI agents in
 containerized environtment.`,
 	DisableFlagParsing: false,
 	// Uncomment the following line if your bare application
@@ -40,6 +41,10 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	config.InitConfig()
+
+	// In case of error, print the configuration
+	if err := config.InitConfig(); err != nil {
+		log.Fatalf("could not initialize config: %v", err)
+	}
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

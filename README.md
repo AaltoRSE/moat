@@ -19,7 +19,7 @@ To start using shark-tank, run
 shark-tank init
 ```
 
-## Environments 
+## Environments
 
 shark-tank creates separate environments for your coding tools and only mounts relevant directories into the environment.
 

@@ -25,7 +25,7 @@ This command allows you to delete and remove a previously created environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			log.Print("remove called")
 			if err := env.RemoveEnvironment(types.SharkEnv{Name: name}); err != nil {
-				log.Print("Error removing environment: %v\n", err)
+				log.Printf("Error removing environment: %v\n", err)
 				return
 			}
 			log.Print("Environment successfully removed.\n")

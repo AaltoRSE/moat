@@ -4,6 +4,7 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"log"
 	"strings"
 
 	"github.com/AaltoRSE/shark-tank/internal/env"
@@ -23,12 +24,14 @@ var createCmd = &cobra.Command{
 
 This command allows you to create and configure a new environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		env.CreateEnvironment(types.SharkEnv{
+		if err := env.CreateEnvironment(types.SharkEnv{
 			Name:           name,
 			FakeHome:       home,
 			Mounts:         strings.Split(mountString, ","),
 			ReadOnlyMounts: []string{},
-		})
+		}); err != nil {
+			log.Fatalf("could not create environment: %v", err)
+		}
 	},
 }
 

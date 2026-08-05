@@ -20,5 +20,5 @@ func GetRuntime(name string) (Runtime, error) {
 		return &ApptainerInstanceRuntime{}, nil
 	}
 
-	return nil, errors.New("No runtime found")
+	return nil, errors.New("no runtime found")
 }

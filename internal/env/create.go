@@ -16,10 +16,7 @@ import (
 // CreateEnvironment creates a new environment configuration in the viper config.
 func CreateEnvironment(env types.SharkEnv) error {
 
-	var envs map[string]any
-
-	// Determine if the environment already exists
-	envs = viper.GetStringMap("envs")
+	var envs = viper.GetStringMap("envs")
 
 	if envs[env.Name] != nil {
 		fmt.Println("Environment already exists.")
@@ -85,7 +82,9 @@ func CreateEnvironment(env types.SharkEnv) error {
 	})
 
 	// Write the updated configuration back to the config file
-	config.WriteConfig()
+	if err := config.WriteConfig(); err != nil {
+		return err
+	}
 
 	fmt.Println("Environment created successfully.")
 	return nil

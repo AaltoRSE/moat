@@ -27,7 +27,11 @@ func InitConfig() error {
 
 	viper.AddConfigPath("$HOME/.shark-tank")
 	viper.AddConfigPath(".")
-	viper.ReadInConfig()
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return fmt.Errorf("error reading config file: %v", err)
+		}
+	}
 
 	var C types.Config
 	err := viper.Unmarshal(&C)
@@ -36,13 +40,13 @@ func InitConfig() error {
 		// Print the configuration as a string for debugging
 		configStr := GetConfigAsString()
 		log.Printf("Current configuration:\n%s", configStr)
-		return fmt.Errorf("Unable to unmarshal config: %v", err)
+		return fmt.Errorf("unable to unmarshal config: %v", err)
 	}
 
 	if err := validateConfig(&C); err != nil {
 		configStr := GetConfigAsString()
 		log.Printf("Current configuration:\n%s", configStr)
-		return fmt.Errorf("Config validation failed: %v", err)
+		return fmt.Errorf("config validation failed: %v", err)
 	}
 
 	return nil
@@ -60,8 +64,7 @@ func WriteConfig() error {
 
 func validateConfig(config *types.Config) error {
 	// Validate that the configuration struct is properly filled out
-	var validate *validator.Validate
-	validate = validator.New(validator.WithRequiredStructEnabled())
+	var validate = validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(config)
 	if err != nil {
 
