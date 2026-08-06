@@ -17,10 +17,13 @@ func InitConfig() error {
 	// Set defaults if not set
 	viper.SetDefault("Defaults",
 		map[string]any{
-			"runtime": "apptainerinstance",
-			"runtimeconfig": map[string]string{
-				"imageUrl": "ghcr.io/aaltorse/vscode-apptainer:latest",
-				"cachedir": "$HOME/.cache/shark-tank/images",
+			"runtime": "apptainer",
+			"runtimes": map[string]any{
+				"apptainer": types.ApptainerRuntimeSpec{
+					Type:     "apptainer",
+					ImageUrl: "ghcr.io/aaltorse/vscode-apptainer:latest",
+					CacheDir: "$HOME/.cache/shark-tank/images",
+				},
 			},
 		},
 	)
@@ -117,4 +120,19 @@ func GetEnv(name string) (types.SharkEnv, error) {
 		FakeHome: home,
 		Mounts:   mounts,
 	}, nil
+}
+
+func GetRuntimes() map[string]any {
+
+	defaultsMap := viper.GetStringMap("Defaults.runtimes")
+
+	runtimes := viper.GetStringMap("runtimes")
+
+	// Merge runtimes and defaults with runtimes taking precedence
+	for k, v := range defaultsMap {
+		if _, exists := runtimes[k]; !exists {
+			runtimes[k] = v
+		}
+	}
+	return runtimes
 }

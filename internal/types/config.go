@@ -3,14 +3,10 @@ package types
 type Config struct {
 	Defaults Defaults   `validate:"required"`
 	Envs     []SharkEnv `validate:"required"`
-}
-
-type ApptainerInstanceRuntime struct {
-	ImageUrl string `validate:"required"`
-	CacheDir string `validate:"required,filepath"`
+	Runtimes map[string]RuntimeSpec
 }
 
 type Defaults struct {
-	Runtime       string                   `validate:"required"`
-	RuntimeConfig ApptainerInstanceRuntime `validate:"required_if=Runtime apptainerinstance"`
+	Runtime  string `validate:"required"`
+	Runtimes map[string]RuntimeSpec
 }

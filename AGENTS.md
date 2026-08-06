@@ -18,7 +18,7 @@ shark-tank/
 ├── go.mod
 │
 ├── cmd/                        # CLI layer — Cobra commands only, no business logic
-│   ├── root.go                 # RootCmd definition and Execute(); calls internal/config.InitConfig()
+│   ├── root.go                 # RootCmd definition and Runute(); calls internal/config.InitConfig()
 │   ├── config/                 # `shark-tank config` command group
 │   │   ├── config.go           # configCmd; registers with RootCmd
 │   │   ├── set.go              # setCmd stub
@@ -29,11 +29,11 @@ shark-tank/
 │   │   ├── list.go             # listCmd; reads viper directly (pre-existing exception)
 │   │   └── remove.go           # removeCmd; calls internal/env.RemoveEnvironment()
 │   └── run/                    # `shark-tank run` command
-│       └── run.go              # runCmd; resolves env + runtime, then calls runtime.Exec()
+│       └── run.go              # runCmd; resolves env + runtime, then calls runtime.Run()
 │
 ├── internal/                   # Business logic; never imported by cmd/ in reverse
 │   ├── types/                  # Canonical location for ALL shared types (see rules below)
-│   │   ├── config.go           # Config, Defaults, ApptainerInstanceRuntime (config fields)
+│   │   ├── config.go           # Config, Defaults, ApptainerRuntimeSpec (config fields)
 │   │   └── sharkenv.go         # SharkEnv
 │   ├── config/
 │   │   └── config.go           # InitConfig, WriteConfig, GetEnv, GetConfigAsString
@@ -42,7 +42,7 @@ shark-tank/
 │   │   └── remove.go           # RemoveEnvironment
 │   ├── runtimes/
 │   │   ├── runtime.go          # Runtime interface + GetRuntime factory
-│   │   └── apptainerinstance.go# ApptainerInstanceRuntime implementation
+│   │   └── apptainerinstance.go# ApptainerRuntime implementation
 │   └── utils/
 │       ├── checks.go           # CheckFolderExists, CheckEnvironmentName
 │       └── run.go              # Run, RunArgs
@@ -80,7 +80,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 |---|---|---|
 | `Config` | `config.go` | Root config struct validated by viper unmarshal |
 | `Defaults` | `config.go` | Default runtime settings |
-| `ApptainerInstanceRuntime` | `config.go` | Config fields for the Apptainer runtime (image URL, cache dir) |
+| `ApptainerRuntimeSpec` | `config.go` | Config fields for the Apptainer runtime (image URL, cache dir) |
 | `SharkEnv` | `sharkenv.go` | An individual named environment (home, mounts) |
 
 **Rule:** If you define a struct in `internal/runtimes`, `internal/env`, or any other package, and it is later referenced by a second package, move it to `internal/types`.
@@ -145,7 +145,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 | Cobra command variables | `{verb}Cmd` | `createCmd`, `listCmd`, `runCmd`, `configCmd` |
 | Exported functions | PascalCase, verb-first | `CreateEnvironment`, `GetRuntime`, `InitConfig` |
 | Unexported functions | camelCase, verb-first | `validateConfig`, `getImage` |
-| Type names | PascalCase, noun | `SharkEnv`, `Config`, `ApptainerInstanceRuntime` |
+| Type names | PascalCase, noun | `SharkEnv`, `Config`, `ApptainerRuntimeSpec` |
 | Interface names | PascalCase, noun or agent noun | `Runtime` |
 | Flag variables | camelCase, descriptive | `mountString`, `absFakeHome` |
 | Struct tags | lowercase validator keywords | `validate:"required"`, `validate:"required_if=Runtime apptainerinstance"` |
@@ -190,7 +190,7 @@ Do not add viper access to packages other than `internal/config` without strong 
 
 ## Adding a new runtime
 
-1. Add any runtime-specific config type fields to `internal/types/config.go` (e.g. alongside `ApptainerInstanceRuntime`).
+1. Add any runtime-specific config type fields to `internal/types/config.go` (e.g. alongside `ApptainerRuntimeSpec`).
 2. Implement `internal/runtimes/{name}.go` with a struct that satisfies the `Runtime` interface.
 3. Register the new runtime name in `GetRuntime` in `internal/runtimes/runtime.go`.
 4. Add a `validate:"required_if=Runtime {name}"` tag to the new config type in `internal/types/config.go`.

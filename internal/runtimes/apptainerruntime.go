@@ -12,7 +12,24 @@ import (
 	"github.com/spf13/viper"
 )
 
-type ApptainerInstanceRuntime struct {
+func NewApptainerRuntimeSpec(imageUrl string, cacheDir string) *types.ApptainerRuntimeSpec {
+	return &types.ApptainerRuntimeSpec{
+		Type:     "apptainer",
+		ImageUrl: imageUrl,
+		CacheDir: cacheDir,
+	}
+}
+
+func NewApptainerRuntimeFromSpec(spec *types.ApptainerRuntimeSpec) *ApptainerRuntime {
+	return &ApptainerRuntime{
+		ImageUrl: spec.ImageUrl,
+		CacheDir: spec.CacheDir,
+	}
+}
+
+type ApptainerRuntime struct {
+	ImageUrl string
+	CacheDir string
 }
 
 type ApptainerImage struct {
@@ -21,7 +38,7 @@ type ApptainerImage struct {
 	Url  string
 }
 
-func (f *ApptainerInstanceRuntime) GetImage() (ApptainerImage, error) {
+func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 
 	runtimeConfig := viper.GetStringMapString("defaults.runtimeconfig")
 	cacheDir, err := filepath.Abs(os.ExpandEnv(runtimeConfig["cachedir"]))
@@ -58,7 +75,7 @@ func (f *ApptainerInstanceRuntime) GetImage() (ApptainerImage, error) {
 	return ApptainerImage{Name: name, Url: imageUrl, Path: path}, nil
 }
 
-func (f *ApptainerInstanceRuntime) Pull() error {
+func (f *ApptainerRuntime) Pull() error {
 
 	var (
 		args []string
@@ -74,7 +91,7 @@ func (f *ApptainerInstanceRuntime) Pull() error {
 	return err
 }
 
-func (f *ApptainerInstanceRuntime) Exec(env types.SharkEnv, args []string) (int, error) {
+func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
 	log.Print("Exec called")
 	cmd := "echo"
 	var (
@@ -96,17 +113,7 @@ func (f *ApptainerInstanceRuntime) Exec(env types.SharkEnv, args []string) (int,
 	return 0, nil
 }
 
-func (f *ApptainerInstanceRuntime) Shell(env types.SharkEnv) (int, error) {
+func (f *ApptainerRuntime) Shell(env types.SharkEnv) (int, error) {
 	log.Print("Shell called")
-	return 0, nil
-}
-
-func (f *ApptainerInstanceRuntime) Start(env types.SharkEnv) (int, error) {
-	log.Print("Start called")
-	return 0, nil
-}
-
-func (f *ApptainerInstanceRuntime) Stop(env types.SharkEnv) (int, error) {
-	log.Print("Stop called")
 	return 0, nil
 }
