@@ -135,7 +135,7 @@ func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
 		mounts = append(mounts, "--bind", mount)
 	}
 
-	homeMount := fmt.Sprintf("%s:%s", env.FakeHome, os.Getenv("HOME"))
+	homeMount := fmt.Sprintf("%s:%s", env.Home, os.Getenv("HOME"))
 
 	// Add mounts and home mount to the apptainer arguments
 	apptainerArgs = append(

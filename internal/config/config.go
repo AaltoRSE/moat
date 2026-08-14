@@ -11,8 +11,12 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 )
 
-func InitConfig() error {
-	viper.SetConfigName("config")
+func InitConfig(cfgFile string) error {
+	viper.SetConfigName("shark-config")
+	viper.SetConfigType("yaml")
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	}
 
 	// Set defaults if not set
 	viper.SetDefault("defaults.runtime", "apptainer")
@@ -20,8 +24,9 @@ func InitConfig() error {
 	viper.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
 	viper.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/shark-tank/images")
 	viper.SetDefault("defaults.runtimes.apptainer.passenv", true)
+	viper.SetDefault("envs", map[string]types.SharkEnv{})
 
-	viper.AddConfigPath("$HOME/.shark-tank")
+	viper.AddConfigPath("$HOME/.config/shark-tank")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -35,13 +40,13 @@ func InitConfig() error {
 		fmt.Println("Unable to unmarshal config", err)
 		// Print the configuration as a string for debugging
 		configStr := GetConfigAsString()
-		log.Printf("Current configuration:\n%s", configStr)
+		log.Error().Msgf("Current configuration:\n%s", configStr)
 		return fmt.Errorf("unable to unmarshal config: %v", err)
 	}
 
 	if err := validateConfig(&C); err != nil {
 		configStr := GetConfigAsString()
-		log.Printf("Current configuration:\n%s", configStr)
+		log.Error().Msgf("Current configuration:\n%s", configStr)
 		return fmt.Errorf("config validation failed: %v", err)
 	}
 
@@ -52,7 +57,7 @@ func InitConfig() error {
 func WriteConfig() error {
 	err := viper.WriteConfig()
 	if err != nil {
-		log.Printf("Error writing config: %v", err)
+		log.Error().Msgf("Error writing config: %v", err)
 		return err
 	}
 	return nil
@@ -67,17 +72,17 @@ func validateConfig(config *types.Config) error {
 		var validateErrs validator.ValidationErrors
 		if errors.As(err, &validateErrs) {
 			for _, e := range validateErrs {
-				log.Print(e.Namespace())
-				log.Print(e.Field())
-				log.Print(e.StructNamespace())
-				log.Print(e.StructField())
-				log.Print(e.Tag())
-				log.Print(e.ActualTag())
-				log.Print(e.Kind())
-				log.Print(e.Type())
-				log.Print(e.Value())
-				log.Print(e.Param())
-				log.Print()
+				log.Error().Msgf("Namespace: %s", e.Namespace())
+				log.Error().Msgf("Field: %s", e.Field())
+				log.Error().Msgf("StructNamespace: %s", e.StructNamespace())
+				log.Error().Msgf("StructField: %s", e.StructField())
+				log.Error().Msgf("Tag: %s", e.Tag())
+				log.Error().Msgf("ActualTag: %s", e.ActualTag())
+				log.Error().Msgf("Kind: %v", e.Kind())
+				log.Error().Msgf("Type: %v", e.Type())
+				log.Error().Msgf("Value: %v", e.Value())
+				log.Error().Msgf("Param: %s", e.Param())
+				log.Error().Msg("")
 			}
 		}
 		return err
@@ -102,7 +107,7 @@ func GetEnv(name string) (types.SharkEnv, error) {
 
 	err := envViper.UnmarshalExact(&env)
 
-	log.Debug().Interface("env", env).Msg("")
+	log.Debug().Interface("env", env).Msg("Environment configuration")
 
 	return env, err
 }

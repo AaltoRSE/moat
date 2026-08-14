@@ -31,7 +31,7 @@ func CreateEnvironment(name string, env types.SharkEnv) error {
 	}
 
 	// Get the absolute path of the fake home directory
-	absFakeHome, err := filepath.Abs(env.FakeHome)
+	absFakeHome, err := filepath.Abs(env.Home)
 	if err != nil {
 		fmt.Println("Error getting absolute path for fake home directory:", err)
 		return err

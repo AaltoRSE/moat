@@ -4,8 +4,9 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
 	"os"
+
+	"github.com/rs/zerolog/log"
 
 	config "github.com/AaltoRSE/shark-tank/internal/config"
 	"github.com/spf13/cobra"
@@ -18,9 +19,6 @@ var RootCmd = &cobra.Command{
 	Long: `Shark-tank is an application for running AI agents in
 containerized environtment.`,
 	DisableFlagParsing: false,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -30,6 +28,15 @@ func Execute() {
 	if err != nil {
 		os.Exit(1)
 	}
+
+}
+
+func initConfig() {
+	configFile, _ := RootCmd.Flags().GetString("config")
+
+	if err := config.InitConfig(configFile); err != nil {
+		log.Error().Err(err).Msgf("could not initialize config: %v", err)
+	}
 }
 
 func init() {
@@ -37,14 +44,12 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	// RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.shark-tank.yaml)")
+	var cfgFile string
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
+	cobra.OnInitialize(initConfig)
 
-	// In case of error, print the configuration
-	if err := config.InitConfig(); err != nil {
-		log.Fatalf("could not initialize config: %v", err)
-	}
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/shark-tank/config.yaml or config.yaml in the current directory)")
+
+	log.Debug().Msgf("Using config file: %s", cfgFile)
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

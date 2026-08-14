@@ -25,7 +25,7 @@ var createCmd = &cobra.Command{
 This command allows you to create and configure a new environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := env.CreateEnvironment(name, types.SharkEnv{
-			FakeHome:       home,
+			Home:           home,
 			Mounts:         strings.Split(mountString, ","),
 			ReadOnlyMounts: []string{},
 		}); err != nil {
