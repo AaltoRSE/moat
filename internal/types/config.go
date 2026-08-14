@@ -1,8 +1,8 @@
 package types
 
 type Config struct {
-	Defaults Defaults   `validate:"required"`
-	Envs     []SharkEnv `validate:"required"`
+	Defaults Defaults            `validate:"required"`
+	Envs     map[string]SharkEnv `validate:"required"`
 	Runtimes map[string]RuntimeSpec
 }
 

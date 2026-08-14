@@ -14,18 +14,18 @@ import (
 )
 
 // CreateEnvironment creates a new environment configuration in the viper config.
-func CreateEnvironment(env types.SharkEnv) error {
+func CreateEnvironment(name string, env types.SharkEnv) error {
 
 	var envs = viper.GetStringMap("envs")
 
-	if envs[env.Name] != nil {
+	if envs[name] != nil {
 		fmt.Println("Environment already exists.")
 		return nil
 	}
 
 	// Validate the environment name
-	if !utils.CheckEnvironmentName(env.Name) {
-		fmt.Println("Invalid environment name:", env.Name)
+	if !utils.CheckEnvironmentName(name) {
+		fmt.Println("Invalid environment name:", name)
 		fmt.Println("Environment name must be non-empty and contain only alphanumeric characters and underscores.")
 		return nil
 	}
@@ -75,11 +75,8 @@ func CreateEnvironment(env types.SharkEnv) error {
 	}
 
 	// Create environment configuration
-	fmt.Println("Creating environment with name:", env.Name)
-	viper.Set("envs."+env.Name, map[string]interface{}{
-		"home":   absFakeHome,
-		"mounts": env.Mounts,
-	})
+	fmt.Println("Creating environment with name:", name)
+	viper.Set("envs."+name, env)
 
 	// Write the updated configuration back to the config file
 	if err := config.WriteConfig(); err != nil {

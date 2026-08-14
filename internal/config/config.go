@@ -3,10 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/go-playground/validator/v10"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	yaml "go.yaml.in/yaml/v3"
 )
@@ -19,6 +19,7 @@ func InitConfig() error {
 	viper.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
 	viper.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
 	viper.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/shark-tank/images")
+	viper.SetDefault("defaults.runtimes.apptainer.passenv", true)
 
 	viper.AddConfigPath("$HOME/.shark-tank")
 	viper.AddConfigPath(".")
@@ -88,47 +89,20 @@ func GetConfigAsString() string {
 	c := viper.AllSettings()
 	bs, err := yaml.Marshal(c)
 	if err != nil {
-		log.Fatalf("unable to marshal config to YAML: %v", err)
+		log.Error().Err(err).Msg("unable to marshal config to YAML")
 	}
 	return string(bs)
 }
 
 func GetEnv(name string) (types.SharkEnv, error) {
-	envMap := viper.GetStringMap("envs." + name)
-	if len(envMap) == 0 {
-		return types.SharkEnv{}, fmt.Errorf("environment %q not found", name)
-	}
-	home, _ := envMap["home"].(string)
-	var mounts []string
-	if raw, ok := envMap["mounts"].([]interface{}); ok {
-		for _, v := range raw {
-			if s, ok := v.(string); ok {
-				mounts = append(mounts, s)
-			}
-		}
-	}
-	runtime, _ := envMap["runtime"].(string)
-	return types.SharkEnv{
-		Name:     name,
-		FakeHome: home,
-		Mounts:   mounts,
-		Runtime:  runtime,
-	}, nil
-}
 
-func GetRuntimes() map[string]any {
+	envViper := viper.Sub("envs." + name)
 
-	defaultsMap := viper.GetStringMap("Defaults.runtimes")
+	var env types.SharkEnv
 
-	runtimes := viper.GetStringMap("runtimes")
+	err := envViper.UnmarshalExact(&env)
 
-	// Merge runtimes and defaults with runtimes taking precedence
-	for k, v := range defaultsMap {
-		if _, exists := runtimes[k]; !exists {
-			runtimes[k] = v
-		}
-	}
+	log.Debug().Interface("env", env).Msg("")
 
-	log.Print("Runtimes found: ", runtimes)
-	return runtimes
+	return env, err
 }

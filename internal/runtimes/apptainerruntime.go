@@ -11,11 +11,12 @@ import (
 	"github.com/AaltoRSE/shark-tank/internal/utils"
 )
 
-func NewApptainerRuntimeSpec(imageUrl string, cacheDir string) *types.RuntimeSpec {
+func NewApptainerRuntimeSpec(imageUrl string, cacheDir string, passEnv bool) *types.RuntimeSpec {
 	return &types.RuntimeSpec{
 		Type:     "apptainer",
 		ImageUrl: imageUrl,
 		CacheDir: cacheDir,
+		PassEnv:  passEnv,
 	}
 }
 
@@ -23,12 +24,14 @@ func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 	return &ApptainerRuntime{
 		ImageUrl: spec.ImageUrl,
 		CacheDir: spec.CacheDir,
+		PassEnv:  spec.PassEnv,
 	}
 }
 
 type ApptainerRuntime struct {
 	ImageUrl string
 	CacheDir string
+	PassEnv  bool
 }
 
 type ApptainerImage struct {
@@ -73,7 +76,7 @@ func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 	return ApptainerImage{Name: name, Url: imageUrl, Path: path}, nil
 }
 
-func (f *ApptainerRuntime) Pull() (string, error) {
+func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 
 	var (
 		args []string
@@ -85,7 +88,7 @@ func (f *ApptainerRuntime) Pull() (string, error) {
 
 	args = append(args, "pull", image.Path, image.Url)
 
-	output, err := utils.RunCapture(utils.RunArgs{Command: "apptainer", Args: args, Env: []string{}, AddOsEnv: true})
+	output, err := utils.RunCapture(utils.RunArgs{Command: "apptainer", Args: args, Env: []string{}, PassEnv: passEnv})
 
 	if err != nil && strings.Contains(output, "Image file already exists") {
 		fmt.Printf("Image already exists: %s\n", image.Path)
@@ -106,13 +109,21 @@ func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
 	var (
 		apptainerArgs []string
 		cmdEnv        []string
+		passEnv       bool
 	)
 
 	if len(args) < 1 {
 		return 0, fmt.Errorf("no command provided to run")
 	}
 
-	imagePath, err := f.Pull()
+	// Check if PassEnv is set in the environment
+	if env.PassEnv == nil {
+		passEnv = f.PassEnv
+	} else {
+		passEnv = *env.PassEnv
+	}
+
+	imagePath, err := f.Pull(passEnv)
 
 	if err != nil {
 		return 0, err
@@ -138,13 +149,11 @@ func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
 	// Add the user command to arguments
 	apptainerArgs = append(apptainerArgs, args...)
 
-	cmdEnv = append(os.Environ(),
-		"FOO=duplicate_value", // ignored
-	)
+	cmdEnv = []string{}
 
-	fmt.Printf("Running command: apptainer %v\n", apptainerArgs)
+	fmt.Printf("PassEnv: %v\n", passEnv)
 
-	if err := utils.Run(utils.RunArgs{Command: "apptainer", Args: apptainerArgs, Env: cmdEnv, AddOsEnv: true}); err != nil {
+	if err := utils.Run(utils.RunArgs{Command: "apptainer", Args: apptainerArgs, Env: cmdEnv, PassEnv: passEnv}); err != nil {
 		return 0, err
 	}
 	return 0, nil

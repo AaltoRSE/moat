@@ -7,7 +7,6 @@ import (
 	"log"
 
 	"github.com/AaltoRSE/shark-tank/internal/env"
-	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +23,7 @@ func init() {
 This command allows you to delete and remove a previously created environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			log.Print("remove called")
-			if err := env.RemoveEnvironment(types.SharkEnv{Name: name}); err != nil {
+			if err := env.RemoveEnvironment(name); err != nil {
 				log.Printf("Error removing environment: %v\n", err)
 				return
 			}

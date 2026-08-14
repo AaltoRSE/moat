@@ -8,8 +8,11 @@ import (
 	_ "github.com/AaltoRSE/shark-tank/cmd/config"
 	_ "github.com/AaltoRSE/shark-tank/cmd/env"
 	_ "github.com/AaltoRSE/shark-tank/cmd/run"
+	"github.com/rs/zerolog"
 )
 
 func main() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
 	cmd.Execute()
 }
