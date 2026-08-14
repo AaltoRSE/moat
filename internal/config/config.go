@@ -15,18 +15,10 @@ func InitConfig() error {
 	viper.SetConfigName("config")
 
 	// Set defaults if not set
-	viper.SetDefault("Defaults",
-		map[string]any{
-			"runtime": "apptainer",
-			"runtimes": map[string]any{
-				"apptainer": types.ApptainerRuntimeSpec{
-					Type:     "apptainer",
-					ImageUrl: "ghcr.io/aaltorse/vscode-apptainer:latest",
-					CacheDir: "$HOME/.cache/shark-tank/images",
-				},
-			},
-		},
-	)
+	viper.SetDefault("defaults.runtime", "apptainer")
+	viper.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
+	viper.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
+	viper.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/shark-tank/images")
 
 	viper.AddConfigPath("$HOME/.shark-tank")
 	viper.AddConfigPath(".")
@@ -115,10 +107,12 @@ func GetEnv(name string) (types.SharkEnv, error) {
 			}
 		}
 	}
+	runtime, _ := envMap["runtime"].(string)
 	return types.SharkEnv{
 		Name:     name,
 		FakeHome: home,
 		Mounts:   mounts,
+		Runtime:  runtime,
 	}, nil
 }
 
@@ -134,5 +128,7 @@ func GetRuntimes() map[string]any {
 			runtimes[k] = v
 		}
 	}
+
+	log.Print("Runtimes found: ", runtimes)
 	return runtimes
 }

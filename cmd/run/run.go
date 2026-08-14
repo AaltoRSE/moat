@@ -38,6 +38,11 @@ This command allows you to run a specific command within the shark-tank environm
 			}
 		}
 
+		// Return an error if no arguments are provided
+		if len(args) == 0 {
+			log.Fatalf("no arguments provided")
+		}
+
 		// Get the first argument as the environment name
 		envName := args[0]
 
@@ -56,13 +61,18 @@ This command allows you to run a specific command within the shark-tank environm
 			runtimeName = viper.GetString("defaults.runtime")
 		}
 
+		// Log the runtime name
+		log.Print("Using runtime: ", runtimeName)
+
 		runtime, err = runtimes.GetRuntime(runtimeName)
-		log.Print(runtime)
-		if err == nil {
-			_, execErr := runtime.Run(env, args[1:])
-			if execErr != nil {
-				log.Fatalf("error executing command: %v", execErr)
-			}
+		if err != nil {
+			log.Fatalf("failed to get a runtime: %v", err)
+		}
+
+		log.Print("Executing runtime")
+		_, execErr := runtime.Run(env, args[1:])
+		if execErr != nil {
+			log.Fatalf("error executing command: %v", execErr)
 		}
 	},
 }

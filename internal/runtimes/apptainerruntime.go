@@ -9,18 +9,17 @@ import (
 
 	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/AaltoRSE/shark-tank/internal/utils"
-	"github.com/spf13/viper"
 )
 
-func NewApptainerRuntimeSpec(imageUrl string, cacheDir string) *types.ApptainerRuntimeSpec {
-	return &types.ApptainerRuntimeSpec{
+func NewApptainerRuntimeSpec(imageUrl string, cacheDir string) *types.RuntimeSpec {
+	return &types.RuntimeSpec{
 		Type:     "apptainer",
 		ImageUrl: imageUrl,
 		CacheDir: cacheDir,
 	}
 }
 
-func NewApptainerRuntimeFromSpec(spec *types.ApptainerRuntimeSpec) *ApptainerRuntime {
+func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 	return &ApptainerRuntime{
 		ImageUrl: spec.ImageUrl,
 		CacheDir: spec.CacheDir,
@@ -40,8 +39,7 @@ type ApptainerImage struct {
 
 func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 
-	runtimeConfig := viper.GetStringMapString("defaults.runtimeconfig")
-	cacheDir, err := filepath.Abs(os.ExpandEnv(runtimeConfig["cachedir"]))
+	cacheDir, err := filepath.Abs(os.ExpandEnv(f.CacheDir))
 	if err != nil {
 		fmt.Println("Invalid cache directory: ", cacheDir)
 		return ApptainerImage{}, err
@@ -55,7 +53,7 @@ func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 		}
 	}
 
-	imageUrl := runtimeConfig["imageUrl"]
+	imageUrl := f.ImageUrl
 
 	var name string
 
@@ -75,39 +73,78 @@ func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 	return ApptainerImage{Name: name, Url: imageUrl, Path: path}, nil
 }
 
-func (f *ApptainerRuntime) Pull() error {
+func (f *ApptainerRuntime) Pull() (string, error) {
 
 	var (
 		args []string
 	)
 	image, err := f.GetImage()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	args = append(args, "pull", image.Path, image.Url)
 
-	err = utils.Run(utils.RunArgs{Command: "apptainer", Args: args, Env: []string{}, AddOsEnv: true})
-	return err
+	output, err := utils.RunCapture(utils.RunArgs{Command: "apptainer", Args: args, Env: []string{}, AddOsEnv: true})
+
+	if err != nil && strings.Contains(output, "Image file already exists") {
+		fmt.Printf("Image already exists: %s\n", image.Path)
+		return image.Path, nil
+	}
+
+	if err != nil {
+		fmt.Printf("Error pulling image: %v\n", err)
+		fmt.Printf("Output: %s\n", output)
+		return "", err
+	}
+
+	return image.Path, err
 }
 
 func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
-	log.Print("Exec called")
-	cmd := "echo"
+	log.Print("Run called")
 	var (
-		cmdArgs []string
-		cmdEnv  []string
+		apptainerArgs []string
+		cmdEnv        []string
 	)
 
-	if err := f.Pull(); err != nil {
+	if len(args) < 1 {
+		return 0, fmt.Errorf("no command provided to run")
+	}
+
+	imagePath, err := f.Pull()
+
+	if err != nil {
 		return 0, err
 	}
 
-	cmdArgs = append([]string{"echo"}, args...)
+	mounts := []string{}
+
+	for _, mount := range env.Mounts {
+		mounts = append(mounts, "--bind", mount)
+	}
+
+	homeMount := fmt.Sprintf("%s:%s", env.FakeHome, os.Getenv("HOME"))
+
+	// Add mounts and home mount to the apptainer arguments
+	apptainerArgs = append(
+		[]string{"exec", "--no-home", "--bind", homeMount},
+		mounts...,
+	)
+
+	// Add the image path to arguments
+	apptainerArgs = append(apptainerArgs, imagePath)
+
+	// Add the user command to arguments
+	apptainerArgs = append(apptainerArgs, args...)
+
 	cmdEnv = append(os.Environ(),
 		"FOO=duplicate_value", // ignored
 	)
-	if err := utils.Run(utils.RunArgs{Command: cmd, Args: cmdArgs, Env: cmdEnv, AddOsEnv: true}); err != nil {
+
+	fmt.Printf("Running command: apptainer %v\n", apptainerArgs)
+
+	if err := utils.Run(utils.RunArgs{Command: "apptainer", Args: apptainerArgs, Env: cmdEnv, AddOsEnv: true}); err != nil {
 		return 0, err
 	}
 	return 0, nil
