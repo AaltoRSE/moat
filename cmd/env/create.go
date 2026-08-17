@@ -4,8 +4,9 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/shark-tank/internal/env"
 	"github.com/AaltoRSE/shark-tank/internal/types"
@@ -29,7 +30,7 @@ This command allows you to create and configure a new environment.`,
 			Mounts:         strings.Split(mountString, ","),
 			ReadOnlyMounts: []string{},
 		}); err != nil {
-			log.Fatalf("could not create environment: %v", err)
+			log.Error().Msgf("could not create environment: %v", err)
 		}
 	},
 }

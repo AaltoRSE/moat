@@ -4,8 +4,6 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
-
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +15,6 @@ var setCmd = &cobra.Command{
 
 This command allows you to set a specific configuration variable for shark-tank.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Print("set called")
 	},
 }
 

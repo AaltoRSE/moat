@@ -4,8 +4,6 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
-
 	"github.com/AaltoRSE/shark-tank/cmd"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +17,6 @@ var configCmd = &cobra.Command{
 Manage your shark-tank configuration with this command.
 You can add, remove, and list configuration settings.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Print("config called")
 	},
 }
 

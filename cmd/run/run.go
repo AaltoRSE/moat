@@ -4,11 +4,10 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
-
 	"github.com/AaltoRSE/shark-tank/cmd"
 	"github.com/AaltoRSE/shark-tank/internal/config"
 	"github.com/AaltoRSE/shark-tank/internal/runtimes"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -32,7 +31,7 @@ This command allows you to run a specific command within the shark-tank environm
 		for _, arg := range args {
 			if arg == "--help" || arg == "-h" {
 				if err := cmd.Help(); err != nil {
-					log.Fatalf("could not print help: %v", err)
+					log.Error().Msgf("could not print help: %v", err)
 				}
 				return
 			}
@@ -40,7 +39,8 @@ This command allows you to run a specific command within the shark-tank environm
 
 		// Return an error if no arguments are provided
 		if len(args) == 0 {
-			log.Fatalf("no arguments provided")
+			log.Error().Msgf("no arguments provided")
+			return
 		}
 
 		// Get the first argument as the environment name
@@ -49,7 +49,8 @@ This command allows you to run a specific command within the shark-tank environm
 		// Get the environment with Config.GetEnv
 		env, err := config.GetEnv(envName)
 		if err != nil {
-			log.Fatalf("could not get environment %q: %v", envName, err)
+			log.Error().Msgf("could not get environment %q: %v", envName, err)
+			return
 		}
 
 		// Check if the environment has a runtime specified
@@ -66,13 +67,15 @@ This command allows you to run a specific command within the shark-tank environm
 
 		runtime, err = runtimes.GetRuntime(runtimeName)
 		if err != nil {
-			log.Fatalf("failed to get a runtime: %v", err)
+			log.Error().Msgf("failed to get a runtime: %v", err)
+			return
 		}
 
 		log.Print("Executing runtime")
 		_, execErr := runtime.Run(env, args[1:])
 		if execErr != nil {
-			log.Fatalf("error executing command: %v", execErr)
+			log.Error().Msgf("error executing command: %v", execErr)
+			return
 		}
 	},
 }

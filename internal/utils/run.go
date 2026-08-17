@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
-	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type RunArgs struct {
@@ -22,7 +22,7 @@ func Run(runargs RunArgs) error {
 		cmd.Env = runargs.Env
 	}
 
-	fmt.Printf("Running command: %s %s\n", runargs.Command, strings.Join(runargs.Args, " "))
+	log.Debug().Str("command", runargs.Command).Strs("args", runargs.Args).Msg("Running command")
 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -39,7 +39,7 @@ func RunCapture(runargs RunArgs) (string, error) {
 		cmd.Env = runargs.Env
 	}
 
-	fmt.Printf("Running command: %s %s\n", runargs.Command, strings.Join(runargs.Args, " "))
+	log.Debug().Str("command", runargs.Command).Strs("args", runargs.Args).Msg("Running command")
 
 	stdoutStderr, err := cmd.CombinedOutput()
 	return string(stdoutStderr), err

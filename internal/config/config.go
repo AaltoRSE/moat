@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/go-playground/validator/v10"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	yaml "go.yaml.in/yaml/v3"
 )

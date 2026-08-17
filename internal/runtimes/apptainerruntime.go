@@ -2,10 +2,11 @@ package runtimes
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/AaltoRSE/shark-tank/internal/utils"
@@ -44,14 +45,14 @@ func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 
 	cacheDir, err := filepath.Abs(os.ExpandEnv(f.CacheDir))
 	if err != nil {
-		fmt.Println("Invalid cache directory: ", cacheDir)
+		log.Error().Str("cacheDir", cacheDir).Msg("Invalid cache directory")
 		return ApptainerImage{}, err
 	}
 
 	if !utils.CheckFolderExists(cacheDir) {
 		err := os.MkdirAll(cacheDir, 0755)
 		if err != nil {
-			fmt.Println("Could not create cache directory: ", cacheDir)
+			log.Error().Str("cacheDir", cacheDir).Msg("Could not create cache directory")
 			return ApptainerImage{}, err
 		}
 	}
@@ -91,13 +92,12 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 	output, err := utils.RunCapture(utils.RunArgs{Command: "apptainer", Args: args, Env: []string{}, PassEnv: passEnv})
 
 	if err != nil && strings.Contains(output, "Image file already exists") {
-		fmt.Printf("Image already exists: %s\n", image.Path)
+		log.Debug().Str("imagePath", image.Path).Msg("Image already exists")
 		return image.Path, nil
 	}
 
 	if err != nil {
-		fmt.Printf("Error pulling image: %v\n", err)
-		fmt.Printf("Output: %s\n", output)
+		log.Error().Err(err).Str("output", output).Msg("Error pulling image")
 		return "", err
 	}
 
@@ -105,7 +105,7 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 }
 
 func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
-	log.Print("Run called")
+	log.Debug().Msg("Run called")
 	var (
 		apptainerArgs []string
 		cmdEnv        []string
@@ -151,7 +151,7 @@ func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
 
 	cmdEnv = []string{}
 
-	fmt.Printf("PassEnv: %v\n", passEnv)
+	log.Debug().Bool("passEnv", passEnv).Msg("PassEnv")
 
 	if err := utils.Run(utils.RunArgs{Command: "apptainer", Args: apptainerArgs, Env: cmdEnv, PassEnv: passEnv}); err != nil {
 		return 0, err
@@ -160,6 +160,6 @@ func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
 }
 
 func (f *ApptainerRuntime) Shell(env types.SharkEnv) (int, error) {
-	log.Print("Shell called")
+	log.Debug().Msg("Shell called")
 	return 0, nil
 }

@@ -1,8 +1,9 @@
 package runtimes
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/shark-tank/internal/types"
 	"github.com/spf13/viper"
@@ -22,9 +23,9 @@ func GetRuntime(name string) (Runtime, error) {
 	runtimeSpecMap = viper.GetStringMap("runtimes." + name)
 	if len(runtimeSpecMap) == 0 {
 		runtimeSpecMap = viper.GetStringMap("defaults.runtimes." + name)
-		fmt.Printf("runtimeSpecMap: %v\n", runtimeSpecMap)
+		log.Debug().Interface("runtimeSpecMap", runtimeSpecMap).Msg("Loaded runtime spec map")
 		if len(runtimeSpecMap) == 0 {
-			return nil, errors.New("runtime not found")
+			return nil, fmt.Errorf("runtime not found")
 		}
 	}
 
@@ -36,9 +37,9 @@ func GetRuntime(name string) (Runtime, error) {
 			runtimeSpecMap["cachedir"].(string),
 			runtimeSpecMap["passenv"].(bool),
 		)
-		fmt.Printf("Created Apptainer runtime spec: %+v\n", spec)
+		log.Debug().Interface("spec", spec).Msg("Created Apptainer runtime spec")
 		return NewApptainerRuntimeFromSpec(spec), nil
 	}
 
-	return nil, errors.New("no runtime found")
+	return nil, fmt.Errorf("no runtime found")
 }

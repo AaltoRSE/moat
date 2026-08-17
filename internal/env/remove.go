@@ -1,7 +1,7 @@
 package env
 
 import (
-	"log"
+	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/shark-tank/internal/config"
 	"github.com/spf13/viper"
@@ -12,7 +12,7 @@ func RemoveEnvironment(name string) error {
 	// Check if the environment exists
 	envs := viper.GetStringMapString("envs")
 	if _, ok := envs[name]; !ok {
-		log.Println("Environment does not exist:", name)
+		log.Error().Msgf("Environment does not exist: %s", name)
 		return nil
 	}
 
@@ -21,6 +21,6 @@ func RemoveEnvironment(name string) error {
 	if err := config.WriteConfig(); err != nil {
 		return err
 	}
-	log.Println("Environment removed successfully:", name)
+	log.Info().Msgf("Environment removed successfully: %s", name)
 	return nil
 }

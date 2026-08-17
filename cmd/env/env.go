@@ -4,7 +4,7 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log"
+	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/shark-tank/cmd"
 	"github.com/spf13/cobra"
