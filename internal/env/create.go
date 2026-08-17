@@ -1,6 +1,7 @@
 package env
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -20,7 +21,7 @@ func CreateEnvironment(name string, env types.SharkEnv) error {
 	var envs = viper.GetStringMap("envs")
 
 	if envs[name] != nil {
-		log.Info().Msg("Environment already exists.")
+		fmt.Println("Environment already exists.")
 		return nil
 	}
 

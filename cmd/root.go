@@ -6,6 +6,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	config "github.com/AaltoRSE/shark-tank/internal/config"
@@ -33,10 +34,30 @@ func Execute() {
 
 func initConfig() {
 	configFile, _ := RootCmd.Flags().GetString("config")
+	log.Debug().Interface("configFile", configFile).Msg("Using config file: ")
 
 	if err := config.InitConfig(configFile); err != nil {
 		log.Error().Err(err).Msgf("could not initialize config: %v", err)
 	}
+}
+
+func initLogger() {
+
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	// Default level for this example is info, unless debug flag is present
+	debug, _ := RootCmd.Flags().GetBool("debug")
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+
+}
+
+func initServices() {
+	initLogger()
+	initConfig()
 }
 
 func init() {
@@ -44,12 +65,12 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
+	var debug bool
 	var cfgFile string
 
-	cobra.OnInitialize(initConfig)
+	RootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.config/shark-tank/config.yaml or config.yaml in the current directory)")
+	RootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "enable debug logging")
+	cobra.OnInitialize(initServices)
 
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/shark-tank/config.yaml or config.yaml in the current directory)")
-
-	log.Debug().Msgf("Using config file: %s", cfgFile)
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
