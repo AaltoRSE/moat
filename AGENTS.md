@@ -14,11 +14,11 @@ shark-tank is a CLI tool that runs AI coding agents inside isolated [Apptainer](
 ```
 shark-tank/
 ├── main.go                     # Entry point; imports cmd sub-packages to trigger init()
-├── config.yaml                 # Default config file loaded by viper
+├── shark-config.yaml           # Default config file loaded by viper
 ├── go.mod
 │
 ├── cmd/                        # CLI layer — Cobra commands only, no business logic
-│   ├── root.go                 # RootCmd definition and Runute(); calls internal/config.InitConfig()
+│   ├── root.go                 # RootCmd definition and Execute(); calls internal/config.InitConfig()
 │   ├── config/                 # `shark-tank config` command group
 │   │   ├── config.go           # configCmd; registers with RootCmd
 │   │   ├── set.go              # setCmd stub
@@ -33,7 +33,8 @@ shark-tank/
 │
 ├── internal/                   # Business logic; never imported by cmd/ in reverse
 │   ├── types/                  # Canonical location for ALL shared types (see rules below)
-│   │   ├── config.go           # Config, Defaults, ApptainerRuntimeSpec (config fields)
+│   │   ├── config.go           # Config, Defaults
+│   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields)
 │   │   └── sharkenv.go         # SharkEnv
 │   ├── config/
 │   │   └── config.go           # InitConfig, WriteConfig, GetEnv, GetConfigAsString
@@ -42,7 +43,7 @@ shark-tank/
 │   │   └── remove.go           # RemoveEnvironment
 │   ├── runtimes/
 │   │   ├── runtime.go          # Runtime interface + GetRuntime factory
-│   │   └── apptainerinstance.go# ApptainerRuntime implementation
+│   │   └── apptainerruntime.go # ApptainerRuntime implementation
 │   └── utils/
 │       ├── checks.go           # CheckFolderExists, CheckEnvironmentName
 │       └── run.go              # Run, RunArgs
@@ -80,7 +81,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 |---|---|---|
 | `Config` | `config.go` | Root config struct validated by viper unmarshal |
 | `Defaults` | `config.go` | Default runtime settings |
-| `ApptainerRuntimeSpec` | `config.go` | Config fields for the Apptainer runtime (image URL, cache dir) |
+| `RuntimeSpec` | `runtimespec.go` | Config fields for any runtime (type, imageurl, cachedir, passenv) |
 | `SharkEnv` | `sharkenv.go` | An individual named environment (home, mounts) |
 
 **Rule:** If you define a struct in `internal/runtimes`, `internal/env`, or any other package, and it is later referenced by a second package, move it to `internal/types`.
@@ -110,7 +111,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 ### `internal/runtimes` — runtime abstraction
 
 - `runtime.go` defines the `Runtime` interface and the `GetRuntime(name string)` factory. These must remain in this file.
-- Each runtime is implemented in its own file: `apptainerinstance.go`, and future runtimes in `{name}.go`.
+- Each runtime is implemented in its own file: `apptainerruntime.go`, and future runtimes in `{name}.go`.
 - Implementation-specific helper structs that are **private to one runtime** (e.g. `ApptainerImage`) may be defined in the same file as the implementation.
 - The `Runtime` interface itself must stay in `runtime.go`; if it is referenced from another package, do not duplicate it — import from `internal/runtimes`.
 - New runtime: add a new `{name}.go` implementing `Runtime`, then register it in `GetRuntime`.
@@ -134,7 +135,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 - **One file per subcommand** (e.g. `create.go`, `list.go`). The file registers the subcommand to the group command in `init()`.
 - Flag variables are declared at package scope for persistent flags, or inside `init()` as captured closure variables for command-scoped flags (see `cmd/env/remove.go` pattern).
 - `cmd/` files must not contain business logic. Extract any logic beyond argument marshaling into `internal/`.
-- Use `log.Fatalf` for unrecoverable errors; use `fmt.Println` for normal user-facing output.
+- Use `log.Fatal().Msgf(...)` for unrecoverable errors; use `fmt.Println` for normal user-facing output.
 
 ---
 
@@ -145,10 +146,10 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 | Cobra command variables | `{verb}Cmd` | `createCmd`, `listCmd`, `runCmd`, `configCmd` |
 | Exported functions | PascalCase, verb-first | `CreateEnvironment`, `GetRuntime`, `InitConfig` |
 | Unexported functions | camelCase, verb-first | `validateConfig`, `getImage` |
-| Type names | PascalCase, noun | `SharkEnv`, `Config`, `ApptainerRuntimeSpec` |
+| Type names | PascalCase, noun | `SharkEnv`, `Config`, `RuntimeSpec` |
 | Interface names | PascalCase, noun or agent noun | `Runtime` |
 | Flag variables | camelCase, descriptive | `mountString`, `absFakeHome` |
-| Struct tags | lowercase validator keywords | `validate:"required"`, `validate:"required_if=Runtime apptainerinstance"` |
+| Struct tags | lowercase validator keywords | `validate:"required"`, `validate:"required_if=Type=apptainer"` |
 
 ---
 
@@ -157,9 +158,9 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 | Situation | Pattern |
 |---|---|
 | `internal/` function fails | Return `error`; caller checks `if err != nil` |
-| Fatal error in `cmd/` (cannot continue) | `log.Fatalf(...)` — exits the process |
+| Fatal error in `cmd/` (cannot continue) | `log.Fatal().Msgf(...)` — exits the process |
 | User-facing informational message | `fmt.Println(...)` |
-| Diagnostic / debug output in `internal/` | `log.Print(...)` / `log.Println(...)` |
+| Diagnostic / debug output | `log.Error().Msgf(...)` / `log.Info().Msgf(...)` / `log.Debug().Msgf(...)` (zerolog) |
 | `init()` setup failure (flag registration, etc.) | `panic(err)` — acceptable only in `init()` |
 | Viper / config parse error | Log full config via `GetConfigAsString()`, then return the wrapped error |
 
@@ -175,6 +176,7 @@ Do not use `log.Fatal` inside `internal/` packages — return errors and let `cm
 | `github.com/spf13/viper` | `internal/config`, `cmd/env/list.go` | YAML config loading and global state |
 | `github.com/go-playground/validator/v10` | `internal/config` only | Struct validation via tags |
 | `github.com/erikgeiser/promptkit` | `internal/env` only | Interactive confirmation prompts |
+| `github.com/rs/zerolog` | All packages | Structured logging |
 | `go.yaml.in/yaml/v3` | `internal/config`, `cmd/env/list.go` | YAML marshal/unmarshal |
 
 Do not add viper access to packages other than `internal/config` without strong justification. Prefer calling `internal/config` functions instead.
@@ -190,10 +192,10 @@ Do not add viper access to packages other than `internal/config` without strong 
 
 ## Adding a new runtime
 
-1. Add any runtime-specific config type fields to `internal/types/config.go` (e.g. alongside `ApptainerRuntimeSpec`).
+1. Add any runtime-specific config type fields to `internal/types/runtimespec.go` (alongside the existing `RuntimeSpec` fields, or as a new type if the runtime is structurally different).
 2. Implement `internal/runtimes/{name}.go` with a struct that satisfies the `Runtime` interface.
-3. Register the new runtime name in `GetRuntime` in `internal/runtimes/runtime.go`.
-4. Add a `validate:"required_if=Runtime {name}"` tag to the new config type in `internal/types/config.go`.
+3. Register the new runtime type string in `GetRuntime` in `internal/runtimes/runtime.go`.
+4. Add a constructor function (e.g. `New{Name}RuntimeFromSpec`) in the same file, mirroring `NewApptainerRuntimeFromSpec`.
 
 ## Verifying additions
 
