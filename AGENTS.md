@@ -46,6 +46,7 @@ shark-tank/
 │   │   └── apptainerruntime.go # ApptainerRuntime implementation
 │   └── utils/
 │       ├── checks.go           # CheckFolderExists, CheckEnvironmentName
+│       ├── sanitize.go         # SanitizeFolderPath, SanitizeMountsPaths
 │       └── run.go              # Run, RunArgs
 │
 └── docs/
@@ -123,7 +124,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 - **Pure helpers only.** No business logic, no user prompts, no viper access.
 - Must not import other `internal/` packages (no circular risk, but avoids entanglement).
 - `RunArgs` struct and `Run` function for subprocess execution live here.
-- `CheckFolderExists` and `CheckEnvironmentName` live here.
+- `CheckFolderExists`, `CheckEnvironmentName`, `SanitizeFolderPath` and `SanitizeMountsPaths` live here.
 - New utilities must be genuinely reusable across multiple callers; one-off helpers belong in the package that uses them.
 
 ---

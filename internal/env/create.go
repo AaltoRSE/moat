@@ -3,7 +3,6 @@ package env
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 
@@ -32,7 +31,7 @@ func CreateEnvironment(name string, env types.SharkEnv) error {
 	}
 
 	// Get the absolute path of the fake home directory
-	absFakeHome, err := filepath.Abs(env.Home)
+	absFakeHome, err := utils.SanitizeFolderPath(env.Home)
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting absolute path for fake home directory")
 		return err
@@ -62,17 +61,14 @@ func CreateEnvironment(name string, env types.SharkEnv) error {
 	}
 
 	// Validate that all project mounts exist
-	for i, mount := range env.Mounts {
-		absMount, err := filepath.Abs(mount)
-		if err != nil {
-			log.Error().Err(err).Str("mount", mount).Msg("Error getting absolute path for project mount")
-			return err
-		}
-		if !utils.CheckFolderExists(absMount) {
-			log.Error().Str("absMount", absMount).Msg("Project mount does not exist")
-			return nil
-		}
-		env.Mounts[i] = absMount
+	env.Mounts, err = utils.SanitizeMountsPaths(env.Mounts)
+	if err != nil {
+		log.Error().Err(err).Msg("Error sanitizing mount paths")
+		return err
+	}
+	if !utils.CheckMounts(env.Mounts) {
+		log.Error().Msg("One or more mount paths are invalid or do not exist.")
+		return nil
 	}
 
 	// Create environment configuration
