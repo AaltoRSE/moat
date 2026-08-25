@@ -36,7 +36,7 @@ This command allows you to delete and remove a previously created environment.`,
 	if err := removeCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)
 	}
-	envCmd.AddCommand(removeCmd)
+	EnvCmd.AddCommand(removeCmd)
 
 	// Here you will define your flags and configuration settings.
 

@@ -39,7 +39,7 @@ This command allows you to view all your current shark-tank environments in a st
 }
 
 func init() {
-	envCmd.AddCommand(listCmd)
+	EnvCmd.AddCommand(listCmd)
 
 	// Here you will define your flags and configuration settings.
 

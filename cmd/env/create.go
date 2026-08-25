@@ -49,7 +49,7 @@ func init() {
 	if err := createCmd.MarkFlagRequired("mounts"); err != nil {
 		panic(err)
 	}
-	envCmd.AddCommand(createCmd)
+	EnvCmd.AddCommand(createCmd)
 
 	// Here you will define your flags and configuration settings.
 

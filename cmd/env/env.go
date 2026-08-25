@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// envCmd represents the env command
-var envCmd = &cobra.Command{
+// EnvCmd represents the env command
+var EnvCmd = &cobra.Command{
 	Use:   "env",
 	Short: "Manage shark-tank environments",
 	Long: `Manage shark-tank environments.
@@ -24,15 +24,15 @@ You can create and list environments.`,
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(envCmd)
+	cmd.RootCmd.AddCommand(EnvCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// envCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// EnvCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// envCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// EnvCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
