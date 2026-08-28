@@ -1,6 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -10,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// showCmd represents the show command
+// showCmd is the cobra command that prints the current configuration.
 var showCmd = &cobra.Command{
 	Use:     "show",
 	Aliases: []string{"list", "view"},
@@ -23,6 +20,7 @@ This command allows you to show the current moat configuration.`,
 	},
 }
 
+// init registers the show command with the config command group.
 func init() {
 	configCmd.AddCommand(showCmd)
 }

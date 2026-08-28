@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// appendCmd is the cobra command that appends a value to a list
+// configuration variable.
 var appendCmd = &cobra.Command{
 	Use:   "append <key> <value>",
 	Short: "Append a value to a list configuration variable",
@@ -28,6 +30,7 @@ Examples:
 	},
 }
 
+// init registers the append command with the config command group.
 func init() {
 	configCmd.AddCommand(appendCmd)
 }

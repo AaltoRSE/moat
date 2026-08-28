@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// prependCmd is the cobra command that prepends a value to a list
+// configuration variable.
 var prependCmd = &cobra.Command{
 	Use:   "prepend <key> <value>",
 	Short: "Prepend a value to a list configuration variable",
@@ -28,6 +30,7 @@ Examples:
 	},
 }
 
+// init registers the prepend command with the config command group.
 func init() {
 	configCmd.AddCommand(prependCmd)
 }

@@ -1,6 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -8,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// configCmd represents the config command
+// configCmd is the parent command for all configuration subcommands.
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Modify or view configuration settings",
@@ -20,16 +17,7 @@ You can modify, remove and view configuration settings.`,
 	},
 }
 
+// init registers the config command with the root command.
 func init() {
 	cmd.RootCmd.AddCommand(configCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// configCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// configCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

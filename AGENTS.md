@@ -7,6 +7,13 @@ moat is a CLI tool that runs AI coding agents inside isolated [Apptainer](https:
 - **Build**: `$(command -v go) build -o moat`
 - **Status**: Under active development — some command implementations are stubs.
 
+
+---
+
+## Best practices
+
+- Use `go-doc`-skill when writing code comments.
+
 ---
 
 ## Repository layout

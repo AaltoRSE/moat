@@ -1,3 +1,6 @@
+// Package config manages moat's configuration. It wraps the global viper
+// instance, providing initialization, validation, persistence, and lookup
+// of configuration values.
 package config
 
 import (
@@ -12,6 +15,10 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 )
 
+// InitConfig initializes the global viper configuration. It registers
+// default values, loads the config file (named moat-config.yaml) from the
+// given path or from the default search locations, unmarshals it into a
+// types.Config, and validates the result.
 func InitConfig(cfgFile string) error {
 	viper.SetConfigName("moat-config")
 	viper.SetConfigType("yaml")
@@ -64,6 +71,9 @@ func WriteConfig() error {
 	return nil
 }
 
+// validateConfig validates the configuration struct using the
+// go-playground/validator tags. On failure it logs each validation error
+// in detail and returns the error.
 func validateConfig(config *types.Config) error {
 	// Validate that the configuration struct is properly filled out
 	var validate = validator.New(validator.WithRequiredStructEnabled())
@@ -91,6 +101,8 @@ func validateConfig(config *types.Config) error {
 	return nil
 }
 
+// GetConfigAsString returns the current viper configuration as a YAML
+// string. It is intended for debugging and error reporting.
 func GetConfigAsString() string {
 	c := viper.AllSettings()
 	bs, err := yaml.Marshal(c)
@@ -100,6 +112,9 @@ func GetConfigAsString() string {
 	return string(bs)
 }
 
+// GetEnv returns the named environment from the configuration. It returns
+// an error if the environment does not exist or its fields cannot be
+// unmarshaled into types.MoatEnv.
 func GetEnv(name string) (types.MoatEnv, error) {
 
 	envViper := viper.Sub("envs." + name)
