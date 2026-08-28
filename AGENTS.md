@@ -4,7 +4,7 @@ shark-tank is a CLI tool that runs AI coding agents inside isolated [Apptainer](
 
 - **Module**: `github.com/AaltoRSE/shark-tank`
 - **Go version**: 1.26.4
-- **Build**: `go build -o shark-tank`
+- **Build**: `$(command -v go) build -o shark-tank`
 - **Status**: Under active development — some command implementations are stubs.
 
 ---
