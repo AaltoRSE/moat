@@ -8,8 +8,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/internal/env"
-	"github.com/AaltoRSE/shark-tank/internal/types"
+	"github.com/AaltoRSE/moat/internal/env"
+	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/cobra"
 )
 
@@ -20,12 +20,12 @@ var mountString string
 // createCmd represents the create command
 var createCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a new shark-tank environment",
-	Long: `Create a new shark-tank environment.
+	Short: "Create a new moat environment",
+	Long: `Create a new moat environment.
 
 This command allows you to create and configure a new environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := env.CreateEnvironment(name, types.SharkEnv{
+		if err := env.CreateEnvironment(name, types.MoatEnv{
 			Home:           home,
 			Mounts:         strings.Split(mountString, ","),
 			ReadOnlyMounts: []string{},

@@ -16,10 +16,10 @@ import (
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all shark-tank environments",
-	Long: `List all shark-tank environments.
+	Short: "List all moat environments",
+	Long: `List all moat environments.
 
-This command allows you to view all your current shark-tank environments in a structured format.`,
+This command allows you to view all your current moat environments in a structured format.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// List envs from viper configuration
 		viperEnvs := viper.Sub("envs")

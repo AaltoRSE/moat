@@ -8,8 +8,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/internal/types"
-	"github.com/AaltoRSE/shark-tank/internal/utils"
+	"github.com/AaltoRSE/moat/internal/types"
+	"github.com/AaltoRSE/moat/internal/utils"
 )
 
 func NewApptainerRuntimeSpec(imageUrl string, cacheDir string, passEnv bool) *types.RuntimeSpec {
@@ -104,7 +104,7 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 	return image.Path, err
 }
 
-func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
+func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string) (int, error) {
 	log.Debug().Msg("Run called")
 	var (
 		apptainerArgs []string
@@ -159,7 +159,7 @@ func (f *ApptainerRuntime) Run(env types.SharkEnv, args []string) (int, error) {
 	return 0, nil
 }
 
-func (f *ApptainerRuntime) Shell(env types.SharkEnv) (int, error) {
+func (f *ApptainerRuntime) Shell(env types.MoatEnv) (int, error) {
 	log.Debug().Msg("Shell called")
 	return 0, nil
 }

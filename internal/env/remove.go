@@ -3,7 +3,7 @@ package env
 import (
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/internal/config"
+	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/spf13/viper"
 )
 

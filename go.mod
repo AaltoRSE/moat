@@ -1,4 +1,4 @@
-module github.com/AaltoRSE/shark-tank
+module github.com/AaltoRSE/moat
 
 go 1.26.4
 

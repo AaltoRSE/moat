@@ -7,9 +7,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/AaltoRSE/shark-tank/internal/config"
-	"github.com/AaltoRSE/shark-tank/internal/types"
-	"github.com/AaltoRSE/shark-tank/internal/utils"
+	"github.com/AaltoRSE/moat/internal/config"
+	"github.com/AaltoRSE/moat/internal/types"
+	"github.com/AaltoRSE/moat/internal/utils"
 )
 
 // CreateEnvTemplate creates a new environment template in the viper config.

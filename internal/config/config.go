@@ -6,14 +6,14 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/internal/types"
+	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	yaml "go.yaml.in/yaml/v3"
 )
 
 func InitConfig(cfgFile string) error {
-	viper.SetConfigName("shark-config")
+	viper.SetConfigName("moat-config")
 	viper.SetConfigType("yaml")
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
@@ -23,11 +23,11 @@ func InitConfig(cfgFile string) error {
 	viper.SetDefault("defaults.runtime", "apptainer")
 	viper.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
 	viper.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
-	viper.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/shark-tank/images")
+	viper.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
 	viper.SetDefault("defaults.runtimes.apptainer.passenv", true)
-	viper.SetDefault("envs", map[string]types.SharkEnv{})
+	viper.SetDefault("envs", map[string]types.MoatEnv{})
 
-	viper.AddConfigPath("$HOME/.config/shark-tank")
+	viper.AddConfigPath("$HOME/.config/moat")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -100,11 +100,11 @@ func GetConfigAsString() string {
 	return string(bs)
 }
 
-func GetEnv(name string) (types.SharkEnv, error) {
+func GetEnv(name string) (types.MoatEnv, error) {
 
 	envViper := viper.Sub("envs." + name)
 
-	var env types.SharkEnv
+	var env types.MoatEnv
 
 	err := envViper.UnmarshalExact(&env)
 

@@ -4,9 +4,9 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/AaltoRSE/shark-tank/cmd"
-	"github.com/AaltoRSE/shark-tank/internal/config"
-	"github.com/AaltoRSE/shark-tank/internal/runtimes"
+	"github.com/AaltoRSE/moat/cmd"
+	"github.com/AaltoRSE/moat/internal/config"
+	"github.com/AaltoRSE/moat/internal/runtimes"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,10 +15,10 @@ import (
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Run a command in shark-tank",
-	Long: `Run a command in shark-tank.
+	Short: "Run a command in moat",
+	Long: `Run a command in moat.
 
-This command allows you to run a specific command within the shark-tank environment.`,
+This command allows you to run a specific command within the moat environment.`,
 	DisableFlagParsing: true,
 
 	Run: func(cmd *cobra.Command, args []string) {

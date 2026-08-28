@@ -1,24 +1,26 @@
-# shark-tank
+# moat
 
 > [!IMPORTANT]
-> shark-tank is currently under development, features might not yet work
+> moat is currently under development, features might not yet work
 
-shark-tank is a small client that makes it easy to execute AI tools in separate environments.
+*Put a moat between your agent and the rest of the world*
+
+moat is a small client that makes it easy to execute AI tools in containerized environments.
 
 ## Installation
 
-Currently shark-tank needs to be compiled manually. After installing go and downloading the repository, run:
+Currently moat needs to be compiled manually. After installing go and downloading the repository, run:
 ```shell
-go build -o shark-tank
+go build -o moat
 ```
 
-## Configuring shark-tank
+## Configuring moat
 
-shark-tank looks for a config file named `shark-config.yaml` in `$HOME/.config/shark-tank/` or the current directory.
+moat looks for a config file named `moat-config.yaml` in `$HOME/.config/moat/` or the current directory.
 
 ## Environments
 
-shark-tank creates separate environments for your coding tools and only mounts relevant directories into the environment.
+moat creates separate environments for your coding tools and only mounts relevant directories into the environment.
 
 ### Creating an environment
 
@@ -29,16 +31,16 @@ An environment needs to have:
 You can create an environment with:
 
 ```shell
-shark-tank env create --name example-env --home ./home --mounts src,/path/to/some/other-directory
+moat env create --name example-env --home ./home --mounts src,/path/to/some/other-directory
 ```
 
 ### Running your program in the environment
 
 You can run a program in the environment with
 ```shell
-shark-tank run example-env my_program
+moat run example-env my_program
 ```
 
 ## Runtimes
 
-Currently shark-tank uses Apptainer as a runtime. In the future other runtimes might be added.
+Currently moat uses Apptainer as a runtime. In the future other runtimes might be added.

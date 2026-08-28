@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/AaltoRSE/shark-tank/internal/types"
+	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/viper"
 )
 

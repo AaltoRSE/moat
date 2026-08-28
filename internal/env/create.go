@@ -6,16 +6,16 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/internal/config"
-	"github.com/AaltoRSE/shark-tank/internal/types"
-	"github.com/AaltoRSE/shark-tank/internal/utils"
+	"github.com/AaltoRSE/moat/internal/config"
+	"github.com/AaltoRSE/moat/internal/types"
+	"github.com/AaltoRSE/moat/internal/utils"
 
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/spf13/viper"
 )
 
 // CreateEnvironment creates a new environment configuration in the viper config.
-func CreateEnvironment(name string, env types.SharkEnv) error {
+func CreateEnvironment(name string, env types.MoatEnv) error {
 
 	var envs = viper.GetStringMap("envs")
 

@@ -8,8 +8,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/internal/envtemplate"
-	"github.com/AaltoRSE/shark-tank/internal/types"
+	"github.com/AaltoRSE/moat/internal/envtemplate"
+	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/cobra"
 )
 
@@ -19,8 +19,8 @@ var templateMountString string
 
 var createTemplateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a new shark-tank environment template",
-	Long: `Create a new shark-tank environment template.
+	Short: "Create a new moat environment template",
+	Long: `Create a new moat environment template.
 
 This command allows you to create and configure a new environment template.`,
 	Run: func(cmd *cobra.Command, args []string) {

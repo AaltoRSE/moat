@@ -1,10 +1,10 @@
-# Agent Instructions for shark-tank
+# Agent Instructions for moat
 
-shark-tank is a CLI tool that runs AI coding agents inside isolated [Apptainer](https://apptainer.org/) container environments. It manages named environments (each with a fake home directory and a set of filesystem mounts) and executes arbitrary commands inside them.
+moat is a CLI tool that runs AI coding agents inside isolated [Apptainer](https://apptainer.org/) container environments. It manages named environments (each with a fake home directory and a set of filesystem mounts) and executes arbitrary commands inside them.
 
-- **Module**: `github.com/AaltoRSE/shark-tank`
+- **Module**: `github.com/AaltoRSE/moat`
 - **Go version**: 1.26.4
-- **Build**: `$(command -v go) build -o shark-tank`
+- **Build**: `$(command -v go) build -o moat`
 - **Status**: Under active development — some command implementations are stubs.
 
 ---
@@ -12,30 +12,30 @@ shark-tank is a CLI tool that runs AI coding agents inside isolated [Apptainer](
 ## Repository layout
 
 ```
-shark-tank/
+moat/
 ├── main.go                     # Entry point; imports cmd sub-packages to trigger init()
-├── shark-config.yaml           # Default config file loaded by viper
+├── moat-config.yaml           # Default config file loaded by viper
 ├── go.mod
 │
 ├── cmd/                        # CLI layer — Cobra commands only, no business logic
 │   ├── root.go                 # RootCmd definition and Execute(); calls internal/config.InitConfig()
-│   ├── config/                 # `shark-tank config` command group
+│   ├── config/                 # `moat config` command group
 │   │   ├── config.go           # configCmd; registers with RootCmd
 │   │   ├── set.go              # setCmd stub
 │   │   └── view.go             # viewCmd; calls internal/config.GetConfigAsString()
-│   ├── env/                    # `shark-tank env` command group
+│   ├── env/                    # `moat env` command group
 │   │   ├── env.go              # envCmd; registers with RootCmd
 │   │   ├── create.go           # createCmd; calls internal/env.CreateEnvironment()
 │   │   ├── list.go             # listCmd; reads viper directly (pre-existing exception)
 │   │   └── remove.go           # removeCmd; calls internal/env.RemoveEnvironment()
-│   └── run/                    # `shark-tank run` command
+│   └── run/                    # `moat run` command
 │       └── run.go              # runCmd; resolves env + runtime, then calls runtime.Run()
 │
 ├── internal/                   # Business logic; never imported by cmd/ in reverse
 │   ├── types/                  # Canonical location for ALL shared types (see rules below)
 │   │   ├── config.go           # Config, Defaults
 │   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields)
-│   │   └── sharkenv.go         # SharkEnv
+│   │   └── moatenv.go         # MoatEnv
 │   ├── config/
 │   │   └── config.go           # InitConfig, WriteConfig, GetEnv, GetConfigAsString
 │   ├── env/
@@ -83,7 +83,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 | `Config` | `config.go` | Root config struct validated by viper unmarshal |
 | `Defaults` | `config.go` | Default runtime settings |
 | `RuntimeSpec` | `runtimespec.go` | Config fields for any runtime (type, imageurl, cachedir, passenv) |
-| `SharkEnv` | `sharkenv.go` | An individual named environment (home, mounts) |
+| `MoatEnv` | `moatenv.go` | An individual named environment (home, mounts) |
 
 **Rule:** If you define a struct in `internal/runtimes`, `internal/env`, or any other package, and it is later referenced by a second package, move it to `internal/types`.
 
@@ -95,14 +95,14 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 - All configuration state lives in viper's global instance. Do not pass `*viper.Viper` as a parameter.
 - Exported surface: `InitConfig()`, `WriteConfig()`, `GetEnv(name string)`, `GetConfigAsString()`.
 - Validation uses `go-playground/validator` and operates on `types.Config`.
-- `GetEnv` returns `types.SharkEnv`; it must not return raw `map[string]interface{}` to callers.
+- `GetEnv` returns `types.MoatEnv`; it must not return raw `map[string]interface{}` to callers.
 
 ---
 
 ### `internal/env` — environment lifecycle
 
 - One file per operation: `create.go`, `remove.go`. Add `list.go` if list logic is moved from `cmd/env/list.go`.
-- Functions accept `types.SharkEnv` as parameter; they do not parse flags or read `os.Args`.
+- Functions accept `types.MoatEnv` as parameter; they do not parse flags or read `os.Args`.
 - May use `promptkit` for interactive confirmation prompts (user-facing only; not in functions called programmatically).
 - Must call `internal/config.WriteConfig()` after any mutation to persist changes.
 - Path arguments must be resolved to absolute paths with `filepath.Abs` before storing.
@@ -147,7 +147,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 | Cobra command variables | `{verb}Cmd` | `createCmd`, `listCmd`, `runCmd`, `configCmd` |
 | Exported functions | PascalCase, verb-first | `CreateEnvironment`, `GetRuntime`, `InitConfig` |
 | Unexported functions | camelCase, verb-first | `validateConfig`, `getImage` |
-| Type names | PascalCase, noun | `SharkEnv`, `Config`, `RuntimeSpec` |
+| Type names | PascalCase, noun | `MoatEnv`, `Config`, `RuntimeSpec` |
 | Interface names | PascalCase, noun or agent noun | `Runtime` |
 | Flag variables | camelCase, descriptive | `mountString`, `absFakeHome` |
 | Struct tags | lowercase validator keywords | `validate:"required"`, `validate:"required_if=Type=apptainer"` |
@@ -187,8 +187,8 @@ Do not add viper access to packages other than `internal/config` without strong 
 ## Adding a new environment operation
 
 1. Add any new shared types to `internal/types/`.
-2. Implement the operation as a function in `internal/env/{operation}.go` accepting `types.SharkEnv`.
-3. Add a Cobra command file `cmd/env/{operation}.go` that parses flags, constructs the `types.SharkEnv`, and calls the internal function.
+2. Implement the operation as a function in `internal/env/{operation}.go` accepting `types.MoatEnv`.
+3. Add a Cobra command file `cmd/env/{operation}.go` that parses flags, constructs the `types.MoatEnv`, and calls the internal function.
 4. Register the subcommand in `init()` via `EnvCmd.AddCommand(...)`.
 
 ## Adding new environment template operation

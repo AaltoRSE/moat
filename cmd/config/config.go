@@ -4,18 +4,18 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/AaltoRSE/shark-tank/cmd"
+	"github.com/AaltoRSE/moat/cmd"
 	"github.com/spf13/cobra"
 )
 
 // configCmd represents the config command
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Configure shark-tank",
-	Long: `Handle configuration for shark-tank.
+	Short: "Modify or view configuration settings",
+	Long: `Handle configuration for moat.
 
-Manage your shark-tank configuration with this command.
-You can add, remove, and list configuration settings.`,
+Manage configuration settings.
+You can modify, remove and view configuration settings.`,
 	Run: func(cmd *cobra.Command, args []string) {
 	},
 }

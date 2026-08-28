@@ -6,17 +6,17 @@ package cmd
 import (
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/cmd"
+	"github.com/AaltoRSE/moat/cmd"
 	"github.com/spf13/cobra"
 )
 
 // EnvCmd represents the env command
 var EnvCmd = &cobra.Command{
 	Use:   "env",
-	Short: "Manage shark-tank environments",
-	Long: `Manage shark-tank environments.
+	Short: "Manage moat environments",
+	Long: `Manage moat environments.
 
-This command allows you to manage your shark-tank environments.
+This command allows you to manage your moat environments.
 You can create and list environments.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Print("env called")

@@ -9,15 +9,15 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	config "github.com/AaltoRSE/shark-tank/internal/config"
+	config "github.com/AaltoRSE/moat/internal/config"
 	"github.com/spf13/cobra"
 )
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "shark-tank",
+	Use:   "moat",
 	Short: "A brief description of your application",
-	Long: `Shark-tank is an application for running AI agents in
+	Long: `Moat is an application for running AI agents in
 containerized environtment.`,
 	DisableFlagParsing: false,
 }
@@ -68,7 +68,7 @@ func init() {
 	var debug bool
 	var cfgFile string
 
-	RootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.config/shark-tank/config.yaml or config.yaml in the current directory)")
+	RootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.config/moat/config.yaml or config.yaml in the current directory)")
 	RootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "enable debug logging")
 	cobra.OnInitialize(initServices)
 

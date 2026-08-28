@@ -5,13 +5,13 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/internal/types"
+	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/viper"
 )
 
 type Runtime interface {
-	Run(env types.SharkEnv, args []string) (int, error)
-	Shell(env types.SharkEnv) (int, error)
+	Run(env types.MoatEnv, args []string) (int, error)
+	Shell(env types.MoatEnv) (int, error)
 }
 
 func GetRuntime(name string) (Runtime, error) {

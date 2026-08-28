@@ -6,7 +6,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/AaltoRSE/shark-tank/internal/config"
+	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -14,14 +14,14 @@ import (
 // setCmd represents the set command
 var setCmd = &cobra.Command{
 	Use:   "set <key> <value>",
-	Short: "Set a configuration variable for shark-tank",
-	Long: `Set a configuration variable for shark-tank.
+	Short: "Set a configuration variable for moat",
+	Long: `Set a configuration variable for moat.
 
-This command allows you to set a specific configuration variable for shark-tank.
+This command allows you to set a specific configuration variable for moat.
 
 Examples:
-  shark-tank config set defaults.runtime apptainer
-  shark-tank config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/vscode-apptainer:latest`,
+  moat config set defaults.runtime apptainer
+  moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/vscode-apptainer:latest`,
 	Args: cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		key, value := args[0], args[1]

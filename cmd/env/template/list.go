@@ -14,10 +14,10 @@ import (
 
 var listTemplateCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all shark-tank environment templates",
-	Long: `List all shark-tank environment templates.
+	Short: "List all moat environment templates",
+	Long: `List all moat environment templates.
 
-This command allows you to view all your current shark-tank environment templates in a structured format.`,
+This command allows you to view all your current moat environment templates in a structured format.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		viperTemplates := viper.Sub("envtemplates")
 		if viperTemplates != nil {

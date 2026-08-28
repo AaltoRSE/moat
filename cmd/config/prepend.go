@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/AaltoRSE/shark-tank/internal/config"
+	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -16,8 +16,8 @@ var prependCmd = &cobra.Command{
 This command prepends a value to an existing list configuration variable.
 
 Examples:
-  shark-tank config prepend envs.myenv.mounts /data/project:/data/project
-  shark-tank config prepend envs.myenv.readonlymounts /usr/local:/usr/local`,
+  moat config prepend envs.myenv.mounts /data/project:/data/project
+  moat config prepend envs.myenv.readonlymounts /usr/local:/usr/local`,
 	Args: cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		key, value := args[0], args[1]

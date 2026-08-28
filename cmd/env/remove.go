@@ -6,7 +6,7 @@ package cmd
 import (
 	"github.com/rs/zerolog/log"
 
-	"github.com/AaltoRSE/shark-tank/internal/env"
+	"github.com/AaltoRSE/moat/internal/env"
 	"github.com/spf13/cobra"
 )
 
@@ -17,8 +17,8 @@ func init() {
 	// removeCmd represents the remove command
 	var removeCmd = &cobra.Command{
 		Use:   "remove",
-		Short: "Remove an environment from shark-tank",
-		Long: `Remove an existing shark-tank environment.
+		Short: "Remove an environment from moat",
+		Long: `Remove an existing moat environment.
 
 This command allows you to delete and remove a previously created environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
