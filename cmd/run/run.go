@@ -58,7 +58,7 @@ This command allows you to run a specific command within the moat environment.`,
 		}
 
 		// Get the environment with Config.GetEnv
-		env, err := config.GetEnv(envName)
+		env, err := config.GetEnv(envName, true)
 		if err != nil {
 			log.Error().Msgf("Error with the environment %q: %v", envName, err)
 			return

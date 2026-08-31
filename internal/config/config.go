@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/moat/internal/types"
+	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	yaml "go.yaml.in/yaml/v3"
@@ -121,7 +122,7 @@ func GetConfigAsString() string {
 // GetEnv returns the named environment from the configuration. It returns
 // an error if the environment does not exist or its fields cannot be
 // unmarshaled into types.MoatEnv.
-func GetEnv(name string) (types.MoatEnv, error) {
+func GetEnv(name string, sanitized bool) (types.MoatEnv, error) {
 
 	envViper := viper.Sub("envs." + name)
 
@@ -136,8 +137,27 @@ func GetEnv(name string) (types.MoatEnv, error) {
 
 	if err != nil {
 		log.Debug().Msgf("Failed to unmarshal environment %q: %v", name, err)
-	} else {
-		log.Debug().Interface("env", env).Msg("Environment configuration")
+		return types.MoatEnv{}, err
+	}
+	log.Debug().Interface("env", env).Msg("Environment configuration")
+	if sanitized {
+		env.Home, err = utils.SanitizeFolderPath(env.Home)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to sanitize Home path")
+			return types.MoatEnv{}, err
+		}
+		env.Mounts, err = utils.SanitizeMountsPaths(env.Mounts)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to sanitize Mounts paths")
+			return types.MoatEnv{}, err
+		}
+		env.ReadOnlyMounts, err = utils.SanitizeMountsPaths(env.ReadOnlyMounts)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to sanitize ReadOnly	Mounts paths")
+			return types.MoatEnv{}, err
+		}
+
+		log.Debug().Interface("env", env).Msg("Sanitized environment configuration")
 	}
 
 	return env, err

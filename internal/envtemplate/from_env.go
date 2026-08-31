@@ -15,7 +15,7 @@ import (
 // corresponding values derived from the environment. It returns an error if the
 // environment does not exist or the template cannot be created.
 func CreateEnvTemplateFromEnv(envName string, templateName string, overrides types.EnvTemplate) error {
-	env, err := config.GetEnv(envName)
+	env, err := config.GetEnv(envName, false)
 	if err != nil {
 		log.Error().Err(err).Msg("Error retrieving environment")
 		return err

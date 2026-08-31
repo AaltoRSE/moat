@@ -4,13 +4,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 func SanitizeFolderPath(path string) (string, error) {
+	log.Debug().Msgf("Current environment: %s", os.Environ())
+	log.Debug().Msgf("Sanitizing folder path: %s", path)
 	absPath, err := filepath.Abs(os.ExpandEnv(path))
 	if err != nil {
 		return "", err
 	}
+	log.Debug().Msgf("Sanitized folder path: %s", absPath)
 	return absPath, nil
 }
 
