@@ -13,10 +13,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var templateName string
-var homeBase string
-var templateMountString string
-
 var createTemplateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new moat environment template",
@@ -24,6 +20,17 @@ var createTemplateCmd = &cobra.Command{
 
 This command allows you to create and configure a new environment template.`,
 	Run: func(cmd *cobra.Command, args []string) {
+
+		var (
+			templateName        string
+			homeBase            string
+			templateMountString string
+		)
+
+		templateName, _ = cmd.Flags().GetString("name")
+		homeBase, _ = cmd.Flags().GetString("home-base")
+		templateMountString, _ = cmd.Flags().GetString("mounts")
+
 		if err := envtemplate.CreateEnvTemplate(templateName, types.EnvTemplate{
 			HomeBase:       homeBase,
 			Mounts:         strings.Split(templateMountString, ","),
@@ -35,6 +42,10 @@ This command allows you to create and configure a new environment template.`,
 }
 
 func init() {
+	var templateName string
+	var homeBase string
+	var templateMountString string
+
 	createTemplateCmd.Flags().StringVarP(&templateName, "name", "n", "", "Name of the environment template")
 	createTemplateCmd.Flags().StringVarP(&homeBase, "home-base", "H", "", "Base directory for environment homes")
 	createTemplateCmd.Flags().StringVarP(&templateMountString, "mounts", "m", "", "Comma-separated list of project mounts")
