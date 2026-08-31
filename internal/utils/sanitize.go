@@ -1,12 +1,13 @@
 package utils
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
 
 func SanitizeFolderPath(path string) (string, error) {
-	absPath, err := filepath.Abs(path)
+	absPath, err := filepath.Abs(os.ExpandEnv(path))
 	if err != nil {
 		return "", err
 	}

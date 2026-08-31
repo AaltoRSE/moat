@@ -43,7 +43,7 @@ type ApptainerImage struct {
 
 func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 
-	cacheDir, err := filepath.Abs(os.ExpandEnv(f.CacheDir))
+	cacheDir, err := utils.SanitizeFolderPath(f.CacheDir)
 	if err != nil {
 		log.Error().Str("cacheDir", cacheDir).Msg("Invalid cache directory")
 		return ApptainerImage{}, err

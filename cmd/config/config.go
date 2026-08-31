@@ -13,8 +13,6 @@ var configCmd = &cobra.Command{
 
 Manage configuration settings.
 You can modify, remove and view configuration settings.`,
-	Run: func(cmd *cobra.Command, args []string) {
-	},
 }
 
 // init registers the config command with the root command.

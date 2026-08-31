@@ -35,7 +35,11 @@ This command allows you to run a specific command within the moat environment.`,
 
 		// Return an error if no arguments are provided
 		if len(args) == 0 {
-			log.Error().Msgf("no arguments provided")
+			err := cmd.Help()
+			if err != nil {
+				log.Error().Msgf("Failed to display help: %v", err)
+			}
+			log.Error().Msgf("No arguments provided")
 			return
 		}
 		// Get the first argument as the environment name
@@ -45,7 +49,7 @@ This command allows you to run a specific command within the moat environment.`,
 		if len(args) == 2 {
 			envVars, parsedArgs, err = shellwords.ParseWithEnvs(args[1])
 			if err != nil {
-				log.Error().Msgf("failed to parse arguments: %v", err)
+				log.Error().Msgf("Failed to parse arguments: %v", err)
 				return
 			}
 		} else {
@@ -56,7 +60,7 @@ This command allows you to run a specific command within the moat environment.`,
 		// Get the environment with Config.GetEnv
 		env, err := config.GetEnv(envName)
 		if err != nil {
-			log.Error().Msgf("could not get environment %q: %v", envName, err)
+			log.Error().Msgf("Error with the environment %q: %v", envName, err)
 			return
 		}
 
@@ -70,18 +74,18 @@ This command allows you to run a specific command within the moat environment.`,
 		}
 
 		// Log the runtime name
-		log.Print("Using runtime: ", runtimeName)
+		log.Debug().Msgf("Using runtime: %s", runtimeName)
 
 		runtime, err = runtimes.GetRuntime(runtimeName)
 		if err != nil {
-			log.Error().Msgf("failed to get a runtime: %v", err)
+			log.Error().Msgf("Failed to get a runtime: %v", err)
 			return
 		}
 
-		log.Print("Executing runtime")
+		log.Debug().Msgf("Executing runtime")
 		_, execErr := runtime.Run(env, parsedArgs, envVars)
 		if execErr != nil {
-			log.Error().Msgf("error executing command: %v", execErr)
+			log.Error().Msgf("Error executing command: %v", execErr)
 			return
 		}
 	},

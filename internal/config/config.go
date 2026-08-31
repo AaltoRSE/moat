@@ -126,9 +126,18 @@ func GetEnv(name string) (types.MoatEnv, error) {
 
 	var env types.MoatEnv
 
+	if envViper == nil {
+		log.Debug().Msgf("Environment %q not found", name)
+		err := fmt.Errorf("environment %q not found", name)
+		return types.MoatEnv{}, err
+	}
 	err := envViper.UnmarshalExact(&env)
 
-	log.Debug().Interface("env", env).Msg("Environment configuration")
+	if err != nil {
+		log.Debug().Msgf("Failed to unmarshal environment %q: %v", name, err)
+	} else {
+		log.Debug().Interface("env", env).Msg("Environment configuration")
+	}
 
 	return env, err
 }

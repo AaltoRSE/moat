@@ -4,8 +4,6 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/rs/zerolog/log"
-
 	"github.com/AaltoRSE/moat/cmd"
 	"github.com/spf13/cobra"
 )
@@ -18,9 +16,6 @@ var EnvCmd = &cobra.Command{
 
 This command allows you to manage your moat environments.
 You can create and list environments.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		log.Print("env called")
-	},
 }
 
 func init() {
