@@ -11,14 +11,13 @@ import (
 
 // setCmd is the cobra command that sets a configuration variable.
 var setCmd = &cobra.Command{
-	Use:   "set <key> <value>",
-	Short: "Set a configuration variable for moat",
+	Use:   "set <key> <value> [<value>]",
+	Short: "Set a configuration variables for moat",
 	Long: `Set a configuration variable for moat.
 
 This command allows you to set a specific configuration variable for moat.
 
 Examples:
-  moat config set defaults.runtime apptainer
   moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/vscode-apptainer:latest`,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
