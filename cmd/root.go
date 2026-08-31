@@ -53,6 +53,7 @@ func initLogger() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
+	log.Debug().Msgf("Logger initialized. Debug mode: %v", zerolog.GlobalLevel() == zerolog.DebugLevel)
 }
 
 func initServices() {
@@ -67,6 +68,9 @@ func init() {
 
 	var debug bool
 	var cfgFile string
+
+	debug = false
+	cfgFile = ""
 
 	RootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.config/moat/config.yaml or config.yaml in the current directory)")
 	RootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "enable debug logging")

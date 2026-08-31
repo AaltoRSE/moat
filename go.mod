@@ -5,6 +5,7 @@ go 1.26.4
 require (
 	github.com/erikgeiser/promptkit v0.11.0
 	github.com/go-playground/validator/v10 v10.30.3
+	github.com/mattn/go-shellwords v1.0.14
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	go.yaml.in/yaml/v3 v3.0.4

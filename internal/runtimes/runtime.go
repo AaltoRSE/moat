@@ -10,7 +10,7 @@ import (
 )
 
 type Runtime interface {
-	Run(env types.MoatEnv, args []string) (int, error)
+	Run(env types.MoatEnv, args []string, envVars []string) (int, error)
 	Shell(env types.MoatEnv) (int, error)
 }
 

@@ -104,7 +104,7 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 	return image.Path, err
 }
 
-func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string) (int, error) {
+func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []string) (int, error) {
 	log.Debug().Msg("Run called")
 	var (
 		apptainerArgs []string
@@ -146,10 +146,11 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string) (int, error) {
 	// Add the image path to arguments
 	apptainerArgs = append(apptainerArgs, imagePath)
 
+	log.Debug().Strs("userArgs", args).Msg("User arguments")
 	// Add the user command to arguments
 	apptainerArgs = append(apptainerArgs, args...)
 
-	cmdEnv = []string{}
+	cmdEnv = envVars
 
 	log.Debug().Bool("passEnv", passEnv).Msg("PassEnv")
 

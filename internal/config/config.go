@@ -36,14 +36,19 @@ func InitConfig(cfgFile string) error {
 
 	viper.AddConfigPath("$HOME/.config/moat")
 	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
+	log.Debug().Msg("Reading configuration from file")
+	err := viper.ReadInConfig()
+	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return fmt.Errorf("error reading config file: %v", err)
+		} else {
+			return fmt.Errorf("config file not found")
 		}
 	}
+	log.Debug().Msgf("Configuration loaded from file: %s", viper.ConfigFileUsed())
 
 	var C types.Config
-	err := viper.Unmarshal(&C)
+	err = viper.Unmarshal(&C)
 	if err != nil {
 		fmt.Println("Unable to unmarshal config", err)
 		// Print the configuration as a string for debugging

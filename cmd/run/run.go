@@ -7,6 +7,7 @@ import (
 	"github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/runtimes"
+	"github.com/mattn/go-shellwords"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -19,32 +20,38 @@ var runCmd = &cobra.Command{
 	Long: `Run a command in moat.
 
 This command allows you to run a specific command within the moat environment.`,
-	DisableFlagParsing: true,
+	DisableFlagParsing: false,
 
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Print("run called with args:", args)
 
-		var runtime runtimes.Runtime
-		var err error
+		var (
+			runtime    runtimes.Runtime
+			err        error
+			envVars    []string
+			parsedArgs []string
+		)
 
-		// Print help if one of the arguments is --help or -h
-		for _, arg := range args {
-			if arg == "--help" || arg == "-h" {
-				if err := cmd.Help(); err != nil {
-					log.Error().Msgf("could not print help: %v", err)
-				}
-				return
-			}
-		}
+		log.Debug().Msgf("args: %v", args)
 
 		// Return an error if no arguments are provided
 		if len(args) == 0 {
 			log.Error().Msgf("no arguments provided")
 			return
 		}
-
 		// Get the first argument as the environment name
 		envName := args[0]
+
+		// If there is only one argument besides the environment name, parse it with shellwords to handle quoted strings correctly
+		if len(args) == 2 {
+			envVars, parsedArgs, err = shellwords.ParseWithEnvs(args[1])
+			if err != nil {
+				log.Error().Msgf("failed to parse arguments: %v", err)
+				return
+			}
+		} else {
+			envVars = []string{}
+			parsedArgs = args[1:]
+		}
 
 		// Get the environment with Config.GetEnv
 		env, err := config.GetEnv(envName)
@@ -72,7 +79,7 @@ This command allows you to run a specific command within the moat environment.`,
 		}
 
 		log.Print("Executing runtime")
-		_, execErr := runtime.Run(env, args[1:])
+		_, execErr := runtime.Run(env, parsedArgs, envVars)
 		if execErr != nil {
 			log.Error().Msgf("error executing command: %v", execErr)
 			return
@@ -82,14 +89,4 @@ This command allows you to run a specific command within the moat environment.`,
 
 func init() {
 	cmd.RootCmd.AddCommand(runCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// runCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
