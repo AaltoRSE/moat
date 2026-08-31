@@ -1,6 +1,7 @@
 package envtemplate
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/erikgeiser/promptkit/confirmation"
@@ -67,13 +68,13 @@ func CreateEnvTemplate(name string, tmpl types.EnvTemplate) error {
 		return nil
 	}
 
-	log.Info().Str("name", name).Msg("Creating environment template")
+	fmt.Printf("Creating environment template '%s'\n", name)
 	viper.Set("envtemplates."+name, tmpl)
 
 	if err := config.WriteConfig(); err != nil {
 		return err
 	}
 
-	log.Info().Str("name", name).Msg("Environment template created successfully.")
+	fmt.Printf("Environment template '%s' created successfully.\n", name)
 	return nil
 }

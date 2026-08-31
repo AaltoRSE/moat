@@ -72,7 +72,7 @@ func CreateEnvironment(name string, env types.MoatEnv) error {
 	}
 
 	// Create environment configuration
-	log.Info().Str("name", name).Msg("Creating environment")
+	fmt.Printf("Creating environment '%s'\n", name)
 	viper.Set("envs."+name, env)
 
 	// Write the updated configuration back to the config file
@@ -80,6 +80,6 @@ func CreateEnvironment(name string, env types.MoatEnv) error {
 		return err
 	}
 
-	log.Info().Str("name", name).Msg("Environment created successfully.")
+	fmt.Println("Environment created successfully.")
 	return nil
 }

@@ -6,6 +6,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/rs/zerolog/log"
 
@@ -140,4 +141,18 @@ func GetEnv(name string) (types.MoatEnv, error) {
 	}
 
 	return env, err
+}
+
+// GetVariableType returns the reflect.Type of the value stored in the
+// viper configuration under the given key. It returns an error if the key
+// does not exist in the configuration.
+func GetVariableType(key string) (reflect.Type, error) {
+	if !viper.IsSet(key) {
+		return nil, fmt.Errorf("key %q not found in configuration", key)
+	}
+	value := viper.Get(key)
+	if value == nil {
+		return nil, fmt.Errorf("value for key %q is nil", key)
+	}
+	return reflect.TypeOf(value), nil
 }

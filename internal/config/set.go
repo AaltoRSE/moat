@@ -8,7 +8,7 @@ import (
 )
 
 // SetConfig sets a config key to value, validates, and persists to disk.
-func SetConfig(key, value string) error {
+func SetConfig(key string, value any) error {
 	viper.Set(key, value)
 
 	var C types.Config
