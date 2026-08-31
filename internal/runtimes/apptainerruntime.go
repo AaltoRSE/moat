@@ -107,13 +107,16 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []string) (int, error) {
 	log.Debug().Msg("Run called")
 	var (
-		apptainerArgs []string
-		cmdEnv        []string
-		passEnv       bool
+		apptainerArgs     []string
+		cmdEnv            []string
+		source            string
+		workingDir        string
+		passEnv           bool
+		workingDirMounted bool
 	)
 
 	if len(args) < 1 {
-		return 0, fmt.Errorf("no command provided to run")
+		return 1, fmt.Errorf("no command provided to run")
 	}
 
 	// Check if PassEnv is set in the environment
@@ -126,22 +129,45 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	imagePath, err := f.Pull(passEnv)
 
 	if err != nil {
-		return 0, err
+		return 1, err
 	}
 
 	mounts := []string{}
 
+	workingDir, err = os.Getwd()
+	if err != nil {
+		return 1, err
+	}
+
 	for _, mount := range env.Mounts {
+		source = strings.Split(mount, ":")[0]
+		if source == workingDir {
+			workingDirMounted = true
+		}
 		mounts = append(mounts, "--bind", mount)
 	}
 
 	homeMount := fmt.Sprintf("%s:%s", env.Home, os.Getenv("HOME"))
 
-	// Add mounts and home mount to the apptainer arguments
+	// Set base apptainerArgs
+	apptainerArgs = []string{"exec", "--no-home", "--no-mount", "cwd"}
+
+	// Add home mounts to apptainer arguments
 	apptainerArgs = append(
-		[]string{"exec", "--no-home", "--bind", homeMount},
-		mounts...,
+		apptainerArgs, []string{"--bind", homeMount}...,
 	)
+
+	// Add other mounts to the apptainer arguments
+	apptainerArgs = append(
+		apptainerArgs, mounts...,
+	)
+
+	// Mount working directory if requested and not already mounted
+	if !workingDirMounted && env.MountWorkingDirectory != nil && *env.MountWorkingDirectory {
+		apptainerArgs = append(apptainerArgs, []string{"--bind", workingDir}...)
+		// Set working directory to current directory
+		apptainerArgs = append(apptainerArgs, []string{"--pwd", workingDir}...)
+	}
 
 	// Add the image path to arguments
 	apptainerArgs = append(apptainerArgs, imagePath)
@@ -155,7 +181,7 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	log.Debug().Bool("passEnv", passEnv).Msg("PassEnv")
 
 	if err := utils.Run(utils.RunArgs{Command: "apptainer", Args: apptainerArgs, Env: cmdEnv, PassEnv: passEnv}); err != nil {
-		return 0, err
+		return 1, err
 	}
 	return 0, nil
 }
