@@ -29,11 +29,11 @@ func InitConfig(cfgFile string) error {
 	}
 
 	// Set defaults if not set
-	viper.SetDefault("defaults.runtime", "apptainer")
 	viper.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
 	viper.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
 	viper.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
 	viper.SetDefault("defaults.runtimes.apptainer.passenv", true)
+	viper.SetDefault("defaults.runtime", "apptainer")
 	viper.SetDefault("envs", map[string]types.MoatEnv{})
 
 	viper.AddConfigPath("$HOME/.config/moat")

@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -43,4 +45,32 @@ func RunCapture(runargs RunArgs) (string, error) {
 
 	stdoutStderr, err := cmd.CombinedOutput()
 	return string(stdoutStderr), err
+}
+
+type OutputCapture struct {
+	oldStdout *os.File
+	readPipe  *os.File
+}
+
+func (sc *OutputCapture) StartCapture() {
+	sc.oldStdout = os.Stdout
+	sc.readPipe, os.Stdout, _ = os.Pipe()
+}
+
+func (sc *OutputCapture) StopCapture() (string, error) {
+	if sc.oldStdout == nil || sc.readPipe == nil {
+		return "", fmt.Errorf("StartCapture not called before StopCapture")
+	}
+	err := os.Stdout.Close()
+	if err != nil {
+		return "", err
+	}
+	os.Stdout = sc.oldStdout
+	bytes, err := io.ReadAll(sc.readPipe)
+	sc.readPipe = nil
+	sc.oldStdout = nil
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }

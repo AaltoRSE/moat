@@ -6,10 +6,10 @@ package cmd
 import (
 	"os"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	config "github.com/AaltoRSE/moat/internal/config"
+	"github.com/AaltoRSE/moat/internal/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -43,17 +43,9 @@ func initConfig() {
 
 func initLogger() {
 
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
 	// Default level for this example is info, unless debug flag is present
 	debug, _ := RootCmd.Flags().GetBool("debug")
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if debug {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
-
-	log.Debug().Msgf("Logger initialized. Debug mode: %v", zerolog.GlobalLevel() == zerolog.DebugLevel)
+	logging.InitLogging(debug)
 }
 
 func initServices() {
