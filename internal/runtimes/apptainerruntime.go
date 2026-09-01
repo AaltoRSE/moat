@@ -150,7 +150,7 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	homeMount := fmt.Sprintf("%s:%s", env.Home, os.Getenv("HOME"))
 
 	// Set base apptainerArgs
-	apptainerArgs = []string{"exec", "--no-home", "--no-mount", "cwd"}
+	apptainerArgs = []string{"run", "--no-home", "--no-mount", "cwd"}
 
 	// Add home mounts to apptainer arguments
 	apptainerArgs = append(
@@ -164,8 +164,10 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 
 	// Mount working directory if requested and not already mounted
 	if !workingDirMounted && env.MountWorkingDirectory != nil && *env.MountWorkingDirectory {
+		log.Debug().Str("workingDir", workingDir).Msg("Mounting working directory")
 		apptainerArgs = append(apptainerArgs, []string{"--bind", workingDir}...)
 		// Set working directory to current directory
+		log.Debug().Str("workingDir", workingDir).Msg("Setting working directory for current directory")
 		apptainerArgs = append(apptainerArgs, []string{"--pwd", workingDir}...)
 	}
 

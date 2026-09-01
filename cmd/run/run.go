@@ -13,6 +13,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+// name is the name of the environment to run the command in
+var name string
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -42,19 +45,20 @@ This command allows you to run a specific command within the moat environment.`,
 			log.Error().Msgf("No arguments provided")
 			return
 		}
-		// Get the first argument as the environment name
-		envName := args[0]
 
-		// If there is only one argument besides the environment name, parse it with shellwords to handle quoted strings correctly
-		if len(args) == 2 {
-			envVars, parsedArgs, err = shellwords.ParseWithEnvs(args[1])
+		// Get the environment name from the required flag
+		envName := name
+
+		// If there is only one argument, parse it with shellwords to handle quoted strings correctly
+		if len(args) == 1 {
+			envVars, parsedArgs, err = shellwords.ParseWithEnvs(args[0])
 			if err != nil {
 				log.Error().Msgf("Failed to parse arguments: %v", err)
 				return
 			}
 		} else {
 			envVars = []string{}
-			parsedArgs = args[1:]
+			parsedArgs = args
 		}
 
 		// Get the environment with Config.GetEnv
@@ -92,5 +96,11 @@ This command allows you to run a specific command within the moat environment.`,
 }
 
 func init() {
+	runCmd.Flags().StringVarP(&name, "name", "n", "", "Name of the environment to run the command in")
+
+	if err := runCmd.MarkFlagRequired("name"); err != nil {
+		panic(err)
+	}
+
 	cmd.RootCmd.AddCommand(runCmd)
 }

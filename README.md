@@ -38,7 +38,7 @@ moat env create --name example-env --home ./home --mounts src,/path/to/some/othe
 
 You can run a program in the environment with
 ```shell
-moat run example-env my_program
+moat run --name example-env my_program
 ```
 
 ## Runtimes
