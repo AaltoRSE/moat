@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/envtemplate"
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/cobra"
@@ -39,7 +40,7 @@ The template's home base and mounts can be overwritten with the
 			if templateMountString != "" {
 				overrides.Mounts = strings.Split(templateMountString, ",")
 			}
-			if err := envtemplate.CreateEnvTemplateFromEnv(envName, templateName, overrides); err != nil {
+			if err := envtemplate.CreateEnvTemplateFromEnv(cmd_package.CmdConfig, envName, templateName, overrides); err != nil {
 				log.Error().Msgf("could not create environment template from environment: %v", err)
 			}
 		},

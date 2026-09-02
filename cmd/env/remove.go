@@ -6,6 +6,7 @@ package cmd
 import (
 	"github.com/rs/zerolog/log"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/env"
 	"github.com/spf13/cobra"
 )
@@ -23,7 +24,7 @@ func init() {
 This command allows you to delete and remove a previously created environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			log.Print("remove called")
-			if err := env.RemoveEnvironment(name); err != nil {
+			if err := env.RemoveEnvironment(cmd_package.CmdConfig, name); err != nil {
 				log.Printf("Error removing environment: %v\n", err)
 				return
 			}

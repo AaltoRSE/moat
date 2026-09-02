@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/spf13/cobra"
 	yaml "go.yaml.in/yaml/v3"
@@ -25,7 +26,7 @@ func init() {
 
 This command allows you to view the full configuration of a specific moat environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			env, err := config.GetEnv(name, false)
+			env, err := config.GetEnv(cmd_package.CmdConfig, name, false)
 			if err != nil {
 				log.Error().Msgf("Error with the environment %q: %v", name, err)
 				return

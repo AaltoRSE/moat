@@ -9,15 +9,15 @@ import (
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/AaltoRSE/moat/internal/utils"
+	"github.com/spf13/viper"
 
 	"github.com/erikgeiser/promptkit/confirmation"
-	"github.com/spf13/viper"
 )
 
 // CreateEnvironment creates a new environment configuration in the viper config.
-func CreateEnvironment(name string, env types.MoatEnv) error {
+func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv) error {
 
-	var envs = viper.GetStringMap("envs")
+	var envs = cfg.GetStringMap("envs")
 
 	if envs[name] != nil {
 		fmt.Println("Environment already exists.")
@@ -73,10 +73,10 @@ func CreateEnvironment(name string, env types.MoatEnv) error {
 
 	// Create environment configuration
 	fmt.Printf("Creating environment '%s'\n", name)
-	viper.Set("envs."+name, env)
+	cfg.Set("envs."+name, env)
 
 	// Write the updated configuration back to the config file
-	if err := config.WriteConfig(); err != nil {
+	if err := config.WriteConfig(cfg); err != nil {
 		return err
 	}
 

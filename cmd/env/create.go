@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/env"
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/cobra"
@@ -25,7 +26,7 @@ var createCmd = &cobra.Command{
 
 This command allows you to create and configure a new environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := env.CreateEnvironment(name, types.MoatEnv{
+		if err := env.CreateEnvironment(cmd_package.CmdConfig, name, types.MoatEnv{
 			Home:           home,
 			Mounts:         strings.Split(mountString, ","),
 			ReadOnlyMounts: []string{},

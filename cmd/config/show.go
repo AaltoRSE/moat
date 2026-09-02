@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -16,7 +17,7 @@ var showCmd = &cobra.Command{
 
 This command allows you to show the current moat configuration.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(config.GetConfigAsString())
+		fmt.Println(config.GetConfigAsString(cmd_package.CmdConfig))
 	},
 }
 

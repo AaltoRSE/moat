@@ -3,8 +3,7 @@ package runtimes
 import (
 	"fmt"
 
-	"github.com/rs/zerolog/log"
-
+	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/viper"
 )
@@ -14,31 +13,20 @@ type Runtime interface {
 	Shell(env types.MoatEnv) (int, error)
 }
 
-func GetRuntime(name string) (Runtime, error) {
+func GetRuntime(cfg *viper.Viper, name string) (Runtime, error) {
 
 	var (
-		runtimeSpecMap map[string]any
+		runtimeSpec types.RuntimeSpec
 	)
-
-	runtimeSpecMap = viper.GetStringMap("runtimes." + name)
-	if len(runtimeSpecMap) == 0 {
-		runtimeSpecMap = viper.GetStringMap("defaults.runtimes." + name)
-		log.Debug().Interface("runtimeSpecMap", runtimeSpecMap).Msg("Loaded runtime spec map")
-		if len(runtimeSpecMap) == 0 {
-			return nil, fmt.Errorf("runtime not found")
-		}
+	runtimeSpec, err := config.GetRuntimeSpec(cfg, name)
+	if err != nil {
+		return nil, err
 	}
 
 	// Call the right constructor based on the runtime type
-	switch runtimeSpecMap["type"] {
+	switch runtimeSpec.Type {
 	case "apptainer":
-		spec := NewApptainerRuntimeSpec(
-			runtimeSpecMap["imageurl"].(string),
-			runtimeSpecMap["cachedir"].(string),
-			runtimeSpecMap["passenv"].(bool),
-		)
-		log.Debug().Interface("spec", spec).Msg("Created Apptainer runtime spec")
-		return NewApptainerRuntimeFromSpec(spec), nil
+		return NewApptainerRuntimeFromSpec(&runtimeSpec), nil
 	}
 
 	return nil, fmt.Errorf("no runtime found")

@@ -4,13 +4,12 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/AaltoRSE/moat/cmd"
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/runtimes"
 	"github.com/mattn/go-shellwords"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // name is the name of the environment to run the command in
@@ -62,7 +61,7 @@ This command allows you to run a specific command within the moat environment.`,
 		}
 
 		// Get the environment with Config.GetEnv
-		env, err := config.GetEnv(envName, true)
+		env, err := config.GetEnv(cmd_package.CmdConfig, envName, true)
 		if err != nil {
 			log.Error().Msgf("Error with the environment %q: %v", envName, err)
 			return
@@ -74,13 +73,13 @@ This command allows you to run a specific command within the moat environment.`,
 		if env.Runtime != "" {
 			runtimeName = env.Runtime
 		} else {
-			runtimeName = viper.GetString("defaults.runtime")
+			runtimeName = cmd_package.CmdConfig.GetString("defaults.runtime")
 		}
 
 		// Log the runtime name
 		log.Debug().Msgf("Using runtime: %s", runtimeName)
 
-		runtime, err = runtimes.GetRuntime(runtimeName)
+		runtime, err = runtimes.GetRuntime(cmd_package.CmdConfig, runtimeName)
 		if err != nil {
 			log.Error().Msgf("Failed to get a runtime: %v", err)
 			return
@@ -102,5 +101,5 @@ func init() {
 		panic(err)
 	}
 
-	cmd.RootCmd.AddCommand(runCmd)
+	cmd_package.RootCmd.AddCommand(runCmd)
 }

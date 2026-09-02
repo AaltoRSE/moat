@@ -5,6 +5,7 @@ import (
 
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/types"
+	"github.com/spf13/viper"
 )
 
 // CreateEnvTemplateFromEnv converts an existing environment into a new
@@ -14,8 +15,8 @@ import (
 // template under templateName. Any non-empty fields in overrides replace the
 // corresponding values derived from the environment. It returns an error if the
 // environment does not exist or the template cannot be created.
-func CreateEnvTemplateFromEnv(envName string, templateName string, overrides types.EnvTemplate) error {
-	env, err := config.GetEnv(envName, false)
+func CreateEnvTemplateFromEnv(cfg *viper.Viper, envName string, templateName string, overrides types.EnvTemplate) error {
+	env, err := config.GetEnv(cfg, envName, false)
 	if err != nil {
 		log.Error().Err(err).Msg("Error retrieving environment")
 		return err
@@ -37,5 +38,5 @@ func CreateEnvTemplateFromEnv(envName string, templateName string, overrides typ
 		tmpl.Mounts = overrides.Mounts
 	}
 
-	return CreateEnvTemplate(templateName, tmpl)
+	return CreateEnvTemplate(cfg, templateName, tmpl)
 }

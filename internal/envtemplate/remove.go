@@ -13,16 +13,16 @@ import (
 // It returns an error if the template cannot be removed or the config cannot
 // be written. If the template does not exist, it logs an error and returns
 // nil.
-func RemoveEnvTemplate(name string) error {
-	templates := viper.GetStringMap("envtemplates")
+func RemoveEnvTemplate(cfg *viper.Viper, name string) error {
+	templates := cfg.GetStringMap("envtemplates")
 	if _, ok := templates[name]; !ok {
 		log.Error().Msgf("Environment template does not exist: %s", name)
 		return nil
 	}
 
 	delete(templates, name)
-	viper.Set("envtemplates", templates)
-	if err := config.WriteConfig(); err != nil {
+	cfg.Set("envtemplates", templates)
+	if err := config.WriteConfig(cfg); err != nil {
 		return err
 	}
 	fmt.Printf("Environment template '%s' removed successfully\n", name)

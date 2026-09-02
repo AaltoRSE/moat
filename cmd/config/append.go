@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -23,7 +24,7 @@ Examples:
 	Args: cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		key, value := args[0], args[1]
-		if err := config.AppendConfig(key, value); err != nil {
+		if err := config.AppendConfig(cmd_package.CmdConfig, key, value); err != nil {
 			log.Fatal().Msgf("Failed to append to %q: %v", key, err)
 		}
 		fmt.Printf("Appended %s to %s\n", value, key)

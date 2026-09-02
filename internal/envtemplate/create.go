@@ -14,11 +14,11 @@ import (
 )
 
 // CreateEnvTemplate creates a new environment template in the viper config.
-func CreateEnvTemplate(name string, tmpl types.EnvTemplate) error {
+func CreateEnvTemplate(cfg *viper.Viper, name string, tmpl types.EnvTemplate) error {
 
 	var err error
 
-	templates := viper.GetStringMap("envtemplates")
+	templates := cfg.GetStringMap("envtemplates")
 	if templates[name] != nil {
 		log.Error().Str("name", name).Msg("Environment template already exists.")
 		return nil
@@ -69,9 +69,9 @@ func CreateEnvTemplate(name string, tmpl types.EnvTemplate) error {
 	}
 
 	fmt.Printf("Creating environment template '%s'\n", name)
-	viper.Set("envtemplates."+name, tmpl)
+	cfg.Set("envtemplates."+name, tmpl)
 
-	if err := config.WriteConfig(); err != nil {
+	if err := config.WriteConfig(cfg); err != nil {
 		return err
 	}
 

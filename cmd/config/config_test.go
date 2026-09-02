@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/logging"
 	types "github.com/AaltoRSE/moat/internal/types"
 	"github.com/AaltoRSE/moat/internal/utils"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -20,8 +22,9 @@ type ConfigTestSuite struct {
 	ExpectedOutput string
 }
 
-func (suite *ConfigTestSuite) SetupSuite() {
+func (suite *ConfigTestSuite) SetupTest() {
 	var (
+		cfg *viper.Viper
 		err error
 	)
 
@@ -40,14 +43,14 @@ func (suite *ConfigTestSuite) SetupSuite() {
 	logging.InitLogging(false)
 
 	// Initialize configuration
-	err = config.InitConfig(suite.ConfigFile.Name())
+	cfg, err = config.InitConfig(suite.ConfigFile.Name())
 	if err != nil {
 		panic(err)
 	}
 
 	// Add environment called test to moat-config
 	example_env := types.MoatEnv{Home: "/tmp", Mounts: []string{}}
-	err = env.CreateEnvironment("test", example_env)
+	err = env.CreateEnvironment(cfg, "test", example_env)
 	if err != nil {
 		panic(err)
 	}
@@ -61,12 +64,13 @@ func (suite *ConfigTestSuite) SetupSuite() {
 
 	// Stop capturing output
 	_, err = capture.StopCapture()
+	fmt.Printf("%s", suite.ExpectedOutput)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (suite *ConfigTestSuite) TearDownSuite() {
+func (suite *ConfigTestSuite) TearDownTest() {
 	// Remove the temporary config file
 	err := os.Remove(suite.ConfigFile.Name())
 	if err != nil {

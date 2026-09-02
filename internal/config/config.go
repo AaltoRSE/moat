@@ -21,56 +21,60 @@ import (
 // default values, loads the config file (named moat-config.yaml) from the
 // given path or from the default search locations, unmarshals it into a
 // types.Config, and validates the result.
-func InitConfig(cfgFile string) error {
-	viper.SetConfigName("moat-config")
-	viper.SetConfigType("yaml")
+func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
+
+	// Set viper configuration instance
+	cfg = viper.New()
+
+	cfg.SetConfigName("moat-config")
+	cfg.SetConfigType("yaml")
 	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+		cfg.SetConfigFile(cfgFile)
 	}
 
 	// Set defaults if not set
-	viper.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
-	viper.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
-	viper.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
-	viper.SetDefault("defaults.runtimes.apptainer.passenv", true)
-	viper.SetDefault("defaults.runtime", "apptainer")
-	viper.SetDefault("envs", map[string]types.MoatEnv{})
+	cfg.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
+	cfg.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
+	cfg.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
+	cfg.SetDefault("defaults.runtimes.apptainer.passenv", true)
+	cfg.SetDefault("defaults.runtime", "apptainer")
+	cfg.SetDefault("envs", map[string]types.MoatEnv{})
 
-	viper.AddConfigPath("$HOME/.config/moat")
-	viper.AddConfigPath(".")
+	cfg.AddConfigPath("$HOME/.config/moat")
+	cfg.AddConfigPath(".")
 	log.Debug().Msg("Reading configuration from file")
-	err := viper.ReadInConfig()
+	err = cfg.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return fmt.Errorf("error reading config file: %v", err)
+			return nil, fmt.Errorf("error reading config file: %v", err)
 		} else {
-			return fmt.Errorf("config file not found")
+			return nil, fmt.Errorf("config file not found")
 		}
 	}
-	log.Debug().Msgf("Configuration loaded from file: %s", viper.ConfigFileUsed())
+	log.Debug().Msgf("Configuration loaded from file: %s", cfg.ConfigFileUsed())
 
-	var C types.Config
-	err = viper.Unmarshal(&C)
+	var config types.Config
+	err = cfg.Unmarshal(&config)
 	if err != nil {
 		fmt.Println("Unable to unmarshal config", err)
 		// Print the configuration as a string for debugging
-		configStr := GetConfigAsString()
+		configStr := GetConfigAsString(cfg)
 		log.Error().Msgf("Current configuration:\n%s", configStr)
-		return fmt.Errorf("unable to unmarshal config: %v", err)
+		return nil, fmt.Errorf("unable to unmarshal config: %v", err)
 	}
 
-	if err := validateConfig(&C); err != nil {
-		configStr := GetConfigAsString()
+	if err := validateConfig(&config); err != nil {
+		configStr := GetConfigAsString(cfg)
 		log.Error().Msgf("Current configuration:\n%s", configStr)
-		return fmt.Errorf("config validation failed: %v", err)
+		return nil, fmt.Errorf("config validation failed: %v", err)
 	}
 
-	return nil
+	return cfg, nil
 }
 
 // WriteConfig writes the current viper configuration to the config file.
-func WriteConfig() error {
-	err := viper.WriteConfig()
+func WriteConfig(cfg *viper.Viper) error {
+	err := cfg.WriteConfig()
 	if err != nil {
 		log.Error().Msgf("Error writing config: %v", err)
 		return err
@@ -110,8 +114,8 @@ func validateConfig(config *types.Config) error {
 
 // GetConfigAsString returns the current viper configuration as a YAML
 // string. It is intended for debugging and error reporting.
-func GetConfigAsString() string {
-	c := viper.AllSettings()
+func GetConfigAsString(cfg *viper.Viper) string {
+	c := cfg.AllSettings()
 	bs, err := yaml.Marshal(c)
 	if err != nil {
 		log.Error().Err(err).Msg("unable to marshal config to YAML")
@@ -122,9 +126,9 @@ func GetConfigAsString() string {
 // GetEnv returns the named environment from the configuration. It returns
 // an error if the environment does not exist or its fields cannot be
 // unmarshaled into types.MoatEnv.
-func GetEnv(name string, sanitized bool) (types.MoatEnv, error) {
+func GetEnv(cfg *viper.Viper, name string, sanitized bool) (types.MoatEnv, error) {
 
-	envViper := viper.Sub("envs." + name)
+	envViper := cfg.Sub("envs." + name)
 
 	var env types.MoatEnv
 
@@ -163,14 +167,38 @@ func GetEnv(name string, sanitized bool) (types.MoatEnv, error) {
 	return env, err
 }
 
+func GetRuntimeSpec(cfg *viper.Viper, name string) (types.RuntimeSpec, error) {
+
+	var (
+		runtimeSpecMap map[string]any
+		subConfig      *viper.Viper
+		runtimeSpec    types.RuntimeSpec
+		err            error
+	)
+
+	runtimeSpecMap = cfg.GetStringMap("runtimes." + name)
+	if len(runtimeSpecMap) == 0 {
+		subConfig = cfg.Sub("defaults.runtimes." + name)
+		err = subConfig.Unmarshal(&runtimeSpec)
+		if err != nil {
+			return types.RuntimeSpec{}, fmt.Errorf("runtime not found")
+		}
+		log.Debug().Interface("runtimeSpec", runtimeSpec).Msg("Loaded runtime spec")
+	} else {
+		return types.RuntimeSpec{}, fmt.Errorf("runtimes %q not found", name)
+	}
+
+	return runtimeSpec, err
+}
+
 // GetVariableType returns the reflect.Type of the value stored in the
 // viper configuration under the given key. It returns an error if the key
 // does not exist in the configuration.
-func GetVariableType(key string) (reflect.Type, error) {
-	if !viper.IsSet(key) {
+func GetVariableType(cfg *viper.Viper, key string) (reflect.Type, error) {
+	if !cfg.IsSet(key) {
 		return nil, fmt.Errorf("key %q not found in configuration", key)
 	}
-	value := viper.Get(key)
+	value := cfg.Get(key)
 	if value == nil {
 		return nil, fmt.Errorf("value for key %q is nil", key)
 	}

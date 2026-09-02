@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -27,7 +28,7 @@ Examples:
 		key := args[0]
 
 		// Check key type
-		keyType, err := config.GetVariableType(key)
+		keyType, err := config.GetVariableType(cmd_package.CmdConfig, key)
 		if err != nil {
 			log.Fatal().Msgf("Failed to get type for key %q: %v", key, err)
 		}
@@ -44,7 +45,7 @@ Examples:
 			log.Fatal().Msgf("Unsupported key type for key %q: %v", key, keyType.Kind())
 		}
 
-		if err := config.SetConfig(key, value); err != nil {
+		if err := config.SetConfig(cmd_package.CmdConfig, key, value); err != nil {
 			log.Fatal().Msgf("Failed to set %q: %v", key, err)
 		}
 		fmt.Printf("Set %s = %s\n", key, value)

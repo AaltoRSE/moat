@@ -8,8 +8,8 @@ import (
 )
 
 // SetConfig sets a config key to value, validates, and persists to disk.
-func SetConfig(key string, value any) error {
-	viper.Set(key, value)
+func SetConfig(cfg *viper.Viper, key string, value any) error {
+	cfg.Set(key, value)
 
 	var C types.Config
 	if err := viper.Unmarshal(&C); err != nil {
@@ -20,5 +20,5 @@ func SetConfig(key string, value any) error {
 		return fmt.Errorf("config validation failed after setting %q: %v", key, err)
 	}
 
-	return WriteConfig()
+	return WriteConfig(cfg)
 }

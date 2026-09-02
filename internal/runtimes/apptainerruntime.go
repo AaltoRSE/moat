@@ -12,15 +12,6 @@ import (
 	"github.com/AaltoRSE/moat/internal/utils"
 )
 
-func NewApptainerRuntimeSpec(imageUrl string, cacheDir string, passEnv bool) *types.RuntimeSpec {
-	return &types.RuntimeSpec{
-		Type:     "apptainer",
-		ImageUrl: imageUrl,
-		CacheDir: cacheDir,
-		PassEnv:  passEnv,
-	}
-}
-
 func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 	return &ApptainerRuntime{
 		ImageUrl: spec.ImageUrl,

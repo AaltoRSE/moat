@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/envtemplate"
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/cobra"
@@ -31,7 +32,7 @@ This command allows you to create and configure a new environment template.`,
 		homeBase, _ = cmd.Flags().GetString("home-base")
 		templateMountString, _ = cmd.Flags().GetString("mounts")
 
-		if err := envtemplate.CreateEnvTemplate(templateName, types.EnvTemplate{
+		if err := envtemplate.CreateEnvTemplate(cmd_package.CmdConfig, templateName, types.EnvTemplate{
 			HomeBase:       homeBase,
 			Mounts:         strings.Split(templateMountString, ","),
 			ReadOnlyMounts: []string{},
