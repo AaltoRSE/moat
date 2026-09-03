@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"sort"
 
+	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // listCmd represents the list command
@@ -22,7 +22,7 @@ var listCmd = &cobra.Command{
 This command allows you to view the names of all your current moat environments.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// List envs from viper configuration
-		viperEnvs := viper.Sub("envs")
+		viperEnvs := cmd_package.CmdConfig.Sub("envs")
 		if viperEnvs == nil {
 			fmt.Println("No environments configured.")
 			return
