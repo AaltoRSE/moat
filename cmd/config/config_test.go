@@ -13,6 +13,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert/yaml"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,6 +21,7 @@ type ConfigTestSuite struct {
 	suite.Suite
 	ConfigFile     *os.File
 	ExpectedOutput string
+	ExpectedEnv    types.MoatEnv
 }
 
 func (suite *ConfigTestSuite) SetupTest() {
@@ -49,8 +51,8 @@ func (suite *ConfigTestSuite) SetupTest() {
 	}
 
 	// Add environment called test to moat-config
-	example_env := types.MoatEnv{Home: "/tmp", Mounts: []string{}}
-	err = env.CreateEnvironment(cfg, "test", example_env)
+	suite.ExpectedEnv = types.MoatEnv{Home: "/tmp", Mounts: []string{}, ReadOnlyMounts: []string{}}
+	err = env.CreateEnvironment(cfg, "test", suite.ExpectedEnv)
 	if err != nil {
 		panic(err)
 	}
@@ -92,7 +94,14 @@ func (suite *ConfigTestSuite) TestShow() {
 	if err != nil {
 		panic(err)
 	}
-	assert.Contains(suite.T(), capturedOutput, suite.ExpectedOutput)
+
+	// Unmarshal output
+	var outputConfig types.Config
+	err = yaml.Unmarshal([]byte(capturedOutput), &outputConfig)
+	if err != nil {
+		panic(err)
+	}
+	assert.Subset(suite.T(), outputConfig.Envs, map[string]types.MoatEnv{"test": suite.ExpectedEnv})
 }
 
 // In order for 'go test' to run this suite, we need to create
