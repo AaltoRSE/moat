@@ -70,8 +70,8 @@ This command allows you to run a specific command within the moat environment.`,
 		// Check if the environment has a runtime specified
 
 		var runtimeName string
-		if env.Runtime != "" {
-			runtimeName = env.Runtime
+		if env.Runtime != nil {
+			runtimeName = *env.Runtime
 		} else {
 			runtimeName = cmd_package.CmdConfig.GetString("defaults.runtime")
 		}

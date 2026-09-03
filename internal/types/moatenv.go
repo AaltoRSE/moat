@@ -5,6 +5,6 @@ type MoatEnv struct {
 	Mounts                []string `validate:"required,dive,required"`
 	ReadOnlyMounts        []string
 	MountWorkingDirectory *bool
-	Runtime               string
+	Runtime               *string
 	PassEnv               *bool
 }
