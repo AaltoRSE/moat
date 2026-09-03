@@ -7,7 +7,6 @@ import (
 	"github.com/AaltoRSE/moat/cmd"
 	_ "github.com/AaltoRSE/moat/cmd/config"
 	_ "github.com/AaltoRSE/moat/cmd/env"
-	_ "github.com/AaltoRSE/moat/cmd/env/template"
 	_ "github.com/AaltoRSE/moat/cmd/run"
 )
 
