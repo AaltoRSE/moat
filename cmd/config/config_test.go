@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/AaltoRSE/moat/cmd"
@@ -102,6 +103,27 @@ func (suite *ConfigTestSuite) TestShow() {
 		panic(err)
 	}
 	assert.Subset(suite.T(), outputConfig.Envs, map[string]types.MoatEnv{"test": suite.ExpectedEnv})
+}
+
+// TestGetConfigFile tests that GetConfigFile returns the active
+// configuration file and falls back to the global moat-config.yaml when
+// there is no active configuration.
+func TestGetConfigFile(t *testing.T) {
+	cfgFile, err := os.CreateTemp("", "moat-config.*.yaml")
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, os.Remove(cfgFile.Name()))
+	}()
+	err = cfgFile.Close()
+	assert.NoError(t, err)
+
+	cfg, err := config.InitConfig(cfgFile.Name())
+	assert.NoError(t, err)
+	assert.Equal(t, cfgFile.Name(), config.GetConfigFile(cfg))
+
+	home, err := os.UserHomeDir()
+	assert.NoError(t, err)
+	assert.Equal(t, filepath.Join(home, ".config", "moat", "moat-config.yaml"), config.GetConfigFile(nil))
 }
 
 // In order for 'go test' to run this suite, we need to create

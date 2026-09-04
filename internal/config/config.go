@@ -6,6 +6,8 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 
 	"github.com/rs/zerolog/log"
@@ -40,7 +42,13 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 	cfg.SetDefault("defaults.runtime", "apptainer")
 	cfg.SetDefault("envs", map[string]types.MoatEnv{})
 
-	cfg.AddConfigPath("$HOME/.config/moat")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to determine user's home directory")
+		return nil, fmt.Errorf("failed to determine user's home directory: %v", err)
+	}
+	defaultConfigPath := filepath.Join(home, ".config", "moat")
+	cfg.AddConfigPath(defaultConfigPath)
 	cfg.AddConfigPath(".")
 	log.Debug().Msg("Reading configuration from file")
 	err = cfg.ReadInConfig()
@@ -189,6 +197,25 @@ func GetRuntimeSpec(cfg *viper.Viper, name string) (types.RuntimeSpec, error) {
 	}
 
 	return runtimeSpec, err
+}
+
+// GetConfigFile returns the path of the currently active configuration
+// file. If cfg is nil or no configuration file has been loaded yet, it
+// returns the path of the global moat-config.yaml
+// ($HOME/.config/moat/moat-config.yaml). It returns an empty string if the
+// global path cannot be determined.
+func GetConfigFile(cfg *viper.Viper) string {
+	if cfg != nil {
+		if path := cfg.ConfigFileUsed(); path != "" {
+			return path
+		}
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to determine user's home directory")
+		return ""
+	}
+	return filepath.Join(home, ".config", "moat", "moat-config.yaml")
 }
 
 // GetVariableType returns the reflect.Type of the value stored in the

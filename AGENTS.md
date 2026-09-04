@@ -31,7 +31,7 @@ moat/
 │   │   ├── append.go           # appendCmd; calls internal/config.AppendConfig()
 │   │   ├── prepend.go          # prependCmd; calls internal/config.PrependConfig()
 │   │   ├── show.go             # showCmd (aliases: list, view); calls internal/config.GetConfigAsString()
-│   │   ├── edit.go             # editCmd stub
+│   │   ├── edit.go             # editCmd; opens config file in $EDITOR via internal/config.GetConfigFile and utils.Run
 │   │   └── config_test.go      # Test suite for the config commands
 │   ├── env/                    # `moat env` command group
 │   │   ├── env.go              # EnvCmd; registers with RootCmd
@@ -124,7 +124,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 - **Functions only.** Do not add type definitions here.
 - Configuration is initialized by `InitConfig(cfgFile string) (*viper.Viper, error)`. When writing tests, this can be done multiple times. On the `cmd`-side a single configuration instance is initialized in `cmd/root` (stored in `cmd.CmdConfig`) and this will be used by all subcommands as well. `*viper.Viper` is passed as a parameter to internal functions.
-- Exported surface: `InitConfig`, `WriteConfig`, `GetEnv`, `GetRuntimeSpec`, `GetVariableType`, `GetConfigAsString`, `SetConfig`, `AppendConfig`, `PrependConfig`.
+- Exported surface: `InitConfig`, `WriteConfig`, `GetEnv`, `GetRuntimeSpec`, `GetVariableType`, `GetConfigAsString`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
 - One file per operation: `config.go` (init/lookup), `set.go`, `append.go`, `prepend.go`.
 - `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value, re-validate the full `types.Config`, then persist via `WriteConfig`.
 - Validation uses `go-playground/validator` and operates on `types.Config`.
