@@ -39,7 +39,8 @@ moat/
 │   │   ├── copy.go             # copyCmd; calls internal/env.CopyEnvironment()
 │   │   ├── list.go             # listCmd; reads viper directly (pre-existing exception)
 │   │   ├── show.go             # showCmd; calls internal/config.GetEnv()
-│   │   └── remove.go           # removeCmd; calls internal/env.RemoveEnvironment()
+│   │   ├── remove.go           # removeCmd; calls internal/env.RemoveEnvironment()
+│   │   └── env_test.go         # Test suite for the env commands
 │   └── run/                    # `moat run` command
 │       └── run.go              # runCmd; resolves env + runtime, then calls runtime.Run()
 │
