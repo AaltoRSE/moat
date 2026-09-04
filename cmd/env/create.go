@@ -17,6 +17,7 @@ import (
 var name string
 var home string
 var mountString string
+var yes bool
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
@@ -24,13 +25,15 @@ var createCmd = &cobra.Command{
 	Short: "Create a new moat environment",
 	Long: `Create a new moat environment.
 
-This command allows you to create and configure a new environment.`,
+This command allows you to create and configure a new environment.
+Use --yes to create missing directories (fake home and mount paths)
+without prompting.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := env.CreateEnvironment(cmd_package.CmdConfig, name, types.MoatEnv{
 			Home:           home,
 			Mounts:         strings.Split(mountString, ","),
 			ReadOnlyMounts: []string{},
-		}); err != nil {
+		}, yes); err != nil {
 			log.Error().Msgf("could not create environment: %v", err)
 		}
 	},
@@ -40,6 +43,7 @@ func init() {
 	createCmd.Flags().StringVarP(&name, "name", "n", "", "Name of the environment")
 	createCmd.Flags().StringVarP(&home, "home", "H", "", "Home directory for the environment")
 	createCmd.Flags().StringVarP(&mountString, "mounts", "m", "", "Comma-separated list of project mounts")
+	createCmd.Flags().BoolVarP(&yes, "yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 
 	if err := createCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)

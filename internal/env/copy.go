@@ -13,8 +13,8 @@ import (
 // environment named sourceName. If home is non-empty, it overrides the
 // source's home directory. If mounts is non-empty, it overrides the
 // source's mounts. All other fields of the source environment are
-// preserved.
-func CopyEnvironment(cfg *viper.Viper, sourceName, newName, home string, mounts []string) error {
+// preserved. autoCreate has the same meaning as in [CreateEnvironment].
+func CopyEnvironment(cfg *viper.Viper, sourceName, newName, home string, mounts []string, autoCreate bool) error {
 	source, err := config.GetEnv(cfg, sourceName, false)
 	if err != nil {
 		log.Error().Err(err).Msgf("could not get source environment %q", sourceName)
@@ -28,5 +28,5 @@ func CopyEnvironment(cfg *viper.Viper, sourceName, newName, home string, mounts 
 		source.Mounts = mounts
 	}
 
-	return CreateEnvironment(cfg, newName, source)
+	return CreateEnvironment(cfg, newName, source, autoCreate)
 }
