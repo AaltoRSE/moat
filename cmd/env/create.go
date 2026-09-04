@@ -29,9 +29,13 @@ This command allows you to create and configure a new environment.
 Use --yes to create missing directories (fake home and mount paths)
 without prompting.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		var mounts []string
+		if mountString != "" {
+			mounts = strings.Split(mountString, ",")
+		}
 		if err := env.CreateEnvironment(cmd_package.CmdConfig, name, types.MoatEnv{
 			Home:           home,
-			Mounts:         strings.Split(mountString, ","),
+			Mounts:         mounts,
 			ReadOnlyMounts: []string{},
 		}, yes); err != nil {
 			log.Error().Msgf("could not create environment: %v", err)
@@ -49,9 +53,6 @@ func init() {
 		panic(err)
 	}
 	if err := createCmd.MarkFlagRequired("home"); err != nil {
-		panic(err)
-	}
-	if err := createCmd.MarkFlagRequired("mounts"); err != nil {
 		panic(err)
 	}
 	EnvCmd.AddCommand(createCmd)
