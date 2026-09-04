@@ -22,9 +22,10 @@ import (
 // mount paths abort the creation.
 func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv, autoCreate bool) error {
 
-	var envs = cfg.GetStringMap("envs")
+	// Get existing environments from the configuration
+	var envs = config.GetEnvs(cfg)
 
-	if envs[name] != nil {
+	if _, exists := envs[name]; exists {
 		fmt.Println("Environment already exists.")
 		return nil
 	}
@@ -93,7 +94,9 @@ func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv, autoCre
 
 	// Create environment configuration
 	fmt.Printf("Creating environment '%s'\n", name)
-	cfg.Set("envs."+name, env)
+
+	envs[name] = env
+	cfg.Set("envs", envs)
 
 	// Write the updated configuration back to the config file
 	if err := config.WriteConfig(cfg); err != nil {

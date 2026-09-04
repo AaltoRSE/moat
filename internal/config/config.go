@@ -175,6 +175,19 @@ func GetEnv(cfg *viper.Viper, name string, sanitized bool) (types.MoatEnv, error
 	return env, err
 }
 
+func GetEnvs(cfg *viper.Viper) map[string]types.MoatEnv {
+
+	var envs map[string]types.MoatEnv
+
+	envsCfg := cfg.Sub("envs")
+
+	err := envsCfg.Unmarshal(&envs)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to unmarshal environments")
+	}
+	return envs
+}
+
 func GetRuntimeSpec(cfg *viper.Viper, name string) (types.RuntimeSpec, error) {
 
 	var (

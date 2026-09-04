@@ -1,6 +1,8 @@
 package env
 
 import (
+	"fmt"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/moat/internal/config"
@@ -9,8 +11,10 @@ import (
 
 // RemoveEnvironment removes an environment configuration from the viper config.
 func RemoveEnvironment(cfg *viper.Viper, name string) error {
+	// Get existing environments from the configuration
+	var envs = config.GetEnvs(cfg)
+
 	// Check if the environment exists
-	envs := cfg.GetStringMapString("envs")
 	if _, ok := envs[name]; !ok {
 		log.Error().Msgf("Environment does not exist: %s", name)
 		return nil
@@ -21,6 +25,6 @@ func RemoveEnvironment(cfg *viper.Viper, name string) error {
 	if err := config.WriteConfig(cfg); err != nil {
 		return err
 	}
-	log.Info().Msgf("Environment removed successfully: %s", name)
+	fmt.Printf("Environment removed successfully: %s\n", name)
 	return nil
 }
