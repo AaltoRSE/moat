@@ -198,13 +198,6 @@ Do not add viper access to packages other than `internal/config` without strong 
 3. Add a Cobra command file `cmd/env/{operation}.go` that parses flags, constructs the `types.MoatEnv`, and calls the internal function.
 4. Register the subcommand in `init()` via `EnvCmd.AddCommand(...)`.
 
-## Adding new environment template operation
-
-1. Add any new shared types to `internal/types/`.
-2. Implement the operation as a function in `internal/envtemplate/{operation}.go` accepting `types.EnvTemplate`.
-3. Add a Cobra command file `cmd/env/template/{operation}.go` that parses flags, constructs the `types.EnvTemplate`, and calls the internal function.
-4. Register the subcommand in `init()` via `templateCmd.AddCommand(...)`.
-
 ## Adding a new runtime
 
 1. Add any runtime-specific config type fields to `internal/types/runtimespec.go` (alongside the existing `RuntimeSpec` fields, or as a new type if the runtime is structurally different).
