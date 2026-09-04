@@ -21,19 +21,24 @@ moat is a CLI tool that runs AI coding agents inside isolated [Apptainer](https:
 ```
 moat/
 ├── main.go                     # Entry point; imports cmd sub-packages to trigger init()
-├── moat-config.yaml           # Default config file loaded by viper
 ├── go.mod
 │
 ├── cmd/                        # CLI layer — Cobra commands only, no business logic
-│   ├── root.go                 # RootCmd definition and Execute(); calls internal/config.InitConfig()
+│   ├── root.go                 # RootCmd, CmdConfig (*viper.Viper), Execute(); init() registers --config/--debug flags
 │   ├── config/                 # `moat config` command group
 │   │   ├── config.go           # configCmd; registers with RootCmd
-│   │   ├── set.go              # setCmd stub
-│   │   └── view.go             # viewCmd; calls internal/config.GetConfigAsString()
+│   │   ├── set.go              # setCmd; calls internal/config.SetConfig()
+│   │   ├── append.go           # appendCmd; calls internal/config.AppendConfig()
+│   │   ├── prepend.go          # prependCmd; calls internal/config.PrependConfig()
+│   │   ├── show.go             # showCmd (aliases: list, view); calls internal/config.GetConfigAsString()
+│   │   ├── edit.go             # editCmd stub
+│   │   └── config_test.go      # Test suite for the config commands
 │   ├── env/                    # `moat env` command group
-│   │   ├── env.go              # envCmd; registers with RootCmd
+│   │   ├── env.go              # EnvCmd; registers with RootCmd
 │   │   ├── create.go           # createCmd; calls internal/env.CreateEnvironment()
+│   │   ├── copy.go             # copyCmd; calls internal/env.CopyEnvironment()
 │   │   ├── list.go             # listCmd; reads viper directly (pre-existing exception)
+│   │   ├── show.go             # showCmd; calls internal/config.GetEnv()
 │   │   └── remove.go           # removeCmd; calls internal/env.RemoveEnvironment()
 │   └── run/                    # `moat run` command
 │       └── run.go              # runCmd; resolves env + runtime, then calls runtime.Run()
@@ -42,22 +47,41 @@ moat/
 │   ├── types/                  # Canonical location for ALL shared types (see rules below)
 │   │   ├── config.go           # Config, Defaults
 │   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields)
-│   │   └── moatenv.go         # MoatEnv
+│   │   └── moatenv.go          # MoatEnv
 │   ├── config/
-│   │   └── config.go           # InitConfig, WriteConfig, GetEnv, GetConfigAsString
+│   │   ├── config.go           # InitConfig, WriteConfig, GetEnv, GetRuntimeSpec, GetVariableType, GetConfigAsString
+│   │   ├── set.go              # SetConfig
+│   │   ├── append.go           # AppendConfig
+│   │   └── prepend.go          # PrependConfig
 │   ├── env/
 │   │   ├── create.go           # CreateEnvironment
+│   │   ├── copy.go             # CopyEnvironment
 │   │   └── remove.go           # RemoveEnvironment
+│   ├── logging/
+│   │   └── logging.go          # InitLogging (zerolog setup)
 │   ├── runtimes/
 │   │   ├── runtime.go          # Runtime interface + GetRuntime factory
 │   │   └── apptainerruntime.go # ApptainerRuntime implementation
 │   └── utils/
-│       ├── checks.go           # CheckFolderExists, CheckEnvironmentName
+│       ├── checks.go           # CheckFolderExists, CheckEnvironmentName, CheckMounts
 │       ├── sanitize.go         # SanitizeFolderPath, SanitizeMountsPaths
-│       └── run.go              # Run, RunArgs
+│       └── run.go              # Run, RunCapture, RunArgs, OutputCapture
+│
+├── dockerfiles/
+│   └── ubuntu24.04/            # Container image used by the apptainer runtime
+│       ├── Dockerfile
+│       └── entrypoint.sh
+│
+├── .github/
+│   └── workflows/
+│       └── deploy-image.yml    # Builds and publishes the docker image to GHCR on tag push
+│
+├── skills/
+│   └── go-doc/
+│       └── SKILL.md            # Go doc comment guidelines (see Best practices)
 │
 └── docs/
-    └── code-structure.md
+    └── code-structure.md       # Placeholder
 ```
 
 ---
@@ -99,8 +123,10 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 ### `internal/config` — configuration management
 
 - **Functions only.** Do not add type definitions here.
-- All configuration state lives in viper's global instance. Do not pass `*viper.Viper` as a parameter.
-- Exported surface: `InitConfig()`, `WriteConfig()`, `GetEnv(name string)`, `GetConfigAsString()`.
+- Configuration is initialized by `InitConfig(cfgFile string) (*viper.Viper, error)`. When writing tests, this can be done multiple times. On the `cmd`-side a single configuration instance is initialized in `cmd/root` (stored in `cmd.CmdConfig`) and this will be used by all subcommands as well. `*viper.Viper` is passed as a parameter to internal functions.
+- Exported surface: `InitConfig`, `WriteConfig`, `GetEnv`, `GetRuntimeSpec`, `GetVariableType`, `GetConfigAsString`, `SetConfig`, `AppendConfig`, `PrependConfig`.
+- One file per operation: `config.go` (init/lookup), `set.go`, `append.go`, `prepend.go`.
+- `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value, re-validate the full `types.Config`, then persist via `WriteConfig`.
 - Validation uses `go-playground/validator` and operates on `types.Config`.
 - `GetEnv` returns `types.MoatEnv`; it must not return raw `map[string]interface{}` to callers.
 
@@ -108,8 +134,8 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 ### `internal/env` — environment lifecycle
 
-- One file per operation: `create.go`, `remove.go`. Add `list.go` if list logic is moved from `cmd/env/list.go`.
-- Functions accept `types.MoatEnv` as parameter; they do not parse flags or read `os.Args`.
+- One file per operation: `create.go`, `copy.go`, `remove.go`. Add `list.go` if list logic is moved from `cmd/env/list.go`.
+- Functions accept `*viper.Viper` and `types.MoatEnv` as parameters; they do not parse flags or read `os.Args`.
 - May use `promptkit` for interactive confirmation prompts (user-facing only; not in functions called programmatically).
 - Must call `internal/config.WriteConfig()` after any mutation to persist changes.
 - Path arguments must be resolved to absolute paths with `filepath.Abs` before storing.
@@ -118,7 +144,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 ### `internal/runtimes` — runtime abstraction
 
-- `runtime.go` defines the `Runtime` interface and the `GetRuntime(name string)` factory. These must remain in this file.
+- `runtime.go` defines the `Runtime` interface and the `GetRuntime(cfg *viper.Viper, name string)` factory. These must remain in this file.
 - Each runtime is implemented in its own file: `apptainerruntime.go`, and future runtimes in `{name}.go`.
 - Implementation-specific helper structs that are **private to one runtime** (e.g. `ApptainerImage`) may be defined in the same file as the implementation.
 - The `Runtime` interface itself must stay in `runtime.go`; if it is referenced from another package, do not duplicate it — import from `internal/runtimes`.
@@ -141,7 +167,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 - Each command group (`config`, `env`, `run`) is its own directory and Go package, all named `package cmd`.
 - **One `{group}.go` file** defines the group's parent `cobra.Command` and registers it with `cmd.RootCmd` in `init()`.
 - **One file per subcommand** (e.g. `create.go`, `list.go`). The file registers the subcommand to the group command in `init()`.
-- Flag variables are declared at package scope for persistent flags, or inside `init()` as captured closure variables for command-scoped flags (see `cmd/env/remove.go` pattern).
+- Flag variables are declared at package scope (see `cmd/env/create.go` pattern) or inside `init()` as captured closure variables for command-scoped flags (see `cmd/env/remove.go` pattern).
 - `cmd/` files must not contain business logic. Extract any logic beyond argument marshaling into `internal/`.
 - Use `log.Fatal().Msgf(...)` for unrecoverable errors; use `fmt.Println` for normal user-facing output.
 
@@ -186,6 +212,7 @@ Do not use `log.Fatal` inside `internal/` packages — return errors and let `cm
 | `github.com/erikgeiser/promptkit` | `internal/env` only | Interactive confirmation prompts |
 | `github.com/rs/zerolog` | All packages | Structured logging |
 | `go.yaml.in/yaml/v3` | `internal/config`, `cmd/env/list.go` | YAML marshal/unmarshal |
+| `github.com/mattn/go-shellwords` | `cmd/run` only | Shell-style word splitting for `moat run` arguments |
 
 Do not add viper access to packages other than `internal/config` without strong justification. Prefer calling `internal/config` functions instead.
 
@@ -208,3 +235,5 @@ Do not add viper access to packages other than `internal/config` without strong 
 ## Verifying additions
 
 pre-commit hooks should be run after additions to verify that everything works. This can be done with `pre-commit run --all-files`.
+
+Check whether new additions should be added to `AGENTS.md`.
