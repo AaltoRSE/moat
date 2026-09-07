@@ -7,13 +7,10 @@ import (
 	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/runtimes"
-	"github.com/mattn/go-shellwords"
+	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
-
-// name is the name of the environment to run the command in
-var name string
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
@@ -35,35 +32,42 @@ This command allows you to run a specific command within the moat environment.`,
 
 		log.Debug().Msgf("args: %v", args)
 
-		// Return an error if no arguments are provided
-		if len(args) == 0 {
-			err := cmd.Help()
-			if err != nil {
-				log.Error().Msgf("Failed to display help: %v", err)
-			}
-			log.Error().Msgf("No arguments provided")
-			return
-		}
-
 		// Get the environment name from the required flag
-		envName := name
-
-		// If there is only one argument, parse it with shellwords to handle quoted strings correctly
-		if len(args) == 1 {
-			envVars, parsedArgs, err = shellwords.ParseWithEnvs(args[0])
-			if err != nil {
-				log.Error().Msgf("Failed to parse arguments: %v", err)
-				return
-			}
-		} else {
-			envVars = []string{}
-			parsedArgs = args
+		envName, err := cmd.Flags().GetString("name")
+		if err != nil {
+			log.Error().Msgf("could not get environment name: %v", err)
+			return
 		}
 
 		// Get the environment with Config.GetEnv
 		env, err := config.GetEnv(cmd_package.CmdConfig, envName, true)
 		if err != nil {
 			log.Error().Msgf("Error with the environment %q: %v", envName, err)
+			return
+		}
+
+		// Use the provided arguments as the command, falling back to the
+		// environment's configured command when no arguments are given.
+		command := args
+		if len(command) == 0 {
+			command = env.Command
+		}
+
+		// Return an error if no command is available to run
+		if len(command) == 0 {
+			err := cmd.Help()
+			if err != nil {
+				log.Error().Msgf("Failed to display help: %v", err)
+			}
+			log.Error().Msgf("No command provided")
+			return
+		}
+
+		// Sanitize the command, parsing a single argument with shellwords to
+		// handle quoted strings and environment prefixes correctly.
+		envVars, parsedArgs, err = utils.SanitizeArgs(command)
+		if err != nil {
+			log.Error().Msgf("Failed to sanitize command: %v", err)
 			return
 		}
 
@@ -95,7 +99,7 @@ This command allows you to run a specific command within the moat environment.`,
 }
 
 func init() {
-	runCmd.Flags().StringVarP(&name, "name", "n", "", "Name of the environment to run the command in")
+	runCmd.Flags().StringP("name", "n", "", "Name of the environment to run the command in")
 
 	if err := runCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)

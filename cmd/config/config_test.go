@@ -52,7 +52,7 @@ func (suite *ConfigTestSuite) SetupTest() {
 	}
 
 	// Add environment called test to moat-config
-	suite.ExpectedEnv = types.MoatEnv{Home: "/tmp", Mounts: []string{}, ReadOnlyMounts: []string{}}
+	suite.ExpectedEnv = types.MoatEnv{Home: "/tmp", Mounts: []string{}, ReadOnlyMounts: []string{}, Command: []string{}}
 	err = env.CreateEnvironment(cfg, "test", suite.ExpectedEnv, false)
 	if err != nil {
 		panic(err)

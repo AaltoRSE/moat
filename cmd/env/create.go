@@ -9,6 +9,7 @@ import (
 	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/env"
 	"github.com/AaltoRSE/moat/internal/types"
+	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -43,11 +44,23 @@ without prompting.`,
 			log.Error().Msgf("could not get mounts flag: %v", err)
 			return
 		}
+		command, err := cmd.Flags().GetStringArray("command")
+		if err != nil {
+			log.Error().Msgf("could not get command flag: %v", err)
+			return
+		}
+		// Sanitize the command, discarding any environment variables.
+		_, command, err = utils.SanitizeArgs(command)
+		if err != nil {
+			log.Error().Msgf("could not sanitize command: %v", err)
+			return
+		}
 
 		moatEnv := types.MoatEnv{
 			Home:           home,
 			Mounts:         mounts,
 			ReadOnlyMounts: []string{},
+			Command:        command,
 		}
 
 		if err := env.CreateEnvironment(cmd_package.CmdConfig, name, moatEnv, yes); err != nil {
@@ -60,6 +73,7 @@ func init() {
 	createCmd.Flags().StringP("name", "n", "", "Name of the environment")
 	createCmd.Flags().StringP("home", "H", "", "Home directory for the environment")
 	createCmd.Flags().StringArrayP("mounts", "m", nil, "Array of project mounts")
+	createCmd.Flags().StringArrayP("command", "C", nil, "Array of commands to run in the environment")
 	createCmd.Flags().BoolP("yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 
 	if err := createCmd.MarkFlagRequired("name"); err != nil {
