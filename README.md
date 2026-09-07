@@ -3,9 +3,9 @@
 > [!IMPORTANT]
 > moat is currently under development, features might not yet work
 
-*Put a moat between your agent and the rest of the world*
+*Dig a moat between your agent and the rest of the world. It might not be much, but at least it is something.*
 
-moat is a small client that makes it easy to execute AI tools in containerized environments.
+moat is a small command line client that makes it easy to execute AI tools in containerized environments.
 
 ## Installation
 

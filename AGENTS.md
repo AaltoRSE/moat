@@ -63,10 +63,12 @@ moat/
 │   ├── runtimes/
 │   │   ├── runtime.go          # Runtime interface + GetRuntime factory
 │   │   └── apptainerruntime.go # ApptainerRuntime implementation
-│   └── utils/
-│       ├── checks.go           # CheckFolderExists, CheckEnvironmentName, CheckMounts
-│       ├── sanitize.go         # SanitizeFolderPath, SanitizeMountsPaths
-│       └── run.go              # Run, RunCapture, RunArgs, OutputCapture
+│   ├── utils/
+│   │   ├── checks.go           # CheckFolderExists, CheckEnvironmentName, CheckMounts
+│   │   ├── sanitize.go         # SanitizeFolderPath, SanitizeMountsPaths
+│   │   └── run.go              # Run, RunCapture, RunArgs, OutputCapture
+│   └── tests/
+│       └── tests.go            # CreateTempConfig (shared test helper)
 │
 ├── dockerfiles/
 │   └── ubuntu24.04/            # Container image used by the apptainer runtime
@@ -163,6 +165,14 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 ---
 
+### `internal/tests` — shared test helpers
+
+- Holds reusable helpers for building isolated test fixtures; it is imported by `cmd/` test files (e.g. `cmd/env/env_test.go`).
+- `CreateTempConfig(name, moatEnv)` creates a fresh temporary config file, initializes it via `config.InitConfig`, creates the named environment via `env.CreateEnvironment` (with `autoCreate=true` so it never blocks on a prompt), and returns the config file path and its contents.
+- Helpers must be self-contained and must not depend on test-suite state; the caller is responsible for cleaning up any temporary files they create.
+
+---
+
 ### `cmd/{group}/` — CLI commands
 
 - Each command group (`config`, `env`, `run`) is its own directory and Go package, all named `package cmd`.
@@ -214,6 +224,8 @@ Do not use `log.Fatal` inside `internal/` packages — return errors and let `cm
 | `github.com/rs/zerolog` | All packages | Structured logging |
 | `go.yaml.in/yaml/v3` | `internal/config`, `cmd/env/list.go` | YAML marshal/unmarshal |
 | `github.com/mattn/go-shellwords` | `cmd/run` only | Shell-style word splitting for `moat run` arguments |
+| `github.com/stretchr/testify` | All test codes | Test framework for creating tests |
+
 
 Do not add viper access to packages other than `internal/config` without strong justification. Prefer calling `internal/config` functions instead.
 
