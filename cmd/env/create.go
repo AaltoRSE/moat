@@ -48,12 +48,15 @@ without prompting.`,
 			log.Error().Msgf("could not get command flag: %v", err)
 			return
 		}
-
+		var commandPtr *string
+		if command != "" {
+			commandPtr = &command
+		}
 		moatEnv := types.MoatEnv{
 			Home:           home,
 			Mounts:         mounts,
 			ReadOnlyMounts: []string{},
-			Command:        command,
+			Command:        commandPtr,
 		}
 
 		if err := env.CreateEnvironment(cmd_package.CmdConfig, name, moatEnv, yes); err != nil {

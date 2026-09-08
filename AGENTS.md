@@ -246,6 +246,19 @@ Do not add viper access to packages other than `internal/config` without strong 
 3. Register the new runtime type string in `GetRuntime` in `internal/runtimes/runtime.go`.
 4. Add a constructor function (e.g. `New{Name}RuntimeFromSpec`) in the same file, mirroring `NewApptainerRuntimeFromSpec`.
 
+## Adding a new test
+
+1. Create a test suite (subtype of `suite.Suite`) that encompasses more than one command at a time.
+2. Create `SetupTest()`- and `TearDownTest()`-functions that set the base starting point for each test.
+3. Create a test `Test{Name}()`-function that runs a single test. Remember that each test happens sequentially, so each one will start from the same starting point specified by `SetupTest` and `TearDownTest`.
+
+## Test creation best practices
+
+- Try to reuse same test suite if possible. If there would be conflicts in `SetupTest` and `TearDownTest` among different tests, create a new suite.
+- When testing command line commands with flags, create individual tests for each flag combination.
+- One test can contain multiple assert-statements.
+- When testing commands that change configuration values, use `InitConfig` to get a `*viper.Viper` object and test that object for changes.
+
 ## Verifying additions
 
 - Run go tests with `go test ./..`. All tests must pass.

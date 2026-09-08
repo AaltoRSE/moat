@@ -50,13 +50,17 @@ without prompting.`,
 				log.Error().Msgf("could not get command flag: %v", err)
 				return
 			}
+			var commandPtr *string
+			if command != "" {
+				commandPtr = &command
+			}
 			yes, err := cmd.Flags().GetBool("yes")
 			if err != nil {
 				log.Error().Msgf("could not get yes flag: %v", err)
 				return
 			}
 
-			if err := env.CopyEnvironment(cmd_package.CmdConfig, source, name, home, mounts, command, yes); err != nil {
+			if err := env.CopyEnvironment(cmd_package.CmdConfig, source, name, home, mounts, commandPtr, yes); err != nil {
 				log.Error().Msgf("could not copy environment: %v", err)
 			}
 		},

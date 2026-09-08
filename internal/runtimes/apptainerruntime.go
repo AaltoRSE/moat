@@ -154,7 +154,7 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	)
 
 	// Mount working directory if requested and not already mounted
-	if !workingDirMounted && env.MountWorkingDirectory != nil && *env.MountWorkingDirectory {
+	if !workingDirMounted && env.Mountcwd != nil && *env.Mountcwd {
 		log.Debug().Str("workingDir", workingDir).Msg("Mounting working directory")
 		apptainerArgs = append(apptainerArgs, []string{"--bind", workingDir}...)
 		// Set working directory to current directory

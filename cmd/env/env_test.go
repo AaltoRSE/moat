@@ -22,7 +22,7 @@ type EnvTestSuite struct {
 
 func (suite *EnvTestSuite) SetupTest() {
 	// Add environment called test to a fresh temporary moat-config
-	suite.BaseEnv = types.MoatEnv{Home: tests.MoatTestDir, Mounts: []string{}, ReadOnlyMounts: []string{}, Command: ""}
+	suite.BaseEnv = types.MoatEnv{Home: tests.MoatTestDir, Mounts: nil, ReadOnlyMounts: nil, Command: nil}
 	var err error
 	suite.ConfigFile, suite.BaseOutput, err = tests.CreateTempConfig("test", suite.BaseEnv)
 	if err != nil {
