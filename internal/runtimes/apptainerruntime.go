@@ -140,7 +140,10 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 
 	homeMount := fmt.Sprintf("%s:%s", env.Home, os.Getenv("HOME"))
 
-	// Set base apptainerArgs
+	// Set base apptainerArgs:
+	// - Use `run` to run the container
+	// - Do not mount home directory by default
+	// - Do not mount current working directory by default
 	apptainerArgs = []string{"run", "--no-home", "--no-mount", "cwd"}
 
 	// Add home mounts to apptainer arguments
@@ -154,7 +157,7 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	)
 
 	// Mount working directory if requested and not already mounted
-	if !workingDirMounted && env.Mountcwd != nil && *env.Mountcwd {
+	if !workingDirMounted && env.MountCWD != nil && *env.MountCWD {
 		log.Debug().Str("workingDir", workingDir).Msg("Mounting working directory")
 		apptainerArgs = append(apptainerArgs, []string{"--bind", workingDir}...)
 		// Set working directory to current directory
