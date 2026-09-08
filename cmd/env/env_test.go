@@ -210,6 +210,99 @@ func (suite *EnvTestSuite) TestCreateWithMountDestinations() {
 	assert.Equal(suite.T(), []string{mount}, createdEnv.Mounts)
 }
 
+// TestCreateWithRoMounts tests that env create registers a new environment
+// with read-only mount paths and creates all of the referenced directories.
+func (suite *EnvTestSuite) TestCreateWithRoMounts() {
+	baseDir := filepath.Join(tests.MoatTestDir, "create_ro_mounts")
+	home := filepath.Join(baseDir, "home")
+	roMount1 := filepath.Join(baseDir, "romount1")
+	roMount2 := filepath.Join(baseDir, "romount2")
+	// Start from a clean slate so the test verifies directory creation
+	err := os.RemoveAll(baseDir)
+	if err != nil {
+		panic(err)
+	}
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(baseDir)
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--ro-mounts", roMount1, "--ro-mounts", roMount2, "--yes"})
+	err = rootCmd.Execute()
+	if err != nil {
+		panic(err)
+	}
+	capturedOutput, err := capture.StopCapture()
+	if err != nil {
+		panic(err)
+	}
+	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	// All directories referenced by the environment must have been created
+	assert.DirExists(suite.T(), home)
+	assert.DirExists(suite.T(), roMount1)
+	assert.DirExists(suite.T(), roMount2)
+
+	// Unmarshal the created configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	if err != nil {
+		panic(err)
+	}
+	envs := config.GetEnvs(cfg)
+	createdEnv, exists := envs["newenv"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), home, createdEnv.Home)
+	assert.Empty(suite.T(), createdEnv.Mounts)
+	assert.Equal(suite.T(), []string{roMount1, roMount2}, createdEnv.ReadOnlyMounts)
+}
+
+// TestCopyWithRoMounts tests that env copy overrides the source environment's
+// read-only mounts when the --ro-mounts flag is provided.
+func (suite *EnvTestSuite) TestCopyWithRoMounts() {
+	baseDir := filepath.Join(tests.MoatTestDir, "copy_ro_mounts")
+	home := filepath.Join(baseDir, "home")
+	roMount := filepath.Join(baseDir, "romount")
+	// Start from a clean slate so the test verifies directory creation
+	err := os.RemoveAll(baseDir)
+	if err != nil {
+		panic(err)
+	}
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(baseDir)
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "copy", "--source", "test", "--name", "newenv", "--home", home, "--ro-mounts", roMount, "--yes"})
+	err = rootCmd.Execute()
+	if err != nil {
+		panic(err)
+	}
+	capturedOutput, err := capture.StopCapture()
+	if err != nil {
+		panic(err)
+	}
+	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	// The home and read-only mount source directories must have been created
+	assert.DirExists(suite.T(), home)
+	assert.DirExists(suite.T(), roMount)
+
+	// Unmarshal the created configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	if err != nil {
+		panic(err)
+	}
+	envs := config.GetEnvs(cfg)
+	createdEnv, exists := envs["newenv"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), home, createdEnv.Home)
+	assert.Equal(suite.T(), []string{roMount}, createdEnv.ReadOnlyMounts)
+}
+
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestEnvTestSuite(t *testing.T) {

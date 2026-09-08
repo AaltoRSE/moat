@@ -43,6 +43,11 @@ without prompting.`,
 				log.Error().Msgf("could not get mounts flag: %v", err)
 				return
 			}
+			roMounts, err := cmd.Flags().GetStringArray("ro-mounts")
+			if err != nil {
+				log.Error().Msgf("could not get ro-mounts flag: %v", err)
+				return
+			}
 			command, err := cmd.Flags().GetString("command")
 			if err != nil {
 				log.Error().Msgf("could not get command flag: %v", err)
@@ -58,7 +63,7 @@ without prompting.`,
 				return
 			}
 
-			if err := env.CopyEnvironment(config.CmdConfig, source, name, home, mounts, commandPtr, yes); err != nil {
+			if err := env.CopyEnvironment(config.CmdConfig, source, name, home, mounts, roMounts, commandPtr, yes); err != nil {
 				log.Error().Msgf("could not copy environment: %v", err)
 			}
 		},
@@ -68,6 +73,7 @@ without prompting.`,
 	copyCmd.Flags().StringP("name", "n", "", "Name of the new environment to create")
 	copyCmd.Flags().StringP("home", "H", "", "Home directory for the new environment (overrides the source)")
 	copyCmd.Flags().StringArrayP("mounts", "m", nil, "Array of project mounts (overrides the source)")
+	copyCmd.Flags().StringArrayP("ro-mounts", "r", nil, "Array of read-only project mounts (overrides the source)")
 	copyCmd.Flags().StringP("command", "C", "", "Command to run in the new environment (overrides the source)")
 	copyCmd.Flags().BoolP("yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 

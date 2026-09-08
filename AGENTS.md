@@ -159,7 +159,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 - One file per operation: `create.go`, `copy.go`, `remove.go`. Add `list.go` if list logic is moved from `cmd/env/list.go`.
 - Functions accept `*viper.Viper` and `types.MoatEnv` (or related parameters) as arguments; they do not parse flags or read `os.Args`.
 - `CreateEnvironment(cfg, name, env, autoCreate)` creates a new environment. If `autoCreate` is true, missing directories (fake home and mount source paths) are created automatically. Otherwise, the user is prompted to create a missing fake home directory, and missing or invalid mount paths abort creation.
-- `CopyEnvironment(cfg, sourceName, newName, home, mounts, command, autoCreate)` copies an existing environment, optionally overriding home, mounts, and command.
+- `CopyEnvironment(cfg, sourceName, newName, home, mounts, roMounts, command, autoCreate)` copies an existing environment, optionally overriding home, mounts, read-only mounts, and command.
 - `RemoveEnvironment(cfg, name)` removes an environment from the configuration.
 - May use `promptkit` for interactive confirmation prompts (user-facing only; not in functions called programmatically).
 - Must call `internal/config.WriteConfig(cfg)` after any mutation to persist changes.

@@ -42,6 +42,11 @@ without prompting.`,
 				log.Error().Msgf("could not get mounts flag: %v", err)
 				return
 			}
+			roMounts, err := cmd.Flags().GetStringArray("ro-mounts")
+			if err != nil {
+				log.Error().Msgf("could not get ro-mounts flag: %v", err)
+				return
+			}
 			command, err := cmd.Flags().GetString("command")
 			if err != nil {
 				log.Error().Msgf("could not get command flag: %v", err)
@@ -54,7 +59,7 @@ without prompting.`,
 			moatEnv := types.MoatEnv{
 				Home:           home,
 				Mounts:         mounts,
-				ReadOnlyMounts: []string{},
+				ReadOnlyMounts: roMounts,
 				Command:        commandPtr,
 			}
 
@@ -67,6 +72,7 @@ without prompting.`,
 	createCmd.Flags().StringP("name", "n", "", "Name of the environment")
 	createCmd.Flags().StringP("home", "H", "", "Home directory for the environment")
 	createCmd.Flags().StringArrayP("mounts", "m", nil, "Array of project mounts")
+	createCmd.Flags().StringArrayP("ro-mounts", "r", nil, "Array of read-only project mounts")
 	createCmd.Flags().StringP("command", "C", "", "Array of commands to run in the environment")
 	createCmd.Flags().BoolP("yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 

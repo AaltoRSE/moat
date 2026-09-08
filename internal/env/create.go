@@ -92,6 +92,27 @@ func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv, autoCre
 		}
 	}
 
+	// Validate that all read-only project mounts exist
+	env.ReadOnlyMounts, err = utils.SanitizeMountsPaths(env.ReadOnlyMounts)
+	if err != nil {
+		log.Error().Err(err).Msg("Error sanitizing read-only mount paths")
+		return err
+	}
+	if !utils.CheckMounts(env.ReadOnlyMounts) {
+		if !autoCreate {
+			log.Error().Msg("One or more read-only mount paths are invalid or do not exist.")
+			return nil
+		}
+		if err := utils.CreateMountDirs(env.ReadOnlyMounts); err != nil {
+			return err
+		}
+		// Re-validate in case some mount entries are invalid rather than merely missing.
+		if !utils.CheckMounts(env.ReadOnlyMounts) {
+			log.Error().Msg("One or more read-only mount paths are invalid.")
+			return nil
+		}
+	}
+
 	// Create environment configuration
 	fmt.Printf("Creating environment '%s'\n", name)
 

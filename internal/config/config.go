@@ -167,7 +167,7 @@ func GetEnv(cfg *viper.Viper, name string, sanitized bool) (types.MoatEnv, error
 		}
 		env.ReadOnlyMounts, err = utils.SanitizeMountsPaths(env.ReadOnlyMounts)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to sanitize ReadOnly	Mounts paths")
+			log.Error().Err(err).Msg("Failed to sanitize ReadOnly Mounts paths")
 			return types.MoatEnv{}, err
 		}
 
