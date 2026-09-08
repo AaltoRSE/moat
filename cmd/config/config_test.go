@@ -17,16 +17,16 @@ import (
 
 type ConfigTestSuite struct {
 	suite.Suite
-	ConfigFile     string
-	ExpectedOutput string
-	ExpectedEnv    types.MoatEnv
+	ConfigFile string
+	BaseOutput string
+	BaseEnv    types.MoatEnv
 }
 
 func (suite *ConfigTestSuite) SetupTest() {
 	// Add environment called test to a fresh temporary moat-config
-	suite.ExpectedEnv = types.MoatEnv{Home: "/tmp", Mounts: []string{}, ReadOnlyMounts: []string{}, Command: ""}
+	suite.BaseEnv = types.MoatEnv{Home: tests.MoatTestDir, Mounts: []string{}, ReadOnlyMounts: []string{}, Command: ""}
 	var err error
-	suite.ConfigFile, suite.ExpectedOutput, err = tests.CreateTempConfig("test", suite.ExpectedEnv)
+	suite.ConfigFile, suite.BaseOutput, err = tests.CreateTempConfig("test", suite.BaseEnv)
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +61,7 @@ func (suite *ConfigTestSuite) TestShow() {
 	if err != nil {
 		panic(err)
 	}
-	assert.Subset(suite.T(), outputConfig.Envs, map[string]types.MoatEnv{"test": suite.ExpectedEnv})
+	assert.Subset(suite.T(), outputConfig.Envs, map[string]types.MoatEnv{"test": suite.BaseEnv})
 }
 
 // TestGetConfigFile tests that GetConfigFile returns the active

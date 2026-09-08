@@ -15,16 +15,16 @@ import (
 
 type EnvTestSuite struct {
 	suite.Suite
-	ConfigFile     string
-	ExpectedOutput string
-	ExpectedEnv    types.MoatEnv
+	ConfigFile string
+	BaseOutput string
+	BaseEnv    types.MoatEnv
 }
 
 func (suite *EnvTestSuite) SetupTest() {
 	// Add environment called test to a fresh temporary moat-config
-	suite.ExpectedEnv = types.MoatEnv{Home: "/tmp", Mounts: []string{}, ReadOnlyMounts: []string{}, Command: ""}
+	suite.BaseEnv = types.MoatEnv{Home: tests.MoatTestDir, Mounts: []string{}, ReadOnlyMounts: []string{}, Command: ""}
 	var err error
-	suite.ConfigFile, suite.ExpectedOutput, err = tests.CreateTempConfig("test", suite.ExpectedEnv)
+	suite.ConfigFile, suite.BaseOutput, err = tests.CreateTempConfig("test", suite.BaseEnv)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +60,7 @@ func (suite *EnvTestSuite) TestShow() {
 	if err != nil {
 		panic(err)
 	}
-	assert.Equal(suite.T(), suite.ExpectedEnv, outputEnv)
+	assert.Equal(suite.T(), suite.BaseEnv, outputEnv)
 }
 
 // In order for 'go test' to run this suite, we need to create
