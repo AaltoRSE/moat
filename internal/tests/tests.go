@@ -12,6 +12,8 @@ import (
 	"github.com/AaltoRSE/moat/internal/utils"
 )
 
+var MoatTestDir string = "/tmp/moat_tests"
+
 // CreateTempConfig initializes a new temporary moat configuration, creates the
 // named environment in it, and returns the path to the temporary config file
 // along with its current contents.
@@ -22,8 +24,14 @@ import (
 // helper never blocks on an interactive prompt. The caller is responsible for
 // removing the temporary config file when it is no longer needed.
 func CreateTempConfig(name string, moatEnv types.MoatEnv) (string, string, error) {
+	// Create Moat temporary directory
+	err := os.MkdirAll(MoatTestDir, 0755)
+	if err != nil {
+		return "", "", err
+	}
+
 	// Create a temporary config file
-	configFile, err := os.CreateTemp("", "moat-config.*.yaml")
+	configFile, err := os.CreateTemp(MoatTestDir, "moat-config.*.yaml")
 	if err != nil {
 		return "", "", err
 	}

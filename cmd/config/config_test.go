@@ -24,7 +24,7 @@ type ConfigTestSuite struct {
 
 func (suite *ConfigTestSuite) SetupTest() {
 	// Add environment called test to a fresh temporary moat-config
-	suite.ExpectedEnv = types.MoatEnv{Home: "/tmp", Mounts: []string{}, ReadOnlyMounts: []string{}, Command: []string{}}
+	suite.ExpectedEnv = types.MoatEnv{Home: "/tmp", Mounts: []string{}, ReadOnlyMounts: []string{}, Command: ""}
 	var err error
 	suite.ConfigFile, suite.ExpectedOutput, err = tests.CreateTempConfig("test", suite.ExpectedEnv)
 	if err != nil {

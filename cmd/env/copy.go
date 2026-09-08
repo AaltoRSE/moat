@@ -8,7 +8,6 @@ import (
 
 	cmd_package "github.com/AaltoRSE/moat/cmd"
 	"github.com/AaltoRSE/moat/internal/env"
-	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -46,15 +45,9 @@ without prompting.`,
 				log.Error().Msgf("could not get mounts flag: %v", err)
 				return
 			}
-			command, err := cmd.Flags().GetStringArray("command")
+			command, err := cmd.Flags().GetString("command")
 			if err != nil {
 				log.Error().Msgf("could not get command flag: %v", err)
-				return
-			}
-			// Sanitize the command, discarding any environment variables.
-			_, command, err = utils.SanitizeArgs(command)
-			if err != nil {
-				log.Error().Msgf("could not sanitize command: %v", err)
 				return
 			}
 			yes, err := cmd.Flags().GetBool("yes")
@@ -73,7 +66,7 @@ without prompting.`,
 	copyCmd.Flags().StringP("name", "n", "", "Name of the new environment to create")
 	copyCmd.Flags().StringP("home", "H", "", "Home directory for the new environment (overrides the source)")
 	copyCmd.Flags().StringArrayP("mounts", "m", nil, "Array of project mounts (overrides the source)")
-	copyCmd.Flags().StringArrayP("command", "C", nil, "Array of commands to run in the new environment (overrides the source)")
+	copyCmd.Flags().StringP("command", "C", "", "Command to run in the new environment (overrides the source)")
 	copyCmd.Flags().BoolP("yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 
 	if err := copyCmd.MarkFlagRequired("source"); err != nil {

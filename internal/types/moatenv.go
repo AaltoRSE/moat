@@ -7,5 +7,5 @@ type MoatEnv struct {
 	MountWorkingDirectory *bool
 	Runtime               *string
 	PassEnv               *bool
-	Command               []string
+	Command               string
 }

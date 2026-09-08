@@ -50,7 +50,7 @@ This command allows you to run a specific command within the moat environment.`,
 		// environment's configured command when no arguments are given.
 		command := args
 		if len(command) == 0 {
-			command = env.Command
+			command = []string{env.Command}
 		}
 
 		// Return an error if no command is available to run

@@ -170,6 +170,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 - Holds reusable helpers for building isolated test fixtures; it is imported by `cmd/` test files (e.g. `cmd/env/env_test.go`).
 - `CreateTempConfig(name, moatEnv)` creates a fresh temporary config file, initializes it via `config.InitConfig`, creates the named environment via `env.CreateEnvironment` (with `autoCreate=true` so it never blocks on a prompt), and returns the config file path and its contents.
 - Helpers must be self-contained and must not depend on test-suite state; the caller is responsible for cleaning up any temporary files they create.
+- If tests create temporary files or directories, these temporary files should be situated under `/tmp/moat_tests` specified in `tests.MoatTestDir`.
 
 ---
 
@@ -247,6 +248,6 @@ Do not add viper access to packages other than `internal/config` without strong 
 
 ## Verifying additions
 
-pre-commit hooks should be run after additions to verify that everything works. This can be done with `pre-commit run --all-files`.
-
-Check whether new additions should be added to `AGENTS.md`.
+- Run go tests with `go test ./..`. All tests must pass.
+- pre-commit hooks should be run after additions to verify that everything works. This can be done with `pre-commit run --all-files`.
+- Check whether new additions should be added to `AGENTS.md`.
