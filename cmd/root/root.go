@@ -44,8 +44,6 @@ func CreateRootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().StringP("config", "c", "", "config file (default is $HOME/.config/moat/config.yaml or config.yaml in the current directory)")
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "enable debug logging")
 
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-
 	rootCmd.AddCommand(run.CreateRunCmd())
 	rootCmd.AddCommand(env.CreateEnvCmd())
 	rootCmd.AddCommand(cmd_config.CreateConfigCmd())
