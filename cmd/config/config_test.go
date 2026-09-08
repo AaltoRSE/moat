@@ -1,11 +1,11 @@
-package cmd
+package config_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/AaltoRSE/moat/cmd"
+	"github.com/AaltoRSE/moat/cmd/root"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/tests"
 	types "github.com/AaltoRSE/moat/internal/types"
@@ -45,8 +45,10 @@ func (suite *ConfigTestSuite) TestShow() {
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
-	cmd.RootCmd.SetArgs([]string{"--config", suite.ConfigFile, "config", "show"})
-	err := cmd.RootCmd.Execute()
+
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "config", "show"})
+	err := rootCmd.Execute()
 	if err != nil {
 		panic(err)
 	}

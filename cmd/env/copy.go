@@ -1,17 +1,15 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
-package cmd
+package env
 
 import (
 	"github.com/rs/zerolog/log"
 
-	cmd_package "github.com/AaltoRSE/moat/cmd"
+	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/env"
 	"github.com/spf13/cobra"
 )
 
-func init() {
+// CreateEnvCopyCmd creates the copy subcommand for EnvCmd.
+func CreateEnvCopyCmd() *cobra.Command {
 
 	// copyCmd represents the copy command
 	copyCmd := &cobra.Command{
@@ -60,7 +58,7 @@ without prompting.`,
 				return
 			}
 
-			if err := env.CopyEnvironment(cmd_package.CmdConfig, source, name, home, mounts, commandPtr, yes); err != nil {
+			if err := env.CopyEnvironment(config.CmdConfig, source, name, home, mounts, commandPtr, yes); err != nil {
 				log.Error().Msgf("could not copy environment: %v", err)
 			}
 		},
@@ -79,5 +77,6 @@ without prompting.`,
 	if err := copyCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)
 	}
-	EnvCmd.AddCommand(copyCmd)
+
+	return copyCmd
 }

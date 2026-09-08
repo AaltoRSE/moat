@@ -1,19 +1,15 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
-package cmd
+package env
 
 import (
 	"github.com/rs/zerolog/log"
 
-	cmd_package "github.com/AaltoRSE/moat/cmd"
+	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/env"
 	"github.com/spf13/cobra"
 )
 
-func init() {
-
-	var name string
+// CreateEnvRemoveCmd creates the remove subcommand for EnvCmd.
+func CreateEnvRemoveCmd() *cobra.Command {
 
 	// removeCmd represents the remove command
 	var removeCmd = &cobra.Command{
@@ -23,19 +19,23 @@ func init() {
 
 This command allows you to delete and remove a previously created environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			log.Print("remove called")
-			if err := env.RemoveEnvironment(cmd_package.CmdConfig, name); err != nil {
-				log.Printf("Error removing environment: %v\n", err)
+			name, err := cmd.Flags().GetString("name")
+			if err != nil {
+				log.Error().Msgf("could not get name flag: %v", err)
 				return
 			}
-			log.Print("Environment successfully removed.\n")
+
+			if err := env.RemoveEnvironment(config.CmdConfig, name); err != nil {
+				log.Error().Msgf("could not remove environment: %v", err)
+			}
 		},
 	}
 
-	removeCmd.Flags().StringVarP(&name, "name", "n", "", "Name of the environment to remove")
+	removeCmd.Flags().StringP("name", "n", "", "Name of the environment to remove")
 
 	if err := removeCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)
 	}
-	EnvCmd.AddCommand(removeCmd)
+
+	return removeCmd
 }

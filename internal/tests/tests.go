@@ -49,13 +49,13 @@ func CreateTempConfig(name string, moatEnv types.MoatEnv) (string, string, error
 	logging.InitLogging(false)
 
 	// Initialize the configuration from the temporary file
-	cfg, err := config.InitConfig(configPath)
+	conf, err := config.InitConfig(configPath)
 	if err != nil {
 		return "", "", err
 	}
 
 	// Create the environment in the configuration
-	if err := env.CreateEnvironment(cfg, name, moatEnv, true); err != nil {
+	if err := env.CreateEnvironment(conf, name, moatEnv, true); err != nil {
 		return "", "", err
 	}
 

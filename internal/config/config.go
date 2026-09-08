@@ -19,6 +19,8 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 )
 
+var CmdConfig *viper.Viper
+
 // InitConfig initializes the global viper configuration. It registers
 // default values, loads the config file (named moat-config.yaml) from the
 // given path or from the default search locations, unmarshals it into a
