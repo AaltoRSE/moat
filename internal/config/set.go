@@ -9,10 +9,22 @@ import (
 
 // SetConfig sets a config key to value, validates, and persists to disk.
 func SetConfig(cfg *viper.Viper, key string, value any) error {
-	cfg.Set(key, value)
 
-	var C types.Config
-	if err := viper.Unmarshal(&C); err != nil {
+	var (
+		C   types.Config
+		err error
+	)
+
+	v := viper.New()
+
+	v.Set(key, value)
+
+	err = cfg.MergeConfigMap(v.AllSettings())
+	if err != nil {
+		return fmt.Errorf("error when adding %q to config: %v", key, err)
+	}
+
+	if err = cfg.Unmarshal(&C); err != nil {
 		return fmt.Errorf("invalid configuration after setting %q: %v", key, err)
 	}
 
