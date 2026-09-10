@@ -40,6 +40,7 @@ moat/
 │   │   ├── copy.go             # CreateEnvCopyCmd(); calls internal/env.CopyEnvironment()
 │   │   ├── list.go             # CreateEnvListCmd(); reads config.CmdConfig directly (pre-existing exception)
 │   │   ├── show.go             # CreateEnvShowCmd(); calls internal/config.GetEnv()
+│   │   ├── set.go              # CreateEnvSetCmd(); calls internal/config.GetEnv() + SetConfig()
 │   │   ├── remove.go           # CreateEnvRemoveCmd(); calls internal/env.RemoveEnvironment()
 │   │   └── env_test.go         # Test suite for the env commands
 │   └── run/                    # `moat run` command
@@ -108,7 +109,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 
 - `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the three top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`.
 - `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `edit`.
-- `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `remove`.
+- `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `set`, `remove`.
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
 
 `main.go` calls `root.CreateRootCmd().Execute()` directly. The root command's `PersistentPreRunE` hook initializes logging (`logging.InitLogging`) and configuration (`config.InitConfig`), storing the result in the package-level `config.CmdConfig` variable. All subcommands read the active configuration from `config.CmdConfig`.

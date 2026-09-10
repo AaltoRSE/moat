@@ -20,6 +20,7 @@ You can create and list environments.`,
 	EnvCmd.AddCommand(CreateEnvCopyCmd())
 	EnvCmd.AddCommand(CreateEnvListCmd())
 	EnvCmd.AddCommand(CreateEnvRemoveCmd())
+	EnvCmd.AddCommand(CreateEnvSetCmd())
 	EnvCmd.AddCommand(CreateEnvShowCmd())
 	return EnvCmd
 }
