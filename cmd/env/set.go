@@ -2,14 +2,10 @@ package env
 
 import (
 	"fmt"
-	"reflect"
-	"strconv"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/moat/internal/config"
-	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/cobra"
 )
 
@@ -48,46 +44,11 @@ Examples:
 			key := args[0]
 			fullKey := "envs." + name + "." + key
 
-			// Check key type; fall back to the MoatEnv struct definition
-			// for optional fields that are not set yet
-			keyType, err := config.GetVariableType(config.CmdConfig, fullKey)
+			setValue, err := config.SetConfig(config.CmdConfig, fullKey, args[1:])
 			if err != nil {
-				keyType, err = moatEnvFieldType(key)
-				if err != nil {
-					log.Fatal().Msgf("failed to get type for key %q: %v", key, err)
-				}
-			}
-			if keyType.Kind() == reflect.Pointer {
-				keyType = keyType.Elem()
-			}
-
-			var value any
-
-			switch keyType.Kind() {
-			case reflect.String:
-				// Return error if there are more than 2 arguments for a string key
-				if len(args) > 2 {
-					log.Fatal().Msgf("too many arguments for key %q of type string", key)
-				}
-				value = args[1]
-			case reflect.Slice:
-				value = args[1:]
-			case reflect.Bool:
-				if len(args) > 2 {
-					log.Fatal().Msgf("too many arguments for key %q of type bool", key)
-				}
-				value, err = strconv.ParseBool(args[1])
-				if err != nil {
-					log.Fatal().Msgf("invalid boolean value %q for key %q: %v", args[1], key, err)
-				}
-			default:
-				log.Fatal().Msgf("unsupported key type for key %q: %v", key, keyType.Kind())
-			}
-
-			if err := config.SetConfig(config.CmdConfig, fullKey, value); err != nil {
 				log.Fatal().Msgf("failed to set %q: %v", fullKey, err)
 			}
-			fmt.Printf("Set %s.%s = %v\n", name, key, value)
+			fmt.Printf("Set %s.%s = %v\n", name, key, setValue)
 		},
 	}
 
@@ -98,19 +59,4 @@ Examples:
 	}
 
 	return setCmd
-}
-
-// moatEnvFieldType returns the reflect.Type of the MoatEnv field whose YAML
-// tag (or field name) matches key. It returns an error if no such field
-// exists.
-func moatEnvFieldType(key string) (reflect.Type, error) {
-	envType := reflect.TypeOf(types.MoatEnv{})
-	for i := 0; i < envType.NumField(); i++ {
-		field := envType.Field(i)
-		tag := strings.Split(field.Tag.Get("yaml"), ",")[0]
-		if tag == key || field.Name == key {
-			return field.Type, nil
-		}
-	}
-	return nil, fmt.Errorf("key %q is not a valid environment variable", key)
 }

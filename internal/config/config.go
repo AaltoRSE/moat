@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -233,16 +234,62 @@ func GetConfigFile(cfg *viper.Viper) string {
 	return filepath.Join(home, ".config", "moat", "moat-config.yaml")
 }
 
-// GetVariableType returns the reflect.Type of the value stored in the
-// viper configuration under the given key. It returns an error if the key
-// does not exist in the configuration.
-func GetVariableType(cfg *viper.Viper, key string) (reflect.Type, error) {
-	if !cfg.IsSet(key) {
-		return nil, fmt.Errorf("key %q not found in configuration", key)
+// GetVariableType returns the reflect.Type of the value stored under the
+// given dot-separated key in the types.Config structure. The type is
+// derived from the field definitions of types.Config, so it is also
+// available for optional fields that have not been set in the current
+// configuration.
+//
+// A segment that addresses a map field (envs, runtimes, defaults.runtimes)
+// is treated as the map key and may have any value; the following segments
+// are resolved against the map's element type. Pointer fields are reported
+// as their element type.
+//
+// It returns an error if the key does not address a field of types.Config.
+func GetVariableType(key string) (reflect.Type, error) {
+	segments := strings.Split(key, ".")
+	current := reflect.TypeOf(types.Config{})
+
+	for i, segment := range segments {
+		switch current.Kind() {
+		case reflect.Struct:
+			field, ok := findFieldByYAMLName(current, segment)
+			if !ok {
+				return nil, fmt.Errorf("key %q not found in configuration", strings.Join(segments[:i+1], "."))
+			}
+			current = field
+		case reflect.Map:
+			// A map key may have any value, so the segment is consumed
+			// without a lookup and the element type becomes current.
+			current = current.Elem()
+		default:
+			return nil, fmt.Errorf("key %q not found in configuration", strings.Join(segments[:i+1], "."))
+		}
+		current = stripPointers(current)
 	}
-	value := cfg.Get(key)
-	if value == nil {
-		return nil, fmt.Errorf("value for key %q is nil", key)
+
+	return current, nil
+}
+
+// findFieldByYAMLName returns the type of the field of the struct type t
+// whose yaml tag name (or field name, if the field has no yaml tag) matches
+// name case-insensitively. The boolean result reports whether such a field
+// exists.
+func findFieldByYAMLName(t reflect.Type, name string) (reflect.Type, bool) {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag := strings.Split(field.Tag.Get("yaml"), ",")[0]
+		if strings.EqualFold(tag, name) || strings.EqualFold(field.Name, name) {
+			return field.Type, true
+		}
 	}
-	return reflect.TypeOf(value), nil
+	return nil, false
+}
+
+// stripPointers returns t with all levels of pointer indirection removed.
+func stripPointers(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	return t
 }
