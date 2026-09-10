@@ -304,13 +304,13 @@ func (suite *EnvTestSuite) TestCopyWithRoMounts() {
 }
 
 // TestSetCommand tests that env set updates the command variable of an
-// existing environment.
+// existing environment using the --command flag.
 func (suite *EnvTestSuite) TestSetCommand() {
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "command", "code --wait ."})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--command", "code --wait ."})
 	err := rootCmd.Execute()
 	if err != nil {
 		panic(err)
@@ -335,7 +335,8 @@ func (suite *EnvTestSuite) TestSetCommand() {
 }
 
 // TestSetMounts tests that env set replaces the mounts variable of an
-// existing environment with the given list of mount paths.
+// existing environment with the list of mount paths given by repeated
+// --mount flags.
 func (suite *EnvTestSuite) TestSetMounts() {
 	mount1 := filepath.Join(tests.MoatTestDir, "set_mounts_1")
 	mount2 := filepath.Join(tests.MoatTestDir, "set_mounts_2")
@@ -356,7 +357,7 @@ func (suite *EnvTestSuite) TestSetMounts() {
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "mounts", mount1, mount2})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--mount", mount1, "--mount", mount2})
 	err = rootCmd.Execute()
 	if err != nil {
 		panic(err)
@@ -378,15 +379,31 @@ func (suite *EnvTestSuite) TestSetMounts() {
 	assert.Equal(suite.T(), []string{mount1, mount2}, updatedEnv.Mounts)
 }
 
-// TestSetMountCWD tests that env set updates the boolean mountcwd variable of
-// an existing environment.
-func (suite *EnvTestSuite) TestSetMountCWD() {
+// TestSetRoMounts tests that env set replaces the readonlymounts variable of
+// an existing environment with the list of paths given by repeated --ro-mount
+// flags.
+func (suite *EnvTestSuite) TestSetRoMounts() {
+	roMount1 := filepath.Join(tests.MoatTestDir, "set_romounts_1")
+	roMount2 := filepath.Join(tests.MoatTestDir, "set_romounts_2")
+	// The read-only mount source directories must exist for the configuration to be valid
+	err := os.MkdirAll(roMount1, 0755)
+	if err != nil {
+		panic(err)
+	}
+	err = os.MkdirAll(roMount2, 0755)
+	if err != nil {
+		panic(err)
+	}
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(roMount1)
+		_ = os.RemoveAll(roMount2)
+	})
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "mountcwd", "true"})
-	err := rootCmd.Execute()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--ro-mount", roMount1, "--ro-mount", roMount2})
+	err = rootCmd.Execute()
 	if err != nil {
 		panic(err)
 	}
@@ -394,7 +411,7 @@ func (suite *EnvTestSuite) TestSetMountCWD() {
 	if err != nil {
 		panic(err)
 	}
-	assert.Contains(suite.T(), capturedOutput, "Set test.mountcwd = true")
+	assert.Contains(suite.T(), capturedOutput, "Set test.readonlymounts = [")
 
 	// Unmarshal the updated configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
@@ -404,12 +421,12 @@ func (suite *EnvTestSuite) TestSetMountCWD() {
 	envs := config.GetEnvs(cfg)
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)
-	assert.NotNil(suite.T(), updatedEnv.MountCWD)
-	assert.True(suite.T(), *updatedEnv.MountCWD)
+	assert.Equal(suite.T(), []string{roMount1, roMount2}, updatedEnv.ReadOnlyMounts)
 }
 
 // TestSetHome tests that env set updates the home variable of an existing
-// environment, which is already set in the configuration.
+// environment, which is already set in the configuration, using the --home
+// flag.
 func (suite *EnvTestSuite) TestSetHome() {
 	newHome := filepath.Join(tests.MoatTestDir, "set_home")
 	// The new home directory must exist for the configuration to be valid
@@ -424,7 +441,7 @@ func (suite *EnvTestSuite) TestSetHome() {
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "home", newHome})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--home", newHome})
 	err = rootCmd.Execute()
 	if err != nil {
 		panic(err)
@@ -444,6 +461,50 @@ func (suite *EnvTestSuite) TestSetHome() {
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)
 	assert.Equal(suite.T(), newHome, updatedEnv.Home)
+}
+
+// TestSetMultipleFlags tests that env set applies several given flags in a
+// single invocation and leaves the other variables of the environment
+// untouched.
+func (suite *EnvTestSuite) TestSetMultipleFlags() {
+	newHome := filepath.Join(tests.MoatTestDir, "set_multiple_home")
+	// The new home directory must exist for the configuration to be valid
+	err := os.MkdirAll(newHome, 0755)
+	if err != nil {
+		panic(err)
+	}
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(newHome)
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--home", newHome, "--command", "opencode"})
+	err = rootCmd.Execute()
+	if err != nil {
+		panic(err)
+	}
+	capturedOutput, err := capture.StopCapture()
+	if err != nil {
+		panic(err)
+	}
+	assert.Contains(suite.T(), capturedOutput, "Set test.home = "+newHome)
+	assert.Contains(suite.T(), capturedOutput, "Set test.command = opencode")
+
+	// Unmarshal the updated configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	if err != nil {
+		panic(err)
+	}
+	envs := config.GetEnvs(cfg)
+	updatedEnv, exists := envs["test"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), newHome, updatedEnv.Home)
+	assert.NotNil(suite.T(), updatedEnv.Command)
+	assert.Equal(suite.T(), "opencode", *updatedEnv.Command)
+	assert.Empty(suite.T(), updatedEnv.Mounts)
+	assert.Empty(suite.T(), updatedEnv.ReadOnlyMounts)
 }
 
 // TestSetLeavesOtherEnvsUnchanged tests that env set only modifies the
@@ -478,7 +539,7 @@ func (suite *EnvTestSuite) TestSetLeavesOtherEnvsUnchanged() {
 	capture = utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd = root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "command", "opencode"})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--command", "opencode"})
 	err = rootCmd.Execute()
 	if err != nil {
 		panic(err)

@@ -66,6 +66,36 @@ func (suite *ConfigTestSuite) TestShow() {
 	assert.Subset(suite.T(), outputConfig.Envs, map[string]types.MoatEnv{"test": suite.BaseEnv})
 }
 
+// TestSet tests that config set updates the boolean mountcwd variable of an
+// existing environment.
+func (suite *ConfigTestSuite) TestSet() {
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "config", "set", "envs.test.mountcwd", "true"})
+	err := rootCmd.Execute()
+	if err != nil {
+		panic(err)
+	}
+	capturedOutput, err := capture.StopCapture()
+	if err != nil {
+		panic(err)
+	}
+	assert.Contains(suite.T(), capturedOutput, "Set envs.test.mountcwd = true")
+
+	// Unmarshal the updated configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	if err != nil {
+		panic(err)
+	}
+	envs := config.GetEnvs(cfg)
+	updatedEnv, exists := envs["test"]
+	assert.True(suite.T(), exists)
+	assert.NotNil(suite.T(), updatedEnv.MountCWD)
+	assert.True(suite.T(), *updatedEnv.MountCWD)
+}
+
 // TestGetConfigFile tests that GetConfigFile returns the active
 // configuration file and falls back to the global moat-config.yaml when
 // there is no active configuration.
