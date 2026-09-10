@@ -130,12 +130,23 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 		return 1, err
 	}
 
+	// Create mount binding flags
 	for _, mount := range env.Mounts {
 		source = strings.Split(mount, ":")[0]
 		if source == workingDir {
 			workingDirMounted = true
 		}
 		mounts = append(mounts, "--bind", mount)
+	}
+
+	// Create read-only mount binding flags
+	for _, roMount := range env.ReadOnlyMounts {
+		roSplit := strings.Split(roMount, ":")
+		if len(roSplit) == 1 {
+			roSplit = append(roSplit, roSplit[0])
+		}
+		roString := fmt.Sprintf("%s:%s:ro", roSplit[0], roSplit[1])
+		mounts = append(mounts, "--bind", roString)
 	}
 
 	homeMount := fmt.Sprintf("%s:%s", env.Home, os.Getenv("HOME"))
