@@ -85,11 +85,14 @@ Examples:
 			}
 
 			for _, u := range updates {
-				setValue, err := config.SetConfig(config.CmdConfig, "envs."+name+"."+u.key, u.value)
+				err := config.SetConfig(config.CmdConfig, "envs."+name+"."+u.key, u.value)
 				if err != nil {
 					log.Fatal().Msgf("failed to set %q: %v", u.key, err)
 				}
-				fmt.Printf("Set %s.%s = %v\n", name, u.key, setValue)
+				fmt.Printf("Set %s.%s = %v\n", name, u.key, u.value)
+			}
+			if err := config.WriteConfig(config.CmdConfig); err != nil {
+				log.Fatal().Msgf("failed to write config: %v", err)
 			}
 		},
 	}

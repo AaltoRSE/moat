@@ -29,6 +29,9 @@ Examples:
 			if err := config.AppendConfig(config.CmdConfig, key, value); err != nil {
 				log.Fatal().Msgf("Failed to append to %q: %v", key, err)
 			}
+			if err := config.WriteConfig(config.CmdConfig); err != nil {
+				log.Fatal().Msgf("Failed to write config: %v", err)
+			}
 			fmt.Printf("Appended %s to %s\n", value, key)
 		},
 	}

@@ -25,12 +25,16 @@ Examples:
 		Run: func(cmd *cobra.Command, args []string) {
 
 			key := args[0]
+			value := args[1:]
 
-			setValue, err := config.SetConfig(config.CmdConfig, key, args[1:])
+			err := config.SetConfig(config.CmdConfig, key, value)
 			if err != nil {
 				log.Fatal().Msgf("failed to set %q: %v", key, err)
 			}
-			fmt.Printf("Set %s = %v\n", key, setValue)
+			if err := config.WriteConfig(config.CmdConfig); err != nil {
+				log.Fatal().Msgf("failed to write config: %v", err)
+			}
+			fmt.Printf("Set %s = %v\n", key, value)
 		},
 	}
 

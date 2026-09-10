@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-// AppendConfig appends a value to a list config key, validates, and persists to disk.
+// AppendConfig appends a value to a list config key and validates the
+// result. It does not write the configuration to disk; callers that need
+// to persist the change must call WriteConfig separately.
 func AppendConfig(cfg *viper.Viper, key, value string) error {
 	current := cfg.GetStringSlice(key)
 	cfg.Set(key, append(current, value))
@@ -21,5 +23,5 @@ func AppendConfig(cfg *viper.Viper, key, value string) error {
 		return fmt.Errorf("config validation failed after appending to %q: %v", key, err)
 	}
 
-	return WriteConfig(cfg)
+	return nil
 }

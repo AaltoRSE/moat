@@ -146,7 +146,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 - `InitConfig(cfgFile string) (*viper.Viper, error)` creates a new viper instance, registers defaults, loads the config file (named `moat-config.yaml`) from the given path or default search locations (`$HOME/.config/moat/`, `.`), unmarshals into `types.Config`, and validates. When writing tests, this can be called multiple times with different config files.
 - Exported surface: `CmdConfig`, `InitConfig`, `WriteConfig`, `GetEnv`, `GetEnvs`, `GetRuntimeSpec`, `GetVariableType`, `GetConfigAsString`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
 - One file per operation: `config.go` (init/lookup), `set.go`, `append.go`, `prepend.go`.
-- `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value, re-validate the full `types.Config`, then persist via `WriteConfig`.
+- `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value and re-validate the full `types.Config`. They do not write to disk; callers that need to persist the change must call `WriteConfig` separately.
 - Validation uses `go-playground/validator` and operates on `types.Config`.
 - `GetEnv(cfg, name, sanitized)` returns `types.MoatEnv`; when `sanitized` is true, paths are resolved via `utils.SanitizeFolderPath` / `utils.SanitizeMountsPaths`. It must not return raw `map[string]interface{}` to callers.
 - `GetEnvs(cfg)` returns `map[string]types.MoatEnv` for all configured environments.
