@@ -31,7 +31,7 @@ This command allows you to delete and remove a previously created environment.`,
 		},
 	}
 
-	removeCmd.Flags().StringP("name", "n", "", "Name of the environment to remove")
+	removeCmd.Flags().AddFlagSet(newEnvNameFlagSet())
 
 	if err := removeCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)

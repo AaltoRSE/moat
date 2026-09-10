@@ -44,7 +44,7 @@ This command allows you to view the full configuration of a specific moat enviro
 		},
 	}
 
-	showCmd.Flags().StringP("name", "n", "", "Name of the environment to show")
+	showCmd.Flags().AddFlagSet(newEnvNameFlagSet())
 
 	if err := showCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)

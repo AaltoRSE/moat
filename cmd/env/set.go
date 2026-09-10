@@ -94,11 +94,8 @@ Examples:
 		},
 	}
 
-	setCmd.Flags().StringP("name", "n", "", "Name of the environment to modify")
-	setCmd.Flags().StringP("home", "H", "", "New home directory for the environment")
-	setCmd.Flags().StringArrayP("mount", "m", nil, "Mounted directory (can be specified multiple times, replaces all existing mounts)")
-	setCmd.Flags().StringArrayP("ro-mount", "r", nil, "Read-only mounted directory (can be specified multiple times, replaces all existing read-only mounts)")
-	setCmd.Flags().StringP("command", "C", "", "Command to run in the environment (use quotes for multi-word commands)")
+	setCmd.Flags().AddFlagSet(newEnvNameFlagSet())
+	setCmd.Flags().AddFlagSet(newEnvVarFlagSet())
 
 	if err := setCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)

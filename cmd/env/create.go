@@ -69,11 +69,8 @@ without prompting.`,
 		},
 	}
 
-	createCmd.Flags().StringP("name", "n", "", "Name of the environment")
-	createCmd.Flags().StringP("home", "H", "", "Home directory for the environment")
-	createCmd.Flags().StringArrayP("mount", "m", nil, "Mounted directory (can be specified multiple times)")
-	createCmd.Flags().StringArrayP("ro-mount", "r", nil, "Read-only mounted directory (can be specified multiple times)")
-	createCmd.Flags().StringP("command", "C", "", "Command to run in the environment (use quotes for multi-word commands)")
+	createCmd.Flags().AddFlagSet(newEnvNameFlagSet())
+	createCmd.Flags().AddFlagSet(newEnvVarFlagSet())
 	createCmd.Flags().BoolP("yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 
 	if err := createCmd.MarkFlagRequired("name"); err != nil {

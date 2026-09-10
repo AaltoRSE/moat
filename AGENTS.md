@@ -35,7 +35,7 @@ moat/
 │   │   ├── edit.go             # CreateConfigEditCmd(); opens config file in $EDITOR via internal/config.GetConfigFile and utils.Run
 │   │   └── config_test.go      # Test suite for the config commands
 │   ├── env/                    # `moat env` command group
-│   │   ├── env.go              # CreateEnvCmd(); assembles subcommands
+│   │   ├── env.go              # CreateEnvCmd(); assembles subcommands; declares shared env flag groups (-n/--name, -H/--home, -m/--mount, -r/--ro-mount, -C/--command) as pflag.FlagSet factories
 │   │   ├── create.go           # CreateEnvCreateCmd(); calls internal/env.CreateEnvironment()
 │   │   ├── copy.go             # CreateEnvCopyCmd(); calls internal/env.CopyEnvironment()
 │   │   ├── list.go             # CreateEnvListCmd(); reads config.CmdConfig directly (pre-existing exception)

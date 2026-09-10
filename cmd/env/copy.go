@@ -69,12 +69,9 @@ without prompting.`,
 		},
 	}
 
+	copyCmd.Flags().AddFlagSet(newEnvNameFlagSet())
+	copyCmd.Flags().AddFlagSet(newEnvVarFlagSet())
 	copyCmd.Flags().StringP("source", "s", "", "Name of the source environment to copy from")
-	copyCmd.Flags().StringP("name", "n", "", "Name of the new environment to create")
-	copyCmd.Flags().StringP("home", "H", "", "Home directory override for the new environment")
-	copyCmd.Flags().StringArrayP("mount", "m", nil, "Mounted directory override for the new environment (can be specified multiple times)")
-	copyCmd.Flags().StringArrayP("ro-mount", "r", nil, "Read-only mounted directory override for the new environment (can be specified multiple times)")
-	copyCmd.Flags().StringP("command", "C", "", "Command override for the new environment (use quotes for multi-word commands)")
 	copyCmd.Flags().BoolP("yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 
 	if err := copyCmd.MarkFlagRequired("source"); err != nil {
