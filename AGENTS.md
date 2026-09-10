@@ -33,7 +33,9 @@ moat/
 │   │   ├── prepend.go          # CreateConfigPrependCmd(); calls internal/config.PrependConfig()
 │   │   ├── show.go             # CreateConfigShowCmd() (aliases: list, view); calls internal/config.GetConfigAsString()
 │   │   ├── edit.go             # CreateConfigEditCmd(); opens config file in $EDITOR via internal/config.GetConfigFile and utils.Run
-│   │   └── config_test.go      # Test suite for the config commands
+│   │   ├── config_test.go      # Shared config command test suite (ConfigTestSuite) + suite runner
+│   │   ├── show_test.go        # Tests for the config show subcommand
+│   │   └── set_test.go         # Tests for the config set subcommand
 │   ├── env/                    # `moat env` command group
 │   │   ├── env.go              # CreateEnvCmd(); assembles subcommands; declares shared env flag groups (-n/--name, -H/--home, -m/--mount, -r/--ro-mount, -C/--command) as pflag.FlagSet factories
 │   │   ├── create.go           # CreateEnvCreateCmd(); calls internal/env.CreateEnvironment()
@@ -42,7 +44,12 @@ moat/
 │   │   ├── show.go             # CreateEnvShowCmd(); calls internal/config.GetEnv()
 │   │   ├── set.go              # CreateEnvSetCmd(); calls internal/config.GetEnv() + SetConfig()
 │   │   ├── remove.go           # CreateEnvRemoveCmd(); calls internal/env.RemoveEnvironment()
-│   │   └── env_test.go         # Test suite for the env commands
+│   │   ├── env_test.go         # Shared env command test suite (EnvTestSuite) + suite runner
+│   │   ├── list_test.go        # Tests for the env list subcommand
+│   │   ├── show_test.go        # Tests for the env show subcommand
+│   │   ├── create_test.go      # Tests for the env create subcommand
+│   │   ├── copy_test.go        # Tests for the env copy subcommand
+│   │   └── set_test.go         # Tests for the env set subcommand
 │   └── run/                    # `moat run` command
 │       └── run.go              # CreateRunCmd(); resolves env + runtime, sanitizes args, calls runtime.Run()
 │
@@ -278,7 +285,7 @@ Do not add viper access to packages other than `internal/config` without strong 
 
 1. Create a test suite (subtype of `suite.Suite`) that encompasses more than one command at a time.
 2. Create `SetupTest()`- and `TearDownTest()`-functions that set the base starting point for each test. Use `tests.CreateTempConfig` to build an isolated config fixture.
-3. Create a test method `Test{Name}()` on the suite that runs a single test. Remember that each test runs sequentially, so each one starts from the same starting point specified by `SetupTest` and `TearDownTest`.
+3. Create a test method `Test{Name}()` on the suite that runs a single test. Remember that each test runs sequentially, so each one starts from the same starting point specified by `SetupTest` and `TearDownTest`. Put tests for a specific subcommand in a `{subcommand}_test.go` file in the same directory (e.g. `cmd/config/set_test.go`); the shared suite type, `SetupTest`/`TearDownTest`, and the suite runner stay in `{group}_test.go`.
 4. To execute a command, build the root command via `root.CreateRootCmd()`, set arguments with `rootCmd.SetArgs(...)`, and call `rootCmd.Execute()`. Capture stdout with `utils.OutputCapture`.
 5. To verify configuration changes, call `config.InitConfig(configFile)` to get a fresh `*viper.Viper` and inspect it.
 
