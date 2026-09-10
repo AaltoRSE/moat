@@ -38,14 +38,14 @@ without prompting.`,
 				log.Error().Msgf("could not get home flag: %v", err)
 				return
 			}
-			mounts, err := cmd.Flags().GetStringArray("mounts")
+			mounts, err := cmd.Flags().GetStringArray("mount")
 			if err != nil {
-				log.Error().Msgf("could not get mounts flag: %v", err)
+				log.Error().Msgf("could not get mount flag: %v", err)
 				return
 			}
-			roMounts, err := cmd.Flags().GetStringArray("ro-mounts")
+			roMounts, err := cmd.Flags().GetStringArray("ro-mount")
 			if err != nil {
-				log.Error().Msgf("could not get ro-mounts flag: %v", err)
+				log.Error().Msgf("could not get ro-mount flag: %v", err)
 				return
 			}
 			command, err := cmd.Flags().GetString("command")
@@ -71,10 +71,10 @@ without prompting.`,
 
 	copyCmd.Flags().StringP("source", "s", "", "Name of the source environment to copy from")
 	copyCmd.Flags().StringP("name", "n", "", "Name of the new environment to create")
-	copyCmd.Flags().StringP("home", "H", "", "Home directory for the new environment (overrides the source)")
-	copyCmd.Flags().StringArrayP("mounts", "m", nil, "Array of project mounts (overrides the source)")
-	copyCmd.Flags().StringArrayP("ro-mounts", "r", nil, "Array of read-only project mounts (overrides the source)")
-	copyCmd.Flags().StringP("command", "C", "", "Command to run in the new environment (overrides the source)")
+	copyCmd.Flags().StringP("home", "H", "", "Home directory override for the new environment")
+	copyCmd.Flags().StringArrayP("mount", "m", nil, "Mounted directory override for the new environment (can be specified multiple times)")
+	copyCmd.Flags().StringArrayP("ro-mount", "r", nil, "Read-only mounted directory override for the new environment (can be specified multiple times)")
+	copyCmd.Flags().StringP("command", "C", "", "Command override for the new environment (use quotes for multi-word commands)")
 	copyCmd.Flags().BoolP("yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 
 	if err := copyCmd.MarkFlagRequired("source"); err != nil {

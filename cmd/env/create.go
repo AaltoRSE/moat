@@ -37,14 +37,14 @@ without prompting.`,
 				log.Error().Msgf("could not get home flag: %v", err)
 				return
 			}
-			mounts, err := cmd.Flags().GetStringArray("mounts")
+			mounts, err := cmd.Flags().GetStringArray("mount")
 			if err != nil {
-				log.Error().Msgf("could not get mounts flag: %v", err)
+				log.Error().Msgf("could not get mount flag: %v", err)
 				return
 			}
-			roMounts, err := cmd.Flags().GetStringArray("ro-mounts")
+			roMounts, err := cmd.Flags().GetStringArray("ro-mount")
 			if err != nil {
-				log.Error().Msgf("could not get ro-mounts flag: %v", err)
+				log.Error().Msgf("could not get ro-mount flag: %v", err)
 				return
 			}
 			command, err := cmd.Flags().GetString("command")
@@ -71,9 +71,9 @@ without prompting.`,
 
 	createCmd.Flags().StringP("name", "n", "", "Name of the environment")
 	createCmd.Flags().StringP("home", "H", "", "Home directory for the environment")
-	createCmd.Flags().StringArrayP("mounts", "m", nil, "Array of project mounts")
-	createCmd.Flags().StringArrayP("ro-mounts", "r", nil, "Array of read-only project mounts")
-	createCmd.Flags().StringP("command", "C", "", "Array of commands to run in the environment")
+	createCmd.Flags().StringArrayP("mount", "m", nil, "Mounted directory (can be specified multiple times)")
+	createCmd.Flags().StringArrayP("ro-mount", "r", nil, "Read-only mounted directory (can be specified multiple times)")
+	createCmd.Flags().StringP("command", "C", "", "Command to run in the environment (use quotes for multi-word commands)")
 	createCmd.Flags().BoolP("yes", "y", false, "Create missing directories (fake home and mount paths) without prompting")
 
 	if err := createCmd.MarkFlagRequired("name"); err != nil {
