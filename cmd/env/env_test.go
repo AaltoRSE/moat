@@ -132,7 +132,7 @@ func (suite *EnvTestSuite) TestCreateWithMounts() {
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--mounts", mount1, "--mounts", mount2, "--yes"})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--mount", mount1, "--mount", mount2, "--yes"})
 	err = rootCmd.Execute()
 	if err != nil {
 		panic(err)
@@ -183,7 +183,7 @@ func (suite *EnvTestSuite) TestCreateWithMountDestinations() {
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--mounts", mount, "--yes"})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--mount", mount, "--yes"})
 	err = rootCmd.Execute()
 	if err != nil {
 		panic(err)
@@ -229,7 +229,7 @@ func (suite *EnvTestSuite) TestCreateWithRoMounts() {
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--ro-mounts", roMount1, "--ro-mounts", roMount2, "--yes"})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--ro-mount", roMount1, "--ro-mount", roMount2, "--yes"})
 	err = rootCmd.Execute()
 	if err != nil {
 		panic(err)
@@ -259,7 +259,7 @@ func (suite *EnvTestSuite) TestCreateWithRoMounts() {
 }
 
 // TestCopyWithRoMounts tests that env copy overrides the source environment's
-// read-only mounts when the --ro-mounts flag is provided.
+// read-only mounts when the --ro-mount flag is provided.
 func (suite *EnvTestSuite) TestCopyWithRoMounts() {
 	baseDir := filepath.Join(tests.MoatTestDir, "copy_ro_mounts")
 	home := filepath.Join(baseDir, "home")
@@ -276,7 +276,7 @@ func (suite *EnvTestSuite) TestCopyWithRoMounts() {
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "copy", "--source", "test", "--name", "newenv", "--home", home, "--ro-mounts", roMount, "--yes"})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "copy", "--source", "test", "--name", "newenv", "--home", home, "--ro-mount", roMount, "--yes"})
 	err = rootCmd.Execute()
 	if err != nil {
 		panic(err)
