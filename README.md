@@ -9,7 +9,11 @@ moat is a small command line client that makes it easy to execute AI tools in co
 
 ## Installation
 
-Currently moat needs to be compiled manually. After installing go and downloading the repository, run:
+> [!IMPORTANT]
+> Currently only Linux is supported, because Apptainer needs to be installed
+
+1. Install [Apptainer](https://apptainer.org/).
+2. Currently moat needs to be compiled manually. After installing go and downloading the repository, run:
 ```shell
 go build -o moat
 ```
