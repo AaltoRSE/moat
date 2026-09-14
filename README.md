@@ -31,7 +31,7 @@ An environment needs to have:
 You can create an environment with:
 
 ```shell
-moat env create --name example-env --home ./home --mounts src,/path/to/some/other-directory
+moat env create --name example-env --home ./home --mount src,/path/to/some/other-directory
 ```
 
 ### Running your program in the environment
