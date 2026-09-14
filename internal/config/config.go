@@ -22,10 +22,12 @@ import (
 
 var CmdConfig *viper.Viper
 
-// InitConfig initializes the global viper configuration. It registers
-// default values, loads the config file (named moat-config.yaml) from the
-// given path or from the default search locations, unmarshals it into a
-// types.Config, and validates the result.
+// InitConfig initializes a viper configuration. It registers default
+// values, loads the config file (named moat-config.yaml) from the given
+// path or from the default search locations, unmarshals it into a
+// types.Config, and validates the result. If no config file is found, no
+// error is returned and the returned configuration holds the default
+// configuration contents.
 func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 
 	// Set viper configuration instance
@@ -56,13 +58,18 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 	log.Debug().Msg("Reading configuration from file")
 	err = cfg.ReadInConfig()
 	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config file: %v", err)
+		var configFileNotFoundErr viper.ConfigFileNotFoundError
+		// An explicitly set config file that does not exist yields a plain
+		// not-exist error, while a search-path miss yields a
+		// ConfigFileNotFoundError. Both mean no configuration file is present.
+		if errors.As(err, &configFileNotFoundErr) || os.IsNotExist(err) {
+			log.Debug().Msg("Configuration file not found, using default configuration")
 		} else {
-			return nil, fmt.Errorf("config file not found")
+			return nil, fmt.Errorf("error reading config file: %v", err)
 		}
+	} else {
+		log.Debug().Msgf("Configuration loaded from file: %s", cfg.ConfigFileUsed())
 	}
-	log.Debug().Msgf("Configuration loaded from file: %s", cfg.ConfigFileUsed())
 
 	var config types.Config
 	err = cfg.Unmarshal(&config)

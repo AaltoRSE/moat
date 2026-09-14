@@ -62,7 +62,8 @@ moat/
 │   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, GetEnv, GetEnvs, GetRuntimeSpec, GetVariableType, GetConfigAsString, GetConfigFile
 │   │   ├── set.go              # SetConfig
 │   │   ├── append.go           # AppendConfig
-│   │   └── prepend.go          # PrependConfig
+│   │   ├── prepend.go          # PrependConfig
+│   │   └── config_test.go      # Tests for InitConfig (default-config fallback)
 │   ├── env/
 │   │   ├── create.go           # CreateEnvironment
 │   │   ├── copy.go             # CopyEnvironment
@@ -150,7 +151,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 
 - **Functions only.** Do not add type definitions here.
 - `CmdConfig *viper.Viper` is a package-level variable holding the active configuration instance. It is set by `cmd/root`'s `PersistentPreRunE` after calling `InitConfig`. All subcommands and internal functions receive `*viper.Viper` as an explicit parameter; `CmdConfig` is used only by `cmd/` code that needs direct access (e.g. `cmd/env/list.go`).
-- `InitConfig(cfgFile string) (*viper.Viper, error)` creates a new viper instance, registers defaults, loads the config file (named `moat-config.yaml`) from the given path or default search locations (`$HOME/.config/moat/`, `.`), unmarshals into `types.Config`, and validates. When writing tests, this can be called multiple times with different config files.
+- `InitConfig(cfgFile string) (*viper.Viper, error)` creates a new viper instance, registers defaults, loads the config file (named `moat-config.yaml`) from the given path or default search locations (`$HOME/.config/moat/`, `.`), unmarshals into `types.Config`, and validates. When no config file is present (neither the given path nor any search location), it does not return an error; the returned configuration simply holds the default configuration contents. When writing tests, this can be called multiple times with different config files.
 - Exported surface: `CmdConfig`, `InitConfig`, `WriteConfig`, `GetEnv`, `GetEnvs`, `GetRuntimeSpec`, `GetVariableType`, `GetConfigAsString`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
 - One file per operation: `config.go` (init/lookup), `set.go`, `append.go`, `prepend.go`.
 - `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value and re-validate the full `types.Config`. They do not write to disk; callers that need to persist the change must call `WriteConfig` separately.
