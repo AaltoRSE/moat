@@ -8,6 +8,7 @@ import (
 
 	cmd_config "github.com/AaltoRSE/moat/cmd/config"
 	"github.com/AaltoRSE/moat/cmd/env"
+	cmd_init "github.com/AaltoRSE/moat/cmd/init"
 	"github.com/AaltoRSE/moat/cmd/run"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/logging"
@@ -31,6 +32,7 @@ func CreateRootCmd() *cobra.Command {
 
 			// Init configuration
 			configFile, _ := cmd.Flags().GetString("config")
+
 			log.Debug().Interface("configFile", configFile).Msg("Using config file: ")
 			log.Debug().Interface("CmdConfig", config.CmdConfig).Msg("Using CmdConfig: ")
 			cfg, err := config.InitConfig(configFile)
@@ -47,6 +49,7 @@ func CreateRootCmd() *cobra.Command {
 	rootCmd.AddCommand(run.CreateRunCmd())
 	rootCmd.AddCommand(env.CreateEnvCmd())
 	rootCmd.AddCommand(cmd_config.CreateConfigCmd())
+	rootCmd.AddCommand(cmd_init.CreateInitCmd())
 
 	return rootCmd
 }

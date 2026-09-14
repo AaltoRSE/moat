@@ -40,21 +40,20 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 	}
 
 	// Set defaults if not set
-	cfg.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
-	cfg.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
-	cfg.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
-	cfg.SetDefault("defaults.runtimes.apptainer.passenv", true)
-	cfg.SetDefault("defaults.runtime", "apptainer")
-	cfg.SetDefault("envs", map[string]types.MoatEnv{})
+	registerDefaults(cfg)
 
-	home, err := os.UserHomeDir()
+	configPath, err := defaultConfigPath()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to determine user's home directory")
-		return nil, fmt.Errorf("failed to determine user's home directory: %v", err)
+		return nil, err
 	}
-	defaultConfigPath := filepath.Join(home, ".config", "moat")
-	cfg.AddConfigPath(defaultConfigPath)
-	cfg.AddConfigPath(".")
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get current working directory")
+		return nil, err
+	}
+	cfg.AddConfigPath(cwd)
+	cfg.AddConfigPath(filepath.Dir(configPath))
 	log.Debug().Msg("Reading configuration from file")
 	err = cfg.ReadInConfig()
 	if err != nil {
@@ -90,6 +89,27 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 	return cfg, nil
 }
 
+// registerDefaults sets the default moat configuration values on cfg.
+func registerDefaults(cfg *viper.Viper) {
+	cfg.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
+	cfg.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
+	cfg.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
+	cfg.SetDefault("defaults.runtimes.apptainer.passenv", true)
+	cfg.SetDefault("defaults.runtime", "apptainer")
+	cfg.SetDefault("envs", map[string]types.MoatEnv{})
+}
+
+// defaultConfigPath returns the path of the global moat configuration
+// file ($HOME/.config/moat/moat-config.yaml). It returns an error if the
+// user's home directory cannot be determined.
+func defaultConfigPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to determine user's home directory: %v", err)
+	}
+	return filepath.Join(home, ".config", "moat", "moat-config.yaml"), nil
+}
+
 // WriteConfig writes the current viper configuration to the config file.
 func WriteConfig(cfg *viper.Viper) error {
 	err := cfg.WriteConfig()
@@ -98,6 +118,69 @@ func WriteConfig(cfg *viper.Viper) error {
 		return err
 	}
 	return nil
+}
+
+// SetConfigPath switches the configuration file path of cfg to
+// outputPath so that a subsequent [WriteConfig] call writes the
+// configuration to outputPath, creating the parent directory when
+// missing. When outputPath is empty, the global configuration path
+// ($HOME/.config/moat/moat-config.yaml) is used. If a configuration file
+// has already been found and no output path is given, the configuration
+// is left as it is, an informational message is printed, and
+// changed=false is reported. If the path of the found configuration is
+// the same as outputPath, an error is returned. Otherwise the
+// configuration file path is set via viper.SetConfigFile, the
+// configuration is validated, an informational message is printed, and
+// changed=true is reported. It returns an error if the configuration is
+// invalid.
+func SetConfigPath(cfg *viper.Viper, outputPath string) (changed bool, err error) {
+	source := cfg.ConfigFileUsed()
+
+	// A configuration file counts as found only when the reported path
+	// actually exists; an explicitly given but missing file (e.g. via
+	// the --config flag) has not been loaded.
+	found := false
+	if source != "" {
+		if _, err := os.Stat(source); err == nil {
+			found = true
+		} else if !os.IsNotExist(err) {
+			return false, fmt.Errorf("failed to access configuration file %s: %v", source, err)
+		}
+	}
+
+	if outputPath == "" {
+		if found {
+			fmt.Printf("Configuration already exists: %s\n", source)
+			return false, nil
+		}
+		outputPath, err = defaultConfigPath()
+		if err != nil {
+			return false, err
+		}
+	} else if found && outputPath == source {
+		return false, fmt.Errorf("configuration source and output path are the same: %s", outputPath)
+	}
+
+	cfg.SetConfigFile(outputPath)
+
+	outputDir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return false, fmt.Errorf("failed to create configuration directory %s: %v", outputDir, err)
+	}
+
+	// Validate the configuration, similar to SetConfig.
+	var config types.Config
+	if err := cfg.Unmarshal(&config); err != nil {
+		return false, fmt.Errorf("unable to unmarshal config: %v", err)
+	}
+	if err := validateConfig(&config); err != nil {
+		return false, fmt.Errorf("config validation failed: %v", err)
+	}
+
+	log.Debug().Str("path", outputPath).Msg("Set configuration file path")
+	fmt.Printf("Initialized configuration: %s\n", outputPath)
+
+	return true, nil
 }
 
 // validateConfig validates the configuration struct using the
@@ -233,12 +316,12 @@ func GetConfigFile(cfg *viper.Viper) string {
 			return path
 		}
 	}
-	home, err := os.UserHomeDir()
+	configPath, err := defaultConfigPath()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to determine user's home directory")
 		return ""
 	}
-	return filepath.Join(home, ".config", "moat", "moat-config.yaml")
+	return configPath
 }
 
 // GetVariableType returns the reflect.Type of the value stored under the

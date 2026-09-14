@@ -50,6 +50,9 @@ moat/
 │   │   ├── create_test.go      # Tests for the env create subcommand
 │   │   ├── copy_test.go        # Tests for the env copy subcommand
 │   │   └── set_test.go         # Tests for the env set subcommand
+│   ├── init/                   # `moat init` command
+│   │   ├── init.go             # CreateInitCmd(); passes config.CmdConfig + --output/-o flag to internal/config.SetConfigPath(), then WriteConfig()
+│   │   └── init_test.go        # Shared init command test suite (InitTestSuite) + suite runner
 │   └── run/                    # `moat run` command
 │       └── run.go              # CreateRunCmd(); resolves env + runtime, sanitizes args, calls runtime.Run()
 │
@@ -59,7 +62,7 @@ moat/
 │   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields)
 │   │   └── moatenv.go          # MoatEnv
 │   ├── config/
-│   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, GetEnv, GetEnvs, GetRuntimeSpec, GetVariableType, GetConfigAsString, GetConfigFile
+│   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, SetConfigPath, GetEnv, GetEnvs, GetRuntimeSpec, GetVariableType, GetConfigAsString, GetConfigFile
 │   │   ├── set.go              # SetConfig
 │   │   ├── append.go           # AppendConfig
 │   │   ├── prepend.go          # PrependConfig
@@ -106,7 +109,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 | Layer | Packages | Responsibility |
 |---|---|---|
-| **CLI** | `cmd/root/`, `cmd/config/`, `cmd/env/`, `cmd/run/` | Cobra command construction, flag parsing, argument normalization, user-facing output. Delegates all logic to `internal/`. |
+| **CLI** | `cmd/root/`, `cmd/config/`, `cmd/env/`, `cmd/init/`, `cmd/run/` | Cobra command construction, flag parsing, argument normalization, user-facing output. Delegates all logic to `internal/`. |
 | **Logic** | `internal/...` | All business logic, I/O, config management, runtime execution. Must not import from `cmd/`. |
 
 ---
@@ -115,10 +118,11 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 Commands are built via **constructor functions**, not `init()` side effects. Each command group exposes a `Create{Group}Cmd()` function that returns a fully assembled `*cobra.Command` with all subcommands attached. Each subcommand has its own `Create{Group}{Sub}Cmd()` function in its own file.
 
-- `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the three top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`.
+- `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the four top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`, `CreateInitCmd()`.
 - `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `edit`.
 - `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `set`, `remove`.
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
+- `cmd/init/init.go` — `CreateInitCmd()` builds the `init` command (no subcommands).
 
 `main.go` calls `root.CreateRootCmd().Execute()` directly. The root command's `PersistentPreRunE` hook initializes logging (`logging.InitLogging`) and configuration (`config.InitConfig`), storing the result in the package-level `config.CmdConfig` variable. All subcommands read the active configuration from `config.CmdConfig`.
 
@@ -152,8 +156,9 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 - **Functions only.** Do not add type definitions here.
 - `CmdConfig *viper.Viper` is a package-level variable holding the active configuration instance. It is set by `cmd/root`'s `PersistentPreRunE` after calling `InitConfig`. All subcommands and internal functions receive `*viper.Viper` as an explicit parameter; `CmdConfig` is used only by `cmd/` code that needs direct access (e.g. `cmd/env/list.go`).
 - `InitConfig(cfgFile string) (*viper.Viper, error)` creates a new viper instance, registers defaults, loads the config file (named `moat-config.yaml`) from the given path or default search locations (`$HOME/.config/moat/`, `.`), unmarshals into `types.Config`, and validates. When no config file is present (neither the given path nor any search location), it does not return an error; the returned configuration simply holds the default configuration contents. When writing tests, this can be called multiple times with different config files.
-- Exported surface: `CmdConfig`, `InitConfig`, `WriteConfig`, `GetEnv`, `GetEnvs`, `GetRuntimeSpec`, `GetVariableType`, `GetConfigAsString`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
+- Exported surface: `CmdConfig`, `InitConfig`, `WriteConfig`, `SetConfigPath`, `GetEnv`, `GetEnvs`, `GetRuntimeSpec`, `GetVariableType`, `GetConfigAsString`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
 - One file per operation: `config.go` (init/lookup), `set.go`, `append.go`, `prepend.go`.
+- `SetConfigPath(cfg, outputPath)` switches the configuration file path of `cfg` (via `viper.SetConfigFile`) to the global config file ($HOME/.config/moat/moat-config.yaml) — or to `outputPath` when it is non-empty — and validates the configuration. It does not write to disk. If a configuration file has already been found and no output path is given, the configuration is left as it is and `changed=false` is reported; it returns an error if `outputPath` is the same as the path of the found configuration. It reports whether the path was set (`changed`); callers that need to persist the configuration must call `WriteConfig` separately.
 - `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value and re-validate the full `types.Config`. They do not write to disk; callers that need to persist the change must call `WriteConfig` separately.
 - Validation uses `go-playground/validator` and operates on `types.Config`.
 - `GetEnv(cfg, name, sanitized)` returns `types.MoatEnv`; when `sanitized` is true, paths are resolved via `utils.SanitizeFolderPath` / `utils.SanitizeMountsPaths`. It must not return raw `map[string]interface{}` to callers.
