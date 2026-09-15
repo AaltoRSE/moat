@@ -15,6 +15,7 @@ import (
 
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/AaltoRSE/moat/internal/utils"
+	"github.com/AaltoRSE/moat/internal/version"
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	yaml "go.yaml.in/yaml/v3"
@@ -91,8 +92,17 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 
 // registerDefaults sets the default moat configuration values on cfg.
 func registerDefaults(cfg *viper.Viper) {
+
+	var imageTag string
+
+	if version.MoatVersion != "" {
+		imageTag = strings.Split(version.MoatVersion, "-")[0]
+	} else {
+		imageTag = "latest"
+	}
+
 	cfg.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
-	cfg.SetDefault("defaults.runtimes.apptainer.imageurl", "ghcr.io/aaltorse/vscode-apptainer:latest")
+	cfg.SetDefault("defaults.runtimes.apptainer.imageurl", fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag))
 	cfg.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
 	cfg.SetDefault("defaults.runtimes.apptainer.passenv", true)
 	cfg.SetDefault("defaults.runtime", "apptainer")

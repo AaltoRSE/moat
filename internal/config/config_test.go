@@ -1,13 +1,25 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/AaltoRSE/moat/internal/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// expectedDefaultImageURL returns the default apptainer image URL derived
+// from the build-time version, mirroring registerDefaults.
+func expectedDefaultImageURL() string {
+	tag := version.MoatVersion
+	if tag == "" {
+		tag = "latest"
+	}
+	return fmt.Sprintf("ghcr.io/aaltorse/moat:%s", tag)
+}
 
 // TestInitConfigNoConfigFile verifies that InitConfig does not return an
 // error when an explicitly given configuration file is not present and
@@ -25,7 +37,7 @@ func TestInitConfigNoConfigFile(t *testing.T) {
 	// The default configuration contents must be present.
 	assert.Equal(t, "apptainer", cfg.GetString("defaults.runtime"))
 	assert.Equal(t, "apptainer", cfg.GetString("defaults.runtimes.apptainer.type"))
-	assert.Equal(t, "ghcr.io/aaltorse/vscode-apptainer:latest", cfg.GetString("defaults.runtimes.apptainer.imageurl"))
+	assert.Equal(t, expectedDefaultImageURL(), cfg.GetString("defaults.runtimes.apptainer.imageurl"))
 	assert.Equal(t, "$HOME/.cache/moat/images", cfg.GetString("defaults.runtimes.apptainer.cachedir"))
 	assert.True(t, cfg.GetBool("defaults.runtimes.apptainer.passenv"))
 	assert.Empty(t, cfg.GetStringMap("envs"))
@@ -60,7 +72,7 @@ func TestInitConfigNoConfigFileInSearchPaths(t *testing.T) {
 	// The default configuration contents must be present.
 	assert.Equal(t, "apptainer", cfg.GetString("defaults.runtime"))
 	assert.Equal(t, "apptainer", cfg.GetString("defaults.runtimes.apptainer.type"))
-	assert.Equal(t, "ghcr.io/aaltorse/vscode-apptainer:latest", cfg.GetString("defaults.runtimes.apptainer.imageurl"))
+	assert.Equal(t, expectedDefaultImageURL(), cfg.GetString("defaults.runtimes.apptainer.imageurl"))
 	assert.Equal(t, "$HOME/.cache/moat/images", cfg.GetString("defaults.runtimes.apptainer.cachedir"))
 	assert.True(t, cfg.GetBool("defaults.runtimes.apptainer.passenv"))
 	assert.Empty(t, cfg.GetStringMap("envs"))

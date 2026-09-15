@@ -22,21 +22,34 @@ go build -o moat
 
 moat looks for a config file named `moat-config.yaml` in `$HOME/.config/moat/` or the current directory.
 
+To initialize a default configuration, run:
+
+```shell
+moat init
+```
+
+For more on configuring, see [CONFIG.md](./CONFIG.md)
+
 ## Environments
 
 moat creates separate environments for your coding tools and only mounts relevant directories into the environment.
 
 ### Creating an environment
 
-An environment needs to have:
-1. A fake home folder
-2. List of directories / files you want to mount into the container.
+An environment has a fake home folder and optional mounts that mount directories when the environment is being run.
 
 You can create an environment with:
 
 ```shell
-moat env create --name example-env --home ./home --mounts src,/path/to/some/other-directory
+moat env create --name example-env --home ./home
 ```
+
+With various flags you can specify the environment to:
+1. Mount files or directories to the environment
+2. Mount files or directories to the environment in read-only mode
+3. Mount current directory to the environment
+
+For more on environments, see [ENV.md](./ENV.md)
 
 ### Running your program in the environment
 

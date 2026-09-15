@@ -4,7 +4,7 @@ moat is a CLI tool that runs AI coding agents inside isolated [Apptainer](https:
 
 - **Module**: `github.com/AaltoRSE/moat`
 - **Go version**: 1.26.4
-- **Build**: `$(command -v go) build -o moat`
+- **Build**: `$(command -v go) build -o moat -ldflags "-X github.com/AaltoRSE/moat/internal/version.MoatVersion=$(git describe --tags)"`
 - **Status**: Under active development — some command implementations are stubs.
 
 
@@ -53,8 +53,11 @@ moat/
 │   ├── init/                   # `moat init` command
 │   │   ├── init.go             # CreateInitCmd(); passes config.CmdConfig + --output/-o flag to internal/config.SetConfigPath(), then WriteConfig()
 │   │   └── init_test.go        # Shared init command test suite (InitTestSuite) + suite runner
-│   └── run/                    # `moat run` command
-│       └── run.go              # CreateRunCmd(); resolves env + runtime, sanitizes args, calls runtime.Run()
+│   ├── run/                    # `moat run` command
+│   │   └── run.go              # CreateRunCmd(); resolves env + runtime, sanitizes args, calls runtime.Run()
+│   └── version/                # `moat version` command
+│       ├── version.go          # CreateVersionCmd(); prints internal/version.MoatVersion
+│       └── version_test.go     # Shared version command test suite (VersionTestSuite) + suite runner
 │
 ├── internal/                   # Business logic; never imported by cmd/ in reverse
 │   ├── types/                  # Canonical location for ALL shared types (see rules below)
@@ -73,6 +76,8 @@ moat/
 │   │   └── remove.go           # RemoveEnvironment
 │   ├── logging/
 │   │   └── logging.go          # InitLogging (zerolog setup)
+│   ├── version/
+│   │   └── version.go          # MoatVersion, set at build time via -ldflags
 │   ├── runtimes/
 │   │   ├── runtime.go          # Runtime interface + GetRuntime factory
 │   │   └── apptainerruntime.go # ApptainerRuntime implementation
@@ -109,7 +114,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 | Layer | Packages | Responsibility |
 |---|---|---|
-| **CLI** | `cmd/root/`, `cmd/config/`, `cmd/env/`, `cmd/init/`, `cmd/run/` | Cobra command construction, flag parsing, argument normalization, user-facing output. Delegates all logic to `internal/`. |
+| **CLI** | `cmd/root/`, `cmd/config/`, `cmd/env/`, `cmd/init/`, `cmd/run/`, `cmd/version/` | Cobra command construction, flag parsing, argument normalization, user-facing output. Delegates all logic to `internal/`. |
 | **Logic** | `internal/...` | All business logic, I/O, config management, runtime execution. Must not import from `cmd/`. |
 
 ---
@@ -118,11 +123,12 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 Commands are built via **constructor functions**, not `init()` side effects. Each command group exposes a `Create{Group}Cmd()` function that returns a fully assembled `*cobra.Command` with all subcommands attached. Each subcommand has its own `Create{Group}{Sub}Cmd()` function in its own file.
 
-- `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the four top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`, `CreateInitCmd()`.
+- `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the five top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`, `CreateInitCmd()`, `CreateVersionCmd()`.
 - `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `edit`.
 - `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `set`, `remove`.
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
 - `cmd/init/init.go` — `CreateInitCmd()` builds the `init` command (no subcommands).
+- `cmd/version/version.go` — `CreateVersionCmd()` builds the `version` command (no subcommands), which prints `internal/version.MoatVersion`.
 
 `main.go` calls `root.CreateRootCmd().Execute()` directly. The root command's `PersistentPreRunE` hook initializes logging (`logging.InitLogging`) and configuration (`config.InitConfig`), storing the result in the package-level `config.CmdConfig` variable. All subcommands read the active configuration from `config.CmdConfig`.
 

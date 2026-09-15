@@ -38,7 +38,7 @@ defaults:
     runtimes:
         apptainer:
             type: apptainer
-            imageurl: ghcr.io/aaltorse/vscode-apptainer:latest
+            imageurl: ghcr.io/aaltorse/moat:latest
             cachedir: $HOME/.cache/moat/images
             passenv: true
 envs:
@@ -68,7 +68,7 @@ defaults:
     runtimes:
         apptainer:
             type: apptainer
-            imageurl: ghcr.io/aaltorse/vscode-apptainer:latest
+            imageurl: ghcr.io/aaltorse/moat:latest
             cachedir: $HOME/.cache/moat/images
             passenv: true
 envs: {}
@@ -144,7 +144,7 @@ Examples:
 
 ```shell
 # Change the container image for the default apptainer runtime
-moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/vscode-apptainer:v0.6.5
+moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/moat:v0.1.0
 
 # Change where container images are cached
 moat config set defaults.runtimes.apptainer.cachedir /home/user/.cache/moat/images
@@ -227,7 +227,7 @@ defaults:
     runtimes:
         apptainer:
             cachedir: $HOME/.cache/moat/images
-            imageurl: ghcr.io/aaltorse/vscode-apptainer:latest
+            imageurl: ghcr.io/aaltorse/moat:latest
             passenv: true
             type: apptainer
 envs:
@@ -280,7 +280,7 @@ moat config set envs.myproj.mountcwd true
 moat config append envs.myproj.mounts /run/dbus
 
 # 6. Switch every environment to a newer image via the default runtime
-moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/vscode-apptainer:latest
+moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/moat:latest
 
 # 7. Make larger changes by hand
 moat config edit

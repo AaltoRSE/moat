@@ -1,6 +1,7 @@
 package init_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/tests"
 	types "github.com/AaltoRSE/moat/internal/types"
 	"github.com/AaltoRSE/moat/internal/utils"
+	"github.com/AaltoRSE/moat/internal/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -82,7 +84,12 @@ func (suite *InitTestSuite) TestInitCreatesDefaultConfig() {
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "apptainer", cfg.GetString("defaults.runtime"))
 	assert.Equal(suite.T(), "apptainer", cfg.GetString("defaults.runtimes.apptainer.type"))
-	assert.Equal(suite.T(), "ghcr.io/aaltorse/vscode-apptainer:latest", cfg.GetString("defaults.runtimes.apptainer.imageurl"))
+	// The default image URL is derived from the build-time version.
+	imageTag := version.MoatVersion
+	if imageTag == "" {
+		imageTag = "latest"
+	}
+	assert.Equal(suite.T(), fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag), cfg.GetString("defaults.runtimes.apptainer.imageurl"))
 	assert.Equal(suite.T(), "$HOME/.cache/moat/images", cfg.GetString("defaults.runtimes.apptainer.cachedir"))
 	assert.True(suite.T(), cfg.GetBool("defaults.runtimes.apptainer.passenv"))
 	assert.Empty(suite.T(), cfg.GetStringMap("envs"))

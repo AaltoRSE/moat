@@ -20,7 +20,7 @@ func CreateConfigSetCmd() *cobra.Command {
 This command allows you to set a specific configuration variable for moat.
 
 Examples:
-  moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/vscode-apptainer:latest`,
+  moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/moat:latest`,
 		Args: cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 
