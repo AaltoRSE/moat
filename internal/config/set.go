@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/viper"
 )
 
@@ -48,11 +47,7 @@ func SetConfig(cfg *viper.Viper, key string, value []string) error {
 		return fmt.Errorf("unsupported key type for key %q: %v", key, keyType.Kind())
 	}
 
-	var (
-		C types.Config
-		v = viper.New()
-	)
-
+	v := viper.New()
 	v.Set(key, typedValue)
 
 	err = cfg.MergeConfigMap(v.AllSettings())
@@ -60,12 +55,7 @@ func SetConfig(cfg *viper.Viper, key string, value []string) error {
 		return fmt.Errorf("error when adding %q to config: %v", key, err)
 	}
 
-	err = cfg.Unmarshal(&C)
-	if err != nil {
-		return fmt.Errorf("invalid configuration after setting %q: %v", key, err)
-	}
-
-	if err = validateConfig(&C); err != nil {
+	if err = validateConfig(cfg); err != nil {
 		return fmt.Errorf("config validation failed after setting %q: %v", key, err)
 	}
 

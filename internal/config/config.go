@@ -71,17 +71,8 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 		log.Debug().Msgf("Configuration loaded from file: %s", cfg.ConfigFileUsed())
 	}
 
-	var config types.Config
-	err = cfg.Unmarshal(&config)
-	if err != nil {
-		fmt.Println("Unable to unmarshal config", err)
+	if err := validateConfig(cfg); err != nil {
 		// Print the configuration as a string for debugging
-		configStr := GetConfigAsString(cfg)
-		log.Error().Msgf("Current configuration:\n%s", configStr)
-		return nil, fmt.Errorf("unable to unmarshal config: %v", err)
-	}
-
-	if err := validateConfig(&config); err != nil {
 		configStr := GetConfigAsString(cfg)
 		log.Error().Msgf("Current configuration:\n%s", configStr)
 		return nil, fmt.Errorf("config validation failed: %v", err)
@@ -180,11 +171,7 @@ func SetConfigPath(cfg *viper.Viper, outputPath string) (changed bool, err error
 	}
 
 	// Validate the configuration, similar to SetConfig.
-	var config types.Config
-	if err := cfg.Unmarshal(&config); err != nil {
-		return false, fmt.Errorf("unable to unmarshal config: %v", err)
-	}
-	if err := validateConfig(&config); err != nil {
+	if err := validateConfig(cfg); err != nil {
 		return false, fmt.Errorf("config validation failed: %v", err)
 	}
 
@@ -194,13 +181,20 @@ func SetConfigPath(cfg *viper.Viper, outputPath string) (changed bool, err error
 	return true, nil
 }
 
-// validateConfig validates the configuration struct using the
-// go-playground/validator tags. On failure it logs each validation error
-// in detail and returns the error.
-func validateConfig(config *types.Config) error {
+// validateConfig validates the configuration held in cfg. It unmarshals
+// the viper instance into a types.Config and validates the result using
+// the go-playground/validator tags. On validation failure it logs each
+// validation error in detail. It returns an error if the configuration
+// cannot be unmarshaled or fails validation.
+func validateConfig(cfg *viper.Viper) error {
+	var config types.Config
+	if err := cfg.Unmarshal(&config); err != nil {
+		return fmt.Errorf("unable to unmarshal config: %v", err)
+	}
+
 	// Validate that the configuration struct is properly filled out
 	var validate = validator.New(validator.WithRequiredStructEnabled())
-	err := validate.Struct(config)
+	err := validate.Struct(&config)
 	if err != nil {
 
 		var validateErrs validator.ValidationErrors
