@@ -4,6 +4,7 @@ import (
 	"github.com/AaltoRSE/moat/cmd/root"
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestList tests that env list without the name flag prints the names of all
@@ -14,14 +15,9 @@ func (suite *EnvTestSuite) TestList() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "list"})
-	err := rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "test\n", capturedOutput)
 }
 
@@ -33,14 +29,9 @@ func (suite *EnvTestSuite) TestListWithName() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "list", "--name", "test"})
-	err := rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "test\n", capturedOutput)
 }
 
@@ -52,13 +43,8 @@ func (suite *EnvTestSuite) TestListWithMissingName() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "list", "--name", "nonexistent"})
-	err := rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Empty(suite.T(), capturedOutput)
 }

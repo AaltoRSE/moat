@@ -9,6 +9,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/tests"
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestCreateHomeOnly tests that env create registers a new environment with
@@ -17,10 +18,7 @@ func (suite *EnvTestSuite) TestCreateHomeOnly() {
 	baseDir := filepath.Join(tests.MoatTestDir, "create_home_only")
 	home := filepath.Join(baseDir, "home")
 	// Start from a clean slate so the test verifies directory creation
-	err := os.RemoveAll(baseDir)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(baseDir)
 	})
@@ -29,14 +27,9 @@ func (suite *EnvTestSuite) TestCreateHomeOnly() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--yes"})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
 
 	// The fake home directory must have been created
@@ -44,9 +37,7 @@ func (suite *EnvTestSuite) TestCreateHomeOnly() {
 
 	// Unmarshal the created configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	// The new environment must exist alongside the base environment
 	assert.Contains(suite.T(), envs, "test")
@@ -66,10 +57,7 @@ func (suite *EnvTestSuite) TestCreateWithMounts() {
 	mount1 := filepath.Join(baseDir, "mount1")
 	mount2 := filepath.Join(baseDir, "mount2")
 	// Start from a clean slate so the test verifies directory creation
-	err := os.RemoveAll(baseDir)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(baseDir)
 	})
@@ -78,14 +66,9 @@ func (suite *EnvTestSuite) TestCreateWithMounts() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--mount", mount1, "--mount", mount2, "--yes"})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
 
 	// All directories referenced by the environment must have been created
@@ -95,9 +78,7 @@ func (suite *EnvTestSuite) TestCreateWithMounts() {
 
 	// Unmarshal the created configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	// The new environment must exist alongside the base environment
 	assert.Contains(suite.T(), envs, "test")
@@ -117,10 +98,7 @@ func (suite *EnvTestSuite) TestCreateWithMountDestinations() {
 	mountSource := filepath.Join(baseDir, "src")
 	mount := mountSource + ":/projects/src"
 	// Start from a clean slate so the test verifies directory creation
-	err := os.RemoveAll(baseDir)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(baseDir)
 	})
@@ -129,14 +107,9 @@ func (suite *EnvTestSuite) TestCreateWithMountDestinations() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--mount", mount, "--yes"})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
 
 	// The home and mount source directories must have been created
@@ -145,9 +118,7 @@ func (suite *EnvTestSuite) TestCreateWithMountDestinations() {
 
 	// Unmarshal the created configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	createdEnv, exists := envs["newenv"]
 	assert.True(suite.T(), exists)
@@ -163,10 +134,7 @@ func (suite *EnvTestSuite) TestCreateWithRoMounts() {
 	roMount1 := filepath.Join(baseDir, "romount1")
 	roMount2 := filepath.Join(baseDir, "romount2")
 	// Start from a clean slate so the test verifies directory creation
-	err := os.RemoveAll(baseDir)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(baseDir)
 	})
@@ -175,14 +143,9 @@ func (suite *EnvTestSuite) TestCreateWithRoMounts() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--ro-mount", roMount1, "--ro-mount", roMount2, "--yes"})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
 
 	// All directories referenced by the environment must have been created
@@ -192,9 +155,7 @@ func (suite *EnvTestSuite) TestCreateWithRoMounts() {
 
 	// Unmarshal the created configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	createdEnv, exists := envs["newenv"]
 	assert.True(suite.T(), exists)

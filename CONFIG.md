@@ -41,6 +41,7 @@ defaults:
             imageurl: ghcr.io/aaltorse/moat:latest
             cachedir: $HOME/.cache/moat/images
             passenv: true
+            mountcwd: false
 envs:
     vscode:
         home: /home/user/.local/share/code-app/home
@@ -111,11 +112,12 @@ Unknown keys are rejected with an error such as `key "envs.vscode.bogus" not fou
 | `defaults.runtimes.{name}.imageurl` | string | Container image pulled for this runtime |
 | `defaults.runtimes.{name}.cachedir` | string | Directory where container images are cached |
 | `defaults.runtimes.{name}.passenv` | bool | Pass the host environment variables into the container |
+| `defaults.runtimes.{name}.mountcwd` | bool | Bind-mount the directory you run `moat run` from, and use it as the working directory, for every environment that uses this runtime (default: `false`) |
 | `runtimes.{name}.*` | as above | Runtime specs here override the matching `defaults.runtimes.{name}` entry |
 | `envs.{name}.home` | string | Fake home directory (`$HOME` inside the container) |
 | `envs.{name}.mounts` | list | Read-write mounts, `source` or `source:dest` |
 | `envs.{name}.readonlymounts` | list | Read-only mounts, `source` or `source:dest` |
-| `envs.{name}.mountcwd` | bool | Bind-mount the directory you run `moat run` from, and use it as the working directory |
+| `envs.{name}.mountcwd` | bool | Bind-mount the directory you run `moat run` from, and use it as the working directory (overrides `defaults.runtimes.{name}.mountcwd`) |
 | `envs.{name}.runtime` | string | Runtime name for this environment (overrides `defaults.runtime`) |
 | `envs.{name}.passenv` | bool | Pass host environment variables (overrides the runtime default) |
 | `envs.{name}.command` | string | Default command run when `moat run -n {name}` gets no arguments |
@@ -259,7 +261,7 @@ Behavior:
 - `moat config` works at the raw key level. For creating, copying, or removing **environments**, prefer the [`moat env`](ENV.md) commands — they check environment names, verify that fake home and mount directories exist (and can create them with `-y`), and remove config entries cleanly. Use `config` on `envs.{name}.*` keys for fine-tuning an existing environment.
 - A failed change never modifies the config file: the key, the value types, and the full resulting configuration are all checked first.
 - `config set` on a list key **replaces** the list; to grow a list without losing entries, use `append` or `prepend`.
-- `envs.{name}.mountcwd`, `envs.{name}.runtime`, and `envs.{name}.passenv` are overrides: when unset, the environment falls back to `defaults.runtime` and the runtime's own defaults.
+- `envs.{name}.mountcwd`, `envs.{name}.runtime`, and `envs.{name}.passenv` are overrides: when unset, the environment falls back to `defaults.runtime`, the runtime's `mountcwd` setting, and the runtime's own defaults.
 
 ## Typical workflow
 

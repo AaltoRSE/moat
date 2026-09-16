@@ -9,6 +9,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/tests"
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestCopyWithRoMounts tests that env copy overrides the source environment's
@@ -18,10 +19,7 @@ func (suite *EnvTestSuite) TestCopyWithRoMounts() {
 	home := filepath.Join(baseDir, "home")
 	roMount := filepath.Join(baseDir, "romount")
 	// Start from a clean slate so the test verifies directory creation
-	err := os.RemoveAll(baseDir)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(baseDir)
 	})
@@ -30,14 +28,9 @@ func (suite *EnvTestSuite) TestCopyWithRoMounts() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "copy", "--source", "test", "--name", "newenv", "--home", home, "--ro-mount", roMount, "--yes"})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
 
 	// The home and read-only mount source directories must have been created
@@ -46,9 +39,7 @@ func (suite *EnvTestSuite) TestCopyWithRoMounts() {
 
 	// Unmarshal the created configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	createdEnv, exists := envs["newenv"]
 	assert.True(suite.T(), exists)

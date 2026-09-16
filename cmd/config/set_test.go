@@ -5,6 +5,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestSet tests that config set updates the boolean mountcwd variable of an
@@ -15,21 +16,14 @@ func (suite *ConfigTestSuite) TestSet() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "config", "set", "envs.test.mountcwd", "true"})
-	err := rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Set envs.test.mountcwd = [true]")
 
 	// Unmarshal the updated configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)

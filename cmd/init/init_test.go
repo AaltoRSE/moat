@@ -47,14 +47,9 @@ func (suite *InitTestSuite) runInit(args ...string) string {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs(append([]string{"init"}, args...))
-	err := rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	output, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	return output
 }
 

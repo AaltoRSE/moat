@@ -6,6 +6,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/assert/yaml"
+	"github.com/stretchr/testify/require"
 )
 
 // TestShow tests that the config show command prints the full moat
@@ -17,20 +18,12 @@ func (suite *ConfigTestSuite) TestShow() {
 
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "config", "show"})
-	err := rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 
 	// Unmarshal output
 	var outputConfig types.Config
-	err = yaml.Unmarshal([]byte(capturedOutput), &outputConfig)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), yaml.Unmarshal([]byte(capturedOutput), &outputConfig))
 	assert.Subset(suite.T(), outputConfig.Envs, map[string]types.MoatEnv{"test": suite.BaseEnv})
 }

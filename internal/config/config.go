@@ -105,6 +105,7 @@ func registerDefaults(cfg *viper.Viper) {
 	cfg.SetDefault("defaults.runtimes.apptainer.imageurl", fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag))
 	cfg.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
 	cfg.SetDefault("defaults.runtimes.apptainer.passenv", true)
+	cfg.SetDefault("defaults.runtimes.apptainer.mountcwd", false)
 	cfg.SetDefault("defaults.runtime", "apptainer")
 	cfg.SetDefault("envs", map[string]types.MoatEnv{})
 }

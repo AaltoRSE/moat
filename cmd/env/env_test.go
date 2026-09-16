@@ -6,6 +6,7 @@ import (
 
 	"github.com/AaltoRSE/moat/internal/tests"
 	types "github.com/AaltoRSE/moat/internal/types"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,17 +22,12 @@ func (suite *EnvTestSuite) SetupTest() {
 	suite.BaseEnv = types.MoatEnv{Home: tests.MoatTestDir, Mounts: nil, ReadOnlyMounts: nil, Command: nil}
 	var err error
 	suite.ConfigFile, suite.BaseOutput, err = tests.CreateTempConfig("test", suite.BaseEnv)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 }
 
 func (suite *EnvTestSuite) TearDownTest() {
 	// Remove the temporary config file
-	err := os.Remove(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	suite.Require().NoError(os.Remove(suite.ConfigFile))
 }
 
 // In order for 'go test' to run this suite, we need to create

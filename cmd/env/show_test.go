@@ -6,6 +6,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/assert/yaml"
+	"github.com/stretchr/testify/require"
 )
 
 // TestShow tests that the env show command prints the configuration of the
@@ -16,20 +17,12 @@ func (suite *EnvTestSuite) TestShow() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "show", "--name", "test"})
-	err := rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 
 	// Unmarshal output
 	var outputEnv types.MoatEnv
-	err = yaml.Unmarshal([]byte(capturedOutput), &outputEnv)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), yaml.Unmarshal([]byte(capturedOutput), &outputEnv))
 	assert.Equal(suite.T(), suite.BaseEnv, outputEnv)
 }

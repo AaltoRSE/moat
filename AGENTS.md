@@ -79,8 +79,9 @@ moat/
 │   ├── version/
 │   │   └── version.go          # MoatVersion, set at build time via -ldflags
 │   ├── runtimes/
-│   │   ├── runtime.go          # Runtime interface + GetRuntime factory
-│   │   └── apptainerruntime.go # ApptainerRuntime implementation
+│   │   ├── runtime.go             # Runtime interface + GetRuntime factory
+│   │   ├── apptainerruntime.go    # ApptainerRuntime implementation
+│   │   └── apptainerruntime_test.go # ApptainerRuntime test suite (ApptainerRuntimeTestSuite, fake apptainer binary)
 │   ├── utils/
 │   │   ├── checks.go           # CheckFolderExists, CheckEnvironmentName, CheckMounts
 │   │   ├── dirops.go           # CreateMountDirs
@@ -191,6 +192,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 
 - `runtime.go` defines the `Runtime` interface and the `GetRuntime(cfg *viper.Viper, name string) (Runtime, error)` factory. These must remain in this file.
 - The `Runtime` interface requires two methods: `Run(env types.MoatEnv, args []string, envVars []string) (int, error)` and `Shell(env types.MoatEnv) (int, error)`.
+- The runtime spec's `MountCWD` setting controls whether the runtime bind-mounts the caller's current working directory: when `ApptainerRuntime` is constructed from a spec with `MountCWD` enabled, `Run` adds `--bind <cwd> --pwd <cwd>` to the apptainer command line (unless the working directory is already given as an environment mount). The environment's `MountCWD` (`types.MoatEnv.MountCWD`) has priority over the runtime's `MountCWD`: when it is non-nil, its value overwrites the runtime's setting. The `mountcwd` default for the apptainer runtime is registered as `false` in `internal/config.registerDefaults`.
 - Each runtime is implemented in its own file: `apptainerruntime.go`, and future runtimes in `{name}.go`.
 - Implementation-specific helper structs that are **private to one runtime** (e.g. `ApptainerImage`) may be defined in the same file as the implementation.
 - The `Runtime` interface itself must stay in `runtime.go`; if it is referenced from another package, do not duplicate it — import from `internal/runtimes`.
@@ -303,6 +305,7 @@ Do not add viper access to packages other than `internal/config` without strong 
 
 ## Test creation best practices
 
+- All tests must be written with testify: use `assert`/`require` for all checks and `suite.Suite` for grouping related tests. Plain `testing` idioms (`t.Error`, `t.Fatal`, `panic`, manual `if err != nil` error checks) must not be used in test code.
 - Try to reuse the same test suite if possible. If there would be conflicts in `SetupTest` and `TearDownTest` among different tests, create a new suite.
 - When testing command line commands with flags, create individual tests for each flag combination.
 - One test can contain multiple assert-statements.

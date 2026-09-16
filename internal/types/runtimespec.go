@@ -5,5 +5,5 @@ type RuntimeSpec struct {
 	ImageUrl string `validate:"required_if=Type=apptainer"`
 	CacheDir string `validate:"required_if=Type=apptainer,filepath"`
 	PassEnv  bool   `validate:"required"`
-	MountCWD string `validate:"required"`
+	MountCWD bool
 }

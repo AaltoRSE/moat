@@ -17,6 +17,7 @@ func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 		ImageUrl: spec.ImageUrl,
 		CacheDir: spec.CacheDir,
 		PassEnv:  spec.PassEnv,
+		MountCWD: spec.MountCWD,
 	}
 }
 
@@ -24,6 +25,7 @@ type ApptainerRuntime struct {
 	ImageUrl string
 	CacheDir string
 	PassEnv  bool
+	MountCWD bool
 }
 
 type ApptainerImage struct {
@@ -103,6 +105,7 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 		source            string
 		workingDir        string
 		passEnv           bool
+		mountCWD          bool
 		workingDirMounted bool
 	)
 
@@ -115,6 +118,13 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 		passEnv = f.PassEnv
 	} else {
 		passEnv = *env.PassEnv
+	}
+
+	// The environment's MountCWD setting overrides the runtime's MountCWD
+	// setting when it is set
+	mountCWD = f.MountCWD
+	if env.MountCWD != nil {
+		mountCWD = *env.MountCWD
 	}
 
 	imagePath, err := f.Pull(passEnv)
@@ -168,7 +178,7 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	)
 
 	// Mount working directory if requested and not already mounted
-	if !workingDirMounted && env.MountCWD != nil && *env.MountCWD {
+	if !workingDirMounted && mountCWD {
 		log.Debug().Str("workingDir", workingDir).Msg("Mounting working directory")
 		apptainerArgs = append(apptainerArgs, []string{"--bind", workingDir}...)
 		// Set working directory to current directory

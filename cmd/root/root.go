@@ -20,10 +20,9 @@ func CreateRootCmd() *cobra.Command {
 
 	// RootCmd represents the base command when called without any subcommands
 	rootCmd := &cobra.Command{
-		Use:   "moat",
-		Short: "A brief description of your application",
-		Long: `Moat is an application for running AI agents in
-	containerized environtment.`,
+		Use:                "moat",
+		Short:              "A brief description of your application",
+		Long:               `Moat is an application for running AI agents in a containerized environments.`,
 		DisableFlagParsing: false,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Init logging

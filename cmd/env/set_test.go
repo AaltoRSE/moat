@@ -9,6 +9,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/tests"
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestSetCommand tests that env set updates the command variable of an
@@ -19,21 +20,14 @@ func (suite *EnvTestSuite) TestSetCommand() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--command", "code --wait ."})
-	err := rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Set test.command = [code --wait .]")
 
 	// Unmarshal the updated configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)
@@ -49,14 +43,8 @@ func (suite *EnvTestSuite) TestSetMounts() {
 	mount1 := filepath.Join(tests.MoatTestDir, "set_mounts_1")
 	mount2 := filepath.Join(tests.MoatTestDir, "set_mounts_2")
 	// The mount source directories must exist for the configuration to be valid
-	err := os.MkdirAll(mount1, 0755)
-	if err != nil {
-		panic(err)
-	}
-	err = os.MkdirAll(mount2, 0755)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.MkdirAll(mount1, 0755))
+	require.NoError(suite.T(), os.MkdirAll(mount2, 0755))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(mount1)
 		_ = os.RemoveAll(mount2)
@@ -66,21 +54,14 @@ func (suite *EnvTestSuite) TestSetMounts() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--mount", mount1, "--mount", mount2})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Set test.mounts = [")
 
 	// Unmarshal the updated configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)
@@ -94,14 +75,8 @@ func (suite *EnvTestSuite) TestSetRoMounts() {
 	roMount1 := filepath.Join(tests.MoatTestDir, "set_romounts_1")
 	roMount2 := filepath.Join(tests.MoatTestDir, "set_romounts_2")
 	// The read-only mount source directories must exist for the configuration to be valid
-	err := os.MkdirAll(roMount1, 0755)
-	if err != nil {
-		panic(err)
-	}
-	err = os.MkdirAll(roMount2, 0755)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.MkdirAll(roMount1, 0755))
+	require.NoError(suite.T(), os.MkdirAll(roMount2, 0755))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(roMount1)
 		_ = os.RemoveAll(roMount2)
@@ -111,21 +86,14 @@ func (suite *EnvTestSuite) TestSetRoMounts() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--ro-mount", roMount1, "--ro-mount", roMount2})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Set test.readonlymounts = [")
 
 	// Unmarshal the updated configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)
@@ -138,10 +106,7 @@ func (suite *EnvTestSuite) TestSetRoMounts() {
 func (suite *EnvTestSuite) TestSetHome() {
 	newHome := filepath.Join(tests.MoatTestDir, "set_home")
 	// The new home directory must exist for the configuration to be valid
-	err := os.MkdirAll(newHome, 0755)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.MkdirAll(newHome, 0755))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(newHome)
 	})
@@ -150,21 +115,14 @@ func (suite *EnvTestSuite) TestSetHome() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--home", newHome})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Set test.home = ["+newHome+"]")
 
 	// Unmarshal the updated configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)
@@ -177,10 +135,7 @@ func (suite *EnvTestSuite) TestSetHome() {
 func (suite *EnvTestSuite) TestSetMultipleFlags() {
 	newHome := filepath.Join(tests.MoatTestDir, "set_multiple_home")
 	// The new home directory must exist for the configuration to be valid
-	err := os.MkdirAll(newHome, 0755)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.MkdirAll(newHome, 0755))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(newHome)
 	})
@@ -189,22 +144,15 @@ func (suite *EnvTestSuite) TestSetMultipleFlags() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--home", newHome, "--command", "opencode"})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), capturedOutput, "Set test.home = ["+newHome+"]")
 	assert.Contains(suite.T(), capturedOutput, "Set test.command = [opencode]")
 
 	// Unmarshal the updated configuration and check the stored environment
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)
@@ -221,10 +169,7 @@ func (suite *EnvTestSuite) TestSetMultipleFlags() {
 func (suite *EnvTestSuite) TestSetLeavesOtherEnvsUnchanged() {
 	otherHome := filepath.Join(tests.MoatTestDir, "set_other_home")
 	// Start from a clean slate so the test verifies directory creation
-	err := os.RemoveAll(otherHome)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), os.RemoveAll(otherHome))
 	suite.T().Cleanup(func() {
 		_ = os.RemoveAll(otherHome)
 	})
@@ -234,34 +179,22 @@ func (suite *EnvTestSuite) TestSetLeavesOtherEnvsUnchanged() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "other", "--home", otherHome, "--yes"})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
-	_, err = capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
+	_, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
 
 	// Set a variable on the "test" environment
 	capture = utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd = root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--command", "opencode"})
-	err = rootCmd.Execute()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), rootCmd.Execute())
 	_, err = capture.StopCapture()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 
 	// Unmarshal the updated configuration and check both environments
 	cfg, err := config.InitConfig(suite.ConfigFile)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(suite.T(), err)
 	envs := config.GetEnvs(cfg)
 	updatedEnv, exists := envs["test"]
 	assert.True(suite.T(), exists)
