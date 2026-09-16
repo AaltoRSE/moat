@@ -32,7 +32,7 @@ RUN apt-get update && \
   apt-get install -y code && \
   rm -rf /var/lib/apt/lists/*
 
-ARG VSCODIUM_VERSION=1.126.04524
+ARG VSCODIUM_VERSION=1.135.06055
 
 # Install VSCodium
 RUN wget -q https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/codium_${VSCODIUM_VERSION}_amd64.deb && \
@@ -68,7 +68,7 @@ RUN apt-get update && \
   apt-get install -y git vim nano bash zsh jq ripgrep && \
   rm -rf /var/lib/apt/lists/*
 
-ARG CODEX_VERSION=0.148.0
+ARG CODEX_VERSION=0.154.0
 
 # Install codex
 RUN wget -q https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-x86_64-unknown-linux-musl.tar.gz && \

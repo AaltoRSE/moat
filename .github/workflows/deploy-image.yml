@@ -4,6 +4,7 @@ name: Create and publish a Docker image
 # Configures this workflow to run every time a tag change is pushed to the repository
 on:
   push:
+    workflow_dispatch:
     tags: ['*']
 
 
@@ -22,7 +23,6 @@ jobs:
       packages: write
       attestations: write
       id-token: write
-      #
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -46,7 +46,7 @@ jobs:
         id: push
         uses: docker/build-push-action@v3
         with:
-          context: .
+          context: dockerfiles/ubuntu24.04
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
