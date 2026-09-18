@@ -95,7 +95,7 @@ func (suite *InitTestSuite) TestInitCreatesDefaultConfig() {
 func (suite *InitTestSuite) TestInitExistingConfig() {
 	// Create a pre-existing configuration at the default location.
 	env := types.MoatEnv{Home: tests.MoatTestDir, Mounts: nil, ReadOnlyMounts: nil, Command: nil}
-	configFile, baseOutput, err := tests.CreateTempConfig("test", env)
+	configFile, baseOutput, err := tests.CreateTempConfig(map[string]types.MoatEnv{"test": env}, nil)
 	require.NoError(suite.T(), err)
 	defer func() {
 		assert.NoError(suite.T(), os.Remove(configFile))
@@ -123,7 +123,7 @@ func (suite *InitTestSuite) TestInitExistingLocalConfig() {
 	// Create a configuration file in the working directory, which is
 	// one of the config search locations.
 	env := types.MoatEnv{Home: tests.MoatTestDir, Mounts: nil, ReadOnlyMounts: nil, Command: nil}
-	configFile, localOutput, err := tests.CreateTempConfig("test", env)
+	configFile, localOutput, err := tests.CreateTempConfig(map[string]types.MoatEnv{"test": env}, nil)
 	require.NoError(suite.T(), err)
 	defer func() {
 		assert.NoError(suite.T(), os.Remove(configFile))
@@ -149,7 +149,7 @@ func (suite *InitTestSuite) TestInitExistingLocalConfig() {
 // via the --config flag.
 func (suite *InitTestSuite) TestInitExistingConfigFlag() {
 	env := types.MoatEnv{Home: tests.MoatTestDir, Mounts: nil, ReadOnlyMounts: nil, Command: nil}
-	configFile, _, err := tests.CreateTempConfig("test", env)
+	configFile, _, err := tests.CreateTempConfig(map[string]types.MoatEnv{"test": env}, nil)
 	require.NoError(suite.T(), err)
 	defer func() {
 		assert.NoError(suite.T(), os.Remove(configFile))
@@ -193,7 +193,7 @@ func (suite *InitTestSuite) TestInitOutputFlagWithFoundConfig() {
 	// Create a configuration file in the working directory, which is
 	// one of the config search locations.
 	env := types.MoatEnv{Home: tests.MoatTestDir, Mounts: nil, ReadOnlyMounts: nil, Command: nil}
-	configFile, localOutput, err := tests.CreateTempConfig("test", env)
+	configFile, localOutput, err := tests.CreateTempConfig(map[string]types.MoatEnv{"test": env}, nil)
 	require.NoError(suite.T(), err)
 	defer func() {
 		assert.NoError(suite.T(), os.Remove(configFile))

@@ -286,28 +286,76 @@ func GetEnvs(cfg *viper.Viper) map[string]types.MoatEnv {
 	return envs
 }
 
-func GetRuntimeSpec(cfg *viper.Viper, name string) (types.RuntimeSpec, error) {
+// GetRuntimes returns all available runtimes as a map from runtime name to
+// RuntimeSpec. It merges the default runtimes from defaults.runtimes with
+// the user-specified runtimes from the top-level runtimes key; a
+// user-specified runtime with the same name as a default runtime overwrites
+// the default runtime. It returns an empty map if no runtimes are
+// configured.
+func GetRuntimes(cfg *viper.Viper) map[string]types.RuntimeSpec {
 
 	var (
-		runtimeSpecMap map[string]any
-		subConfig      *viper.Viper
-		runtimeSpec    types.RuntimeSpec
-		err            error
+		defaultRuntimes map[string]types.RuntimeSpec
+		userRuntimes    map[string]types.RuntimeSpec
 	)
 
-	runtimeSpecMap = cfg.GetStringMap("runtimes." + name)
-	if len(runtimeSpecMap) == 0 {
-		subConfig = cfg.Sub("defaults.runtimes." + name)
-		err = subConfig.Unmarshal(&runtimeSpec)
-		if err != nil {
-			return types.RuntimeSpec{}, fmt.Errorf("runtime not found")
+	defaultRuntimesCfg := cfg.Sub("defaults.runtimes")
+	if defaultRuntimesCfg != nil {
+		if err := defaultRuntimesCfg.Unmarshal(&defaultRuntimes); err != nil {
+			log.Error().Err(err).Msg("Failed to unmarshal default runtimes")
 		}
-		log.Debug().Interface("runtimeSpec", runtimeSpec).Msg("Loaded runtime spec")
-	} else {
-		return types.RuntimeSpec{}, fmt.Errorf("runtimes %q not found", name)
 	}
 
-	return runtimeSpec, err
+	userRuntimesCfg := cfg.Sub("runtimes")
+	if userRuntimesCfg != nil {
+		if err := userRuntimesCfg.Unmarshal(&userRuntimes); err != nil {
+			log.Error().Err(err).Msg("Failed to unmarshal runtimes")
+		}
+	}
+
+	runtimes := make(map[string]types.RuntimeSpec, len(defaultRuntimes)+len(userRuntimes))
+	for name, spec := range defaultRuntimes {
+		runtimes[name] = spec
+	}
+	// User-specified runtimes overwrite default runtimes with the same name
+	for name, spec := range userRuntimes {
+		runtimes[name] = spec
+	}
+	return runtimes
+}
+
+// GetRuntimeSpec returns the runtime spec for the named runtime. A
+// user-specified runtime from the top-level runtimes key takes precedence
+// over a default runtime from defaults.runtimes with the same name. It
+// returns an error if no runtime with the given name exists or its fields
+// cannot be unmarshaled into types.RuntimeSpec.
+func GetRuntimeSpec(cfg *viper.Viper, name string) (types.RuntimeSpec, error) {
+	var runtimeSpec types.RuntimeSpec
+
+	// A user-specified runtime takes precedence over the default runtimes
+	runtimesCfg := cfg.Sub("runtimes." + name)
+	if runtimesCfg != nil {
+		if err := runtimesCfg.Unmarshal(&runtimeSpec); err != nil {
+			return types.RuntimeSpec{}, fmt.Errorf("failed to unmarshal runtime %q: %v", name, err)
+		}
+		if runtimeSpec.Type != "" {
+			log.Debug().Interface("runtimeSpec", runtimeSpec).Msg("Loaded runtime spec")
+			return runtimeSpec, nil
+		}
+	}
+
+	defaultsCfg := cfg.Sub("defaults.runtimes." + name)
+	if defaultsCfg == nil {
+		return types.RuntimeSpec{}, fmt.Errorf("runtime %q not found", name)
+	}
+	if err := defaultsCfg.Unmarshal(&runtimeSpec); err != nil {
+		return types.RuntimeSpec{}, fmt.Errorf("failed to unmarshal runtime %q: %v", name, err)
+	}
+	if runtimeSpec.Type == "" {
+		return types.RuntimeSpec{}, fmt.Errorf("runtime %q not found", name)
+	}
+	log.Debug().Interface("runtimeSpec", runtimeSpec).Msg("Loaded runtime spec")
+	return runtimeSpec, nil
 }
 
 // GetConfigFile returns the path of the currently active configuration

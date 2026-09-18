@@ -21,7 +21,7 @@ func (suite *EnvTestSuite) SetupTest() {
 	// Add environment called test to a fresh temporary moat-config
 	suite.BaseEnv = types.MoatEnv{Home: tests.MoatTestDir, Mounts: nil, ReadOnlyMounts: nil, Command: nil}
 	var err error
-	suite.ConfigFile, suite.BaseOutput, err = tests.CreateTempConfig("test", suite.BaseEnv)
+	suite.ConfigFile, suite.BaseOutput, err = tests.CreateTempConfig(map[string]types.MoatEnv{"test": suite.BaseEnv}, nil)
 	require.NoError(suite.T(), err)
 }
 

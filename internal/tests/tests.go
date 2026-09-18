@@ -14,16 +14,18 @@ import (
 
 var MoatTestDir string = "/tmp/moat_tests"
 
-// CreateTempConfig initializes a new temporary moat configuration, creates the
-// named environment in it, and returns the path to the temporary config file
-// along with its current contents.
+// CreateTempConfig initializes a new temporary moat configuration, creates
+// the given environments and runtimes in it, and returns the path to the
+// temporary config file along with its current contents.
 //
 // The configuration is written to a new file in the system temporary
-// directory. Missing directories referenced by the environment (the fake home
-// directory and mount source paths) are created automatically so that the
-// helper never blocks on an interactive prompt. The caller is responsible for
-// removing the temporary config file when it is no longer needed.
-func CreateTempConfig(name string, moatEnv types.MoatEnv) (string, string, error) {
+// directory. Missing directories referenced by the environments (the fake
+// home directories and mount source paths) are created automatically so that
+// the helper never blocks on an interactive prompt. The runtimes are stored
+// under the top-level runtimes key, where they overwrite default runtimes
+// with the same name. The caller is responsible for removing the temporary
+// config file when it is no longer needed.
+func CreateTempConfig(envs map[string]types.MoatEnv, runtimes map[string]types.RuntimeSpec) (string, string, error) {
 	// Create Moat temporary directory
 	err := os.MkdirAll(MoatTestDir, 0755)
 	if err != nil {
@@ -54,9 +56,19 @@ func CreateTempConfig(name string, moatEnv types.MoatEnv) (string, string, error
 		return "", "", err
 	}
 
-	// Create the environment in the configuration
-	if err := env.CreateEnvironment(conf, name, moatEnv, true); err != nil {
-		return "", "", err
+	// Create the environments in the configuration
+	for name, moatEnv := range envs {
+		if err := env.CreateEnvironment(conf, name, moatEnv, true); err != nil {
+			return "", "", err
+		}
+	}
+
+	// Set the runtimes in the configuration
+	if len(runtimes) > 0 {
+		conf.Set("runtimes", runtimes)
+		if err := config.WriteConfig(conf); err != nil {
+			return "", "", err
+		}
 	}
 
 	// Read back the config file contents

@@ -55,6 +55,11 @@ moat/
 │   │   └── init_test.go        # Shared init command test suite (InitTestSuite) + suite runner
 │   ├── run/                    # `moat run` command
 │   │   └── run.go              # CreateRunCmd(); resolves env + runtime, sanitizes args, calls runtime.Run()
+│   ├── runtime/                # `moat runtime` command group
+│   │   ├── runtime.go          # CreateRuntimeCmd(); assembles subcommands
+│   │   ├── list.go             # CreateRuntimeListCmd(); lists available runtimes via internal/config.GetRuntimes()
+│   │   ├── runtime_test.go     # Shared runtime command test suite (RuntimeTestSuite) + suite runner
+│   │   └── list_test.go        # Tests for the runtime list subcommand
 │   └── version/                # `moat version` command
 │       ├── version.go          # CreateVersionCmd(); prints internal/version.MoatVersion
 │       └── version_test.go     # Shared version command test suite (VersionTestSuite) + suite runner
@@ -65,7 +70,7 @@ moat/
 │   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields)
 │   │   └── moatenv.go          # MoatEnv
 │   ├── config/
-│   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, SetConfigPath, GetEnv, GetEnvs, GetRuntimeSpec, GetVariableType, GetConfigAsString, GetConfigFile
+│   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, SetConfigPath, GetEnv, GetEnvs, GetRuntimeSpec, GetRuntimes, GetVariableType, GetConfigAsString, GetConfigFile
 │   │   ├── set.go              # SetConfig
 │   │   ├── append.go           # AppendConfig
 │   │   ├── prepend.go          # PrependConfig
@@ -115,7 +120,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 | Layer | Packages | Responsibility |
 |---|---|---|
-| **CLI** | `cmd/root/`, `cmd/config/`, `cmd/env/`, `cmd/init/`, `cmd/run/`, `cmd/version/` | Cobra command construction, flag parsing, argument normalization, user-facing output. Delegates all logic to `internal/`. |
+| **CLI** | `cmd/root/`, `cmd/config/`, `cmd/env/`, `cmd/init/`, `cmd/run/`, `cmd/runtime/`, `cmd/version/` | Cobra command construction, flag parsing, argument normalization, user-facing output. Delegates all logic to `internal/`. |
 | **Logic** | `internal/...` | All business logic, I/O, config management, runtime execution. Must not import from `cmd/`. |
 
 ---
@@ -124,10 +129,11 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 Commands are built via **constructor functions**, not `init()` side effects. Each command group exposes a `Create{Group}Cmd()` function that returns a fully assembled `*cobra.Command` with all subcommands attached. Each subcommand has its own `Create{Group}{Sub}Cmd()` function in its own file.
 
-- `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the five top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`, `CreateInitCmd()`, `CreateVersionCmd()`.
+- `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the six top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`, `CreateInitCmd()`, `CreateRuntimeCmd()`, `CreateVersionCmd()`.
 - `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `edit`.
 - `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `set`, `remove`.
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
+- `cmd/runtime/runtime.go` — `CreateRuntimeCmd()` builds the `runtime` command and attaches `list`.
 - `cmd/init/init.go` — `CreateInitCmd()` builds the `init` command (no subcommands).
 - `cmd/version/version.go` — `CreateVersionCmd()` builds the `version` command (no subcommands), which prints `internal/version.MoatVersion`.
 
@@ -163,14 +169,15 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 - **Functions only.** Do not add type definitions here.
 - `CmdConfig *viper.Viper` is a package-level variable holding the active configuration instance. It is set by `cmd/root`'s `PersistentPreRunE` after calling `InitConfig`. All subcommands and internal functions receive `*viper.Viper` as an explicit parameter; `CmdConfig` is used only by `cmd/` code that needs direct access (e.g. `cmd/env/list.go`).
 - `InitConfig(cfgFile string) (*viper.Viper, error)` creates a new viper instance, registers defaults, loads the config file (named `moat-config.yaml`) from the given path or default search locations (`$HOME/.config/moat/`, `.`), unmarshals into `types.Config`, and validates. When no config file is present (neither the given path nor any search location), it does not return an error; the returned configuration simply holds the default configuration contents. When writing tests, this can be called multiple times with different config files.
-- Exported surface: `CmdConfig`, `InitConfig`, `WriteConfig`, `SetConfigPath`, `GetEnv`, `GetEnvs`, `GetRuntimeSpec`, `GetVariableType`, `GetConfigAsString`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
+- Exported surface: `CmdConfig`, `InitConfig`, `WriteConfig`, `SetConfigPath`, `GetEnv`, `GetEnvs`, `GetRuntimeSpec`, `GetRuntimes`, `GetVariableType`, `GetConfigAsString`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
 - One file per operation: `config.go` (init/lookup), `set.go`, `append.go`, `prepend.go`.
 - `SetConfigPath(cfg, outputPath)` switches the configuration file path of `cfg` (via `viper.SetConfigFile`) to the global config file ($HOME/.config/moat/moat-config.yaml) — or to `outputPath` when it is non-empty — and validates the configuration. It does not write to disk. If a configuration file has already been found and no output path is given, the configuration is left as it is and `changed=false` is reported; it returns an error if `outputPath` is the same as the path of the found configuration. It reports whether the path was set (`changed`); callers that need to persist the configuration must call `WriteConfig` separately.
 - `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value and re-validate the full `types.Config`. They do not write to disk; callers that need to persist the change must call `WriteConfig` separately.
 - Validation uses `go-playground/validator` and operates on `types.Config`.
 - `GetEnv(cfg, name, sanitized)` returns `types.MoatEnv`; when `sanitized` is true, paths are resolved via `utils.SanitizeFolderPath` / `utils.SanitizeMountsPaths`. It must not return raw `map[string]interface{}` to callers.
 - `GetEnvs(cfg)` returns `map[string]types.MoatEnv` for all configured environments.
-- `GetRuntimeSpec(cfg, name)` looks up a runtime spec from `defaults.runtimes.{name}` and returns `types.RuntimeSpec`.
+- `GetRuntimeSpec(cfg, name)` looks up a runtime spec from `runtimes.{name}`, falling back to `defaults.runtimes.{name}` when the runtime is not user-specified, and returns `types.RuntimeSpec`.
+- `GetRuntimes(cfg)` returns `map[string]types.RuntimeSpec` for all available runtimes: the default runtimes from `defaults.runtimes` merged with the user-specified runtimes from `runtimes`, where a user-specified runtime with the same name overwrites the default runtime.
 - `GetConfigFile(cfg)` returns the path of the active config file, falling back to `$HOME/.config/moat/moat-config.yaml`.
 
 ---
@@ -215,7 +222,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 ### `internal/tests` — shared test helpers
 
 - Holds reusable helpers for building isolated test fixtures; it is imported by `cmd/` test files (e.g. `cmd/env/env_test.go`).
-- `CreateTempConfig(name, moatEnv) (string, string, error)` creates a fresh temporary config file under `tests.MoatTestDir`, initializes it via `config.InitConfig`, creates the named environment via `env.CreateEnvironment` (with `autoCreate=true` so it never blocks on a prompt), and returns the config file path, its contents, and any error.
+- `CreateTempConfig(envs, runtimes) (string, string, error)` creates a fresh temporary config file under `tests.MoatTestDir`, initializes it via `config.InitConfig`, creates the given environments via `env.CreateEnvironment` (with `autoCreate=true` so it never blocks on a prompt), sets the given runtimes under the top-level `runtimes` key (where they overwrite default runtimes with the same name), and returns the config file path, its contents, and any error.
 - Helpers must be self-contained and must not depend on test-suite state; the caller is responsible for cleaning up any temporary files they create.
 - If tests create temporary files or directories, these temporary files should be situated under `/tmp/moat_tests` specified in `tests.MoatTestDir`.
 
