@@ -31,17 +31,14 @@ var CmdConfig *viper.Viper
 // configuration contents.
 func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 
-	// Set viper configuration instance
-	cfg = viper.New()
+	// Set viper configuration instance with the default values
+	cfg = CreateDefaultConfig()
 
 	cfg.SetConfigName("moat-config")
 	cfg.SetConfigType("yaml")
 	if cfgFile != "" {
 		cfg.SetConfigFile(cfgFile)
 	}
-
-	// Set defaults if not set
-	registerDefaults(cfg)
 
 	configPath, err := defaultConfigPath()
 	if err != nil {
@@ -81,8 +78,10 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 	return cfg, nil
 }
 
-// registerDefaults sets the default moat configuration values on cfg.
-func registerDefaults(cfg *viper.Viper) {
+// CreateDefaultConfig creates a new viper configuration instance with the
+// default moat configuration values registered on it.
+func CreateDefaultConfig() *viper.Viper {
+	cfg := viper.New()
 
 	var imageTag string
 
@@ -99,6 +98,8 @@ func registerDefaults(cfg *viper.Viper) {
 	cfg.SetDefault("defaults.runtimes.apptainer.mountcwd", false)
 	cfg.SetDefault("defaults.runtime", "apptainer")
 	cfg.SetDefault("envs", map[string]types.MoatEnv{})
+
+	return cfg
 }
 
 // defaultConfigPath returns the path of the global moat configuration

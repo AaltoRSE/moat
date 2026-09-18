@@ -32,9 +32,11 @@ moat/
 │   │   ├── append.go           # CreateConfigAppendCmd(); calls internal/config.AppendConfig()
 │   │   ├── prepend.go          # CreateConfigPrependCmd(); calls internal/config.PrependConfig()
 │   │   ├── show.go             # CreateConfigShowCmd() (aliases: list, view); calls internal/config.GetConfigAsString()
+│   │   ├── showdefaults.go     # CreateConfigShowDefaultsCmd(); calls internal/config.CreateDefaultConfig() + internal/config.GetConfigAsString()
 │   │   ├── edit.go             # CreateConfigEditCmd(); opens config file in $EDITOR via internal/config.GetConfigFile and utils.Run
 │   │   ├── config_test.go      # Shared config command test suite (ConfigTestSuite) + suite runner
 │   │   ├── show_test.go        # Tests for the config show subcommand
+│   │   ├── showdefaults_test.go # Tests for the config show-defaults subcommand
 │   │   └── set_test.go         # Tests for the config set subcommand
 │   ├── env/                    # `moat env` command group
 │   │   ├── env.go              # CreateEnvCmd(); assembles subcommands; declares shared env flag groups (-n/--name, -H/--home, -m/--mount, -r/--ro-mount, -C/--command) as pflag.FlagSet factories
@@ -70,7 +72,7 @@ moat/
 │   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields)
 │   │   └── moatenv.go          # MoatEnv
 │   ├── config/
-│   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, SetConfigPath, GetEnv, GetEnvs, GetRuntimeSpec, GetRuntimes, GetVariableType, GetConfigAsString, GetConfigFile
+│   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, SetConfigPath, GetEnv, GetEnvs, GetRuntimeSpec, GetRuntimes, GetVariableType, GetConfigAsString, CreateDefaultConfig, GetConfigFile
 │   │   ├── set.go              # SetConfig
 │   │   ├── append.go           # AppendConfig
 │   │   ├── prepend.go          # PrependConfig
@@ -130,7 +132,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 Commands are built via **constructor functions**, not `init()` side effects. Each command group exposes a `Create{Group}Cmd()` function that returns a fully assembled `*cobra.Command` with all subcommands attached. Each subcommand has its own `Create{Group}{Sub}Cmd()` function in its own file.
 
 - `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the six top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`, `CreateInitCmd()`, `CreateRuntimeCmd()`, `CreateVersionCmd()`.
-- `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `edit`.
+- `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `show-defaults`, `edit`.
 - `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `set`, `remove`.
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
 - `cmd/runtime/runtime.go` — `CreateRuntimeCmd()` builds the `runtime` command and attaches `list`.
@@ -169,7 +171,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 - **Functions only.** Do not add type definitions here.
 - `CmdConfig *viper.Viper` is a package-level variable holding the active configuration instance. It is set by `cmd/root`'s `PersistentPreRunE` after calling `InitConfig`. All subcommands and internal functions receive `*viper.Viper` as an explicit parameter; `CmdConfig` is used only by `cmd/` code that needs direct access (e.g. `cmd/env/list.go`).
 - `InitConfig(cfgFile string) (*viper.Viper, error)` creates a new viper instance, registers defaults, loads the config file (named `moat-config.yaml`) from the given path or default search locations (`$HOME/.config/moat/`, `.`), unmarshals into `types.Config`, and validates. When no config file is present (neither the given path nor any search location), it does not return an error; the returned configuration simply holds the default configuration contents. When writing tests, this can be called multiple times with different config files.
-- Exported surface: `CmdConfig`, `InitConfig`, `WriteConfig`, `SetConfigPath`, `GetEnv`, `GetEnvs`, `GetRuntimeSpec`, `GetRuntimes`, `GetVariableType`, `GetConfigAsString`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
+- Exported surface: `CmdConfig`, `InitConfig`, `WriteConfig`, `SetConfigPath`, `GetEnv`, `GetEnvs`, `GetRuntimeSpec`, `GetRuntimes`, `GetVariableType`, `GetConfigAsString`, `CreateDefaultConfig`, `GetConfigFile`, `SetConfig`, `AppendConfig`, `PrependConfig`.
 - One file per operation: `config.go` (init/lookup), `set.go`, `append.go`, `prepend.go`.
 - `SetConfigPath(cfg, outputPath)` switches the configuration file path of `cfg` (via `viper.SetConfigFile`) to the global config file ($HOME/.config/moat/moat-config.yaml) — or to `outputPath` when it is non-empty — and validates the configuration. It does not write to disk. If a configuration file has already been found and no output path is given, the configuration is left as it is and `changed=false` is reported; it returns an error if `outputPath` is the same as the path of the found configuration. It reports whether the path was set (`changed`); callers that need to persist the configuration must call `WriteConfig` separately.
 - `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value and re-validate the full `types.Config`. They do not write to disk; callers that need to persist the change must call `WriteConfig` separately.
@@ -199,7 +201,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 
 - `runtime.go` defines the `Runtime` interface and the `GetRuntime(cfg *viper.Viper, name string) (Runtime, error)` factory. These must remain in this file.
 - The `Runtime` interface requires two methods: `Run(env types.MoatEnv, args []string, envVars []string) (int, error)` and `Shell(env types.MoatEnv) (int, error)`.
-- The runtime spec's `MountCWD` setting controls whether the runtime bind-mounts the caller's current working directory: when `ApptainerRuntime` is constructed from a spec with `MountCWD` enabled, `Run` adds `--bind <cwd> --pwd <cwd>` to the apptainer command line (unless the working directory is already given as an environment mount). The environment's `MountCWD` (`types.MoatEnv.MountCWD`) has priority over the runtime's `MountCWD`: when it is non-nil, its value overwrites the runtime's setting. The `mountcwd` default for the apptainer runtime is registered as `false` in `internal/config.registerDefaults`.
+- The runtime spec's `MountCWD` setting controls whether the runtime bind-mounts the caller's current working directory: when `ApptainerRuntime` is constructed from a spec with `MountCWD` enabled, `Run` adds `--bind <cwd> --pwd <cwd>` to the apptainer command line (unless the working directory is already given as an environment mount). The environment's `MountCWD` (`types.MoatEnv.MountCWD`) has priority over the runtime's `MountCWD`: when it is non-nil, its value overwrites the runtime's setting. The `mountcwd` default for the apptainer runtime is registered as `false` in `internal/config.CreateDefaultConfig`.
 - Each runtime is implemented in its own file: `apptainerruntime.go`, and future runtimes in `{name}.go`.
 - Implementation-specific helper structs that are **private to one runtime** (e.g. `ApptainerImage`) may be defined in the same file as the implementation.
 - The `Runtime` interface itself must stay in `runtime.go`; if it is referenced from another package, do not duplicate it — import from `internal/runtimes`.

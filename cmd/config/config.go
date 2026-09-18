@@ -21,6 +21,7 @@ You can modify, remove and view configuration settings.`,
 	ConfigCmd.AddCommand(CreateConfigAppendCmd())
 	ConfigCmd.AddCommand(CreateConfigPrependCmd())
 	ConfigCmd.AddCommand(CreateConfigShowCmd())
+	ConfigCmd.AddCommand(CreateConfigShowDefaultsCmd())
 	ConfigCmd.AddCommand(CreateConfigEditCmd())
 	return ConfigCmd
 }

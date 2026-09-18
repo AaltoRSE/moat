@@ -12,7 +12,7 @@ import (
 )
 
 // expectedDefaultImageURL returns the default apptainer image URL derived
-// from the build-time version, mirroring registerDefaults.
+// from the build-time version, mirroring CreateDefaultConfig.
 func expectedDefaultImageURL() string {
 	tag := version.MoatVersion
 	if tag == "" {
