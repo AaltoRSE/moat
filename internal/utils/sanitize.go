@@ -10,15 +10,43 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// SanitizeFolderPath expands a leading `~` or `~/` prefix to the current
+// user's home directory, expands environment variables in the path, and
+// resolves the result to an absolute path. A `~` anywhere else in the path
+// (including `~user` prefixes) is not expanded and is kept as a literal
+// path element. It returns an error if the home directory cannot be
+// determined or the absolute path cannot be resolved.
 func SanitizeFolderPath(path string) (string, error) {
 	log.Debug().Msgf("Current environment: %s", os.Environ())
 	log.Debug().Msgf("Sanitizing folder path: %s", path)
-	absPath, err := filepath.Abs(os.ExpandEnv(path))
+	expanded, err := expandTilde(path)
+	if err != nil {
+		return "", err
+	}
+	absPath, err := filepath.Abs(os.ExpandEnv(expanded))
 	if err != nil {
 		return "", err
 	}
 	log.Debug().Msgf("Sanitized folder path: %s", absPath)
 	return absPath, nil
+}
+
+// expandTilde replaces a leading `~` or `~/` in path with the current
+// user's home directory. It returns the path unchanged when it does not
+// start with `~` or `~/`.
+func expandTilde(path string) (string, error) {
+	switch {
+	case path == "~":
+		return os.UserHomeDir()
+	case strings.HasPrefix(path, "~/"):
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return home + path[1:], nil
+	default:
+		return path, nil
+	}
 }
 
 func SanitizeMountsPaths(mounts []string) ([]string, error) {

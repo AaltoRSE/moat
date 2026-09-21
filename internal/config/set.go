@@ -55,7 +55,7 @@ func SetConfig(cfg *viper.Viper, key string, value []string) error {
 		return fmt.Errorf("error when adding %q to config: %v", key, err)
 	}
 
-	if err = validateConfig(cfg); err != nil {
+	if err = ValidateConfig(cfg); err != nil {
 		return fmt.Errorf("config validation failed after setting %q: %v", key, err)
 	}
 

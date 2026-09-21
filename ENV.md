@@ -30,7 +30,7 @@ Names must be non-empty and contain only **alphanumeric characters and underscor
 
 ### Fake home (`-H/--home`)
 
-The directory on the host that will be used as the fake `$HOME` inside the container. The path may contain environment variables (e.g. `$HOME`), which are expanded, and relative paths are resolved to absolute ones.
+The directory on the host that will be used as the fake `$HOME` inside the container. The path may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded, and relative paths are resolved to absolute ones.
 
 ### Mounts (`-m/--mount`, `-r/--ro-mount`)
 

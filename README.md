@@ -61,3 +61,5 @@ moat run --name example-env my_program
 ## Runtimes
 
 Currently moat uses Apptainer as a runtime. In the future other runtimes might be added.
+
+For more on runtimes, see [RUNTIME.md](./RUNTIME.md)

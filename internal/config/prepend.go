@@ -13,7 +13,7 @@ func PrependConfig(cfg *viper.Viper, key, value string) error {
 	current := cfg.GetStringSlice(key)
 	cfg.Set(key, append([]string{value}, current...))
 
-	if err := validateConfig(cfg); err != nil {
+	if err := ValidateConfig(cfg); err != nil {
 		return fmt.Errorf("config validation failed after prepending to %q: %v", key, err)
 	}
 

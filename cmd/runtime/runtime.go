@@ -15,9 +15,10 @@ func CreateRuntimeCmd() *cobra.Command {
 		Long: `Manage moat runtimes.
 
 This command allows you to manage your moat runtimes.
-You can list the available runtimes.`,
+You can create and list runtimes.`,
 	}
 
+	runtimeCmd.AddCommand(CreateRuntimeCreateCmd())
 	runtimeCmd.AddCommand(CreateRuntimeListCmd())
 	return runtimeCmd
 }

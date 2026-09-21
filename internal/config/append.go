@@ -13,7 +13,7 @@ func AppendConfig(cfg *viper.Viper, key, value string) error {
 	current := cfg.GetStringSlice(key)
 	cfg.Set(key, append(current, value))
 
-	if err := validateConfig(cfg); err != nil {
+	if err := ValidateConfig(cfg); err != nil {
 		return fmt.Errorf("config validation failed after appending to %q: %v", key, err)
 	}
 
