@@ -1,7 +1,7 @@
 # moat
 
 > [!IMPORTANT]
-> moat is currently under development, features might not yet work
+> moat is currently under development. Some features might change in the upcoming versions.
 
 *Dig a moat between your agent and the rest of the world. It might not be much, but at least it is something.*
 
@@ -13,8 +13,12 @@ moat is a small command line client that makes it easy to execute AI tools in co
 > Currently only Linux is supported, because Apptainer needs to be installed
 
 1. Install [Apptainer](https://apptainer.org/).
-2. Currently moat needs to be compiled manually. After installing go and downloading the repository, run:
+2. Download the `moat`-binary and run it.
+
+Alternatively, you can build the project yourself with `go`:
 ```shell
+git clone https://github.com/AaltoRSE/moat.git
+cd moat
 go build -o moat
 ```
 
@@ -63,3 +67,7 @@ moat run --name example-env my_program
 Currently moat uses Apptainer as a runtime. In the future other runtimes might be added.
 
 For more on runtimes, see [RUNTIME.md](./RUNTIME.md)
+
+## AI usage in the project
+
+This project has been created using AI assistance, but all contributions by the AI have been reviewed by a human.

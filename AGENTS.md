@@ -13,6 +13,7 @@ moat is a CLI tool that runs AI coding agents inside isolated [Apptainer](https:
 ## Best practices
 
 - Use `go-doc`-skill when writing code comments.
+- Keep the user-facing documentation (`README.md`, `ENV.md`, `CONFIG.md`, `RUNTIME.md`) in sync with code changes — see [User-facing documentation](#user-facing-documentation).
 
 ---
 
@@ -22,6 +23,12 @@ moat is a CLI tool that runs AI coding agents inside isolated [Apptainer](https:
 moat/
 ├── main.go                     # Entry point; calls root.CreateRootCmd().Execute()
 ├── go.mod
+├── AGENTS.md                   # Agent instructions (this file)
+├── README.md                   # User-facing docs: overview, installation, quick start
+├── ENV.md                      # User-facing docs for the `moat env` command group
+├── CONFIG.md                   # User-facing docs for the `moat config` command group
+├── RUNTIME.md                  # User-facing docs for the `moat runtime` command group
+├── _config.yml                 # GitHub Pages config; docs are served from the repo root
 │
 ├── cmd/                        # CLI layer — Cobra commands only, no business logic
 │   ├── root/                   # Root command construction
@@ -111,12 +118,9 @@ moat/
 │   └── workflows/
 │       └── deploy-image.yml    # Builds and publishes the docker image to GHCR on tag push
 │
-├── skills/
-│   └── go-doc/
-│       └── SKILL.md            # Go doc comment guidelines (see Best practices)
-│
-└── docs/
-    └── code-structure.md       # Placeholder
+└── skills/
+    └── go-doc/
+        └── SKILL.md            # Go doc comment guidelines (see Best practices)
 ```
 
 ---
@@ -298,12 +302,65 @@ Do not add viper access to packages other than `internal/config` without strong 
 
 ---
 
+## User-facing documentation
+
+User-facing documentation lives at the **repository root** next to `README.md` — not in a `docs/` directory. The repository is configured as a GitHub Pages site rooted at the repo root (`_config.yml`), so the documents must stay at the root and link to each other with **relative links** (e.g. `[ENV.md](ENV.md)`, `[CONFIG.md](CONFIG.md#moat-config-set)`).
+
+| Document | Covers |
+|---|---|
+| `README.md` | Project overview, installation, and quick start. The entry point for new users; keep it short and link to the per-group documents for details. |
+| `ENV.md` | The `moat env` command group: what an environment is (fake home, mounts, read-only mounts, default command) and every `moat env` subcommand. |
+| `CONFIG.md` | The `moat config` command group: config file location and structure, the settable keys and their types, and every `moat config` subcommand. |
+| `RUNTIME.md` | The `moat runtime` command group: runtime specifications, default vs. user runtimes, and every `moat runtime` subcommand. |
+
+### Structure
+
+The command-group documents share a fixed skeleton; new documents and new sections must match it:
+
+1. `# moat {group} — managing {noun}` title, followed by a short introduction that defines the core concept (in bold) and notes where changes are persisted.
+2. `## Subcommands` — a `| Command | Purpose |` table listing every subcommand, followed by a note that the global `-c/--config` and `-d/--debug` flags are available on every command.
+3. A concepts section (`## Common concepts`, `## The config file`, `## Keys`, …) covering rules shared by several subcommands (naming, path expansion, key types, non-interactive mode, …).
+4. One `## moat {group} {sub}` section per subcommand, each containing, in order:
+   - the usage synopsis in a code block (e.g. `moat env create -n NAME -H HOME [-m MOUNT]... [-y]`),
+   - a `| Flag | Required | Description |` table (use `see note` where a flag is only conditionally required),
+   - `Behavior:` bullets covering prompts, validation, error cases, and what the command prints,
+   - `Examples:` in a `shell` code block.
+5. `## Notes` — edge cases and cross-references to the sibling documents (where useful).
+6. `## Typical workflow` — a numbered end-to-end example.
+
+### Style
+
+- Write for end users. Describe observable behavior; never mention implementation details (Go packages, internal functions, source file paths).
+- Use backticks for commands, flags, keys, paths, and quoted output; quote multi-word commands in examples.
+- Document every flag, its default value, and what happens on failure. Quoted output (e.g. `Environment already exists.`) must match what the command actually prints.
+- Use GitHub alerts (`> [!NOTE]`, `> [!IMPORTANT]`) sparingly, only for things that would surprise the user.
+- Each fact lives in exactly one document; cross-link with relative links instead of duplicating content.
+- Examples must be realistic and copy-pasteable — they should work on a fresh install.
+
+### Keeping the documentation up to date
+
+Update the documentation **in the same change** as the code it describes; do not leave stale documents for a follow-up.
+
+| Code change | Document(s) to update |
+|---|---|
+| New/removed subcommand | Its document's `## Subcommands` table and a new/removed `## moat {group} {sub}` section; `README.md` if the quick start is affected |
+| New/changed/removed flag | The affected subcommand's usage synopsis, flag table, `Behavior:` bullets, and examples |
+| Changed behavior (prompts, validation, defaults, error messages, printed output) | The affected `Behavior:` bullets and `## Notes`; fix any quoted output |
+| New/changed config key or default | `CONFIG.md` (key table + structure examples) and any example config in the other documents |
+| New runtime type or runtime spec field | `RUNTIME.md` (spec table + `create` flags) and `CONFIG.md` (`defaults.runtimes.{name}.*` / `runtimes.{name}.*` keys) |
+| New environment field | `ENV.md` and the `envs.{name}.*` table in `CONFIG.md` |
+
+Before committing, re-run the documented examples and compare the printed output against the document.
+
+---
+
 ## Adding a new environment operation
 
 1. Add any new shared types to `internal/types/`.
 2. Implement the operation as a function in `internal/env/{operation}.go` accepting `*viper.Viper` and `types.MoatEnv`.
 3. Add a Cobra command file `cmd/env/{operation}.go` with a `CreateEnv{Operation}Cmd()` constructor that parses flags, constructs the `types.MoatEnv`, and calls the internal function.
 4. Register the subcommand in `CreateEnvCmd()` in `cmd/env/env.go` via `EnvCmd.AddCommand(CreateEnv{Operation}Cmd())`.
+5. Update `ENV.md` (subcommand table + a `## moat env {operation}` section) and `README.md` if the quick start is affected — see User-facing documentation.
 
 ## Adding a new runtime
 
@@ -311,6 +368,7 @@ Do not add viper access to packages other than `internal/config` without strong 
 2. Implement `internal/runtimes/{name}.go` with a struct that satisfies the `Runtime` interface (implementing both `Run` and `Shell`).
 3. Register the new runtime type string in `GetRuntime` in `internal/runtimes/runtime.go`.
 4. Add a constructor function (e.g. `New{Name}RuntimeFromSpec`) in the same file, mirroring `NewApptainerRuntimeFromSpec`.
+5. Update `RUNTIME.md` (spec fields, `create` flags) and `CONFIG.md` if new spec fields or config keys are introduced — see User-facing documentation.
 
 ## Adding a new test
 
@@ -333,4 +391,5 @@ Do not add viper access to packages other than `internal/config` without strong 
 
 - Run go tests with `go test ./...`. All tests must pass.
 - pre-commit hooks should be run after additions to verify that everything works. This can be done with `pre-commit run --all-files`.
+- If the change affects user-facing behavior (subcommands, flags, config keys, defaults, or printed output), the relevant user-facing documentation (`README.md`, `ENV.md`, `CONFIG.md`, `RUNTIME.md`) must be updated in the same change — see User-facing documentation.
 - Check whether new additions should be added to `AGENTS.md`.

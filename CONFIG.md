@@ -18,7 +18,7 @@ moat -c /path/to/moat-config.yaml config show
 ```
 
 > [!NOTE]
-> The config file must already exist — moat does not create it for you. If none is found, all commands fail with `config file not found`. See [First-time setup](#first-time-setup) for a minimal starting file.
+> If no config file is found, moat does not fail: commands run against the built-in default configuration. Use [`moat init`](#moat-init) to create a config file — see [First-time setup](#first-time-setup).
 
 ### Structure
 
@@ -61,7 +61,13 @@ envs:
 
 ### First-time setup
 
-Create the global config file, e.g. `$HOME/.config/moat/moat-config.yaml`, with at least a `defaults` section and an empty `envs` map:
+The recommended way to create the global config file is [`moat init`](#moat-init), which writes the default configuration to `$HOME/.config/moat/moat-config.yaml`:
+
+```shell
+moat init
+```
+
+If you prefer to create the file by hand, it needs at least a `defaults` section and an empty `envs` map:
 
 ```yaml
 defaults:
@@ -85,6 +91,7 @@ Then create your environments with [`moat env create`](ENV.md#moat-env-create).
 | `moat config append` | Append a value to a list configuration variable |
 | `moat config prepend` | Prepend a value to a list configuration variable |
 | `moat config show` | Print the whole configuration as YAML (aliases: `list`, `view`) |
+| `moat config show-defaults` | Print the built-in default configuration as YAML |
 | `moat config edit` | Open the config file in `$EDITOR` |
 
 The global flags `-c/--config` and `-d/--debug` are available on every command.
@@ -241,6 +248,35 @@ envs:
         mountcwd: true
 ```
 
+## `moat config show-defaults`
+
+Print the built-in default configuration — the values moat registers before any config file is read. Every config file is merged on top of these defaults, so this output is a convenient baseline for a new config file.
+
+```
+moat config show-defaults
+```
+
+Behavior:
+
+- No config file is read, so it works before `moat init` has been run and never shows user values.
+- The output reflects the running moat binary: `defaults.runtimes.apptainer.imageurl` is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
+
+Example:
+
+```shell
+$ moat config show-defaults
+defaults:
+    runtime: apptainer
+    runtimes:
+        apptainer:
+            cachedir: $HOME/.cache/moat/images
+            imageurl: ghcr.io/aaltorse/moat:v0.1.0
+            mountcwd: false
+            passenv: true
+            type: apptainer
+envs: {}
+```
+
 ## `moat config edit`
 
 Open the currently active config file in the editor given by the `$EDITOR` environment variable. This is the way to go for large or structural changes (new runtimes, reorganizing environments):
@@ -256,6 +292,48 @@ Behavior:
 
 ---
 
+## `moat init`
+
+`moat init` is a top-level command (not a `moat config` subcommand) that creates the config file. It writes the current configuration — the built-in defaults, merged with a config file if one has been found — to a new location.
+
+```
+moat init [-o OUTPUT]
+```
+
+| Flag | Required | Description |
+|---|---|---|
+| `-o, --output` | no | Path of the configuration file to write (default: `$HOME/.config/moat/moat-config.yaml`) |
+
+Behavior:
+
+- If no configuration file has been found (at the global path, in the current directory, or via `--config`), the built-in default configuration is written to the target path.
+- The target file is overwritten when it already exists; its parent directories are created when they do not exist.
+- If a configuration file has already been found and no `-o` is given, nothing is written; the path of the found file is reported instead.
+- If `-o` is the same as the path of the found configuration file, an error is reported and nothing is written.
+- The written file reflects the running moat binary: `defaults.runtimes.apptainer.imageurl` is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
+
+On success, prints `Initialized configuration: <path>`; when nothing is written, it prints `Configuration already exists: <path>` instead.
+
+Examples:
+
+```shell
+# Create the global config file from the defaults
+moat init
+# Initialized configuration: /home/user/.config/moat/moat-config.yaml
+
+# Running it again reports the existing file; nothing is written
+moat init
+# Configuration already exists: /home/user/.config/moat/moat-config.yaml
+
+# Copy a local configuration to the global location
+moat -c ./moat-config.yaml init -o $HOME/.config/moat/moat-config.yaml
+
+# Write the configuration to a custom path (parent directories are created)
+moat init -o /home/user/backups/moat/moat-config.yaml
+```
+
+---
+
 ## Notes
 
 - `moat config` works at the raw key level. For creating, copying, or removing **environments**, prefer the [`moat env`](ENV.md) commands — they check environment names, verify that fake home and mount directories exist (and can create them with `-y`), and remove config entries cleanly. Use `config` on `envs.{name}.*` keys for fine-tuning an existing environment.
@@ -266,24 +344,27 @@ Behavior:
 ## Typical workflow
 
 ```shell
-# 1. See the current configuration
+# 1. Initialize the configuration (first time only)
+moat init
+
+# 2. See the current configuration
 moat config show
 
-# 2. Create an environment (see ENV.md)
+# 3. Create an environment (see ENV.md)
 moat env create -n myproj -H ~/moat-home -m ~/projects/myproj -y
 
-# 3. Give it a default command
+# 4. Give it a default command
 moat config set envs.myproj.command "code --wait ."
 
-# 4. Mount the working directory automatically
+# 5. Mount the working directory automatically
 moat config set envs.myproj.mountcwd true
 
-# 5. Add another mount later
+# 6. Add another mount later
 moat config append envs.myproj.mounts /run/dbus
 
-# 6. Switch every environment to a newer image via the default runtime
+# 7. Switch every environment to a newer image via the default runtime
 moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/moat:latest
 
-# 7. Make larger changes by hand
+# 8. Make larger changes by hand
 moat config edit
 ```
