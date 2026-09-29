@@ -70,31 +70,31 @@ func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 	return ApptainerImage{Name: name, Url: imageUrl, Path: path}, nil
 }
 
+// Pull ensures that the runtime image is present in the cache directory,
+// pulling it with apptainer when it is missing, and returns the path of the
+// image file.
 func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
-
-	var (
-		args []string
-	)
 	image, err := f.GetImage()
 	if err != nil {
 		return "", err
 	}
 
-	args = append(args, "pull", image.Path, image.Url)
-
-	output, err := utils.RunCapture(utils.RunArgs{Command: "apptainer", Args: args, Env: []string{}, PassEnv: passEnv})
-
-	if err != nil && strings.Contains(output, "Image file already exists") {
+	if utils.CheckFileExists(image.Path) {
 		log.Debug().Str("imagePath", image.Path).Msg("Image already exists")
 		return image.Path, nil
 	}
 
-	if err != nil {
-		log.Error().Err(err).Str("output", output).Msg("Error pulling image")
+	if err := utils.Run(utils.RunArgs{
+		Command: "apptainer",
+		Args:    []string{"pull", image.Path, image.Url},
+		Env:     []string{},
+		PassEnv: passEnv,
+	}); err != nil {
+		log.Error().Err(err).Str("imagePath", image.Path).Str("imageUrl", image.Url).Msg("Error pulling image")
 		return "", err
 	}
 
-	return image.Path, err
+	return image.Path, nil
 }
 
 func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []string) (int, error) {

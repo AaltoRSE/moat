@@ -56,7 +56,7 @@ An environment uses the runtime named by `envs.{name}.runtime`, falling back to 
 moat config set envs.myproj.runtime myrt
 ```
 
-At run time, the runtime's `imageurl` is pulled into its `cachedir`, and its `passenv` and `mountcwd` settings apply unless the environment overrides them with its own `passenv` and `mountcwd` fields (see [ENV.md](ENV.md) and [CONFIG.md](CONFIG.md)).
+At run time, the runtime's `imageurl` is pulled into its `cachedir` (only if the image is not already cached there), and its `passenv` and `mountcwd` settings apply unless the environment overrides them with its own `passenv` and `mountcwd` fields (see [ENV.md](ENV.md) and [CONFIG.md](CONFIG.md)).
 
 ---
 
