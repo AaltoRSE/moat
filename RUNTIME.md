@@ -15,7 +15,7 @@ There are two sources of runtimes:
 - **Default runtimes** live under `defaults.runtimes.{name}` in the config file. moat registers one itself (`apptainer`), and you can edit them with [`moat config`](CONFIG.md) or the editor.
 - **User runtimes** live under the top-level `runtimes.{name}` section. The `moat runtime create` command adds runtimes here. A user runtime with the same name as a default runtime **overwrites** it, so all lookups (including `moat runtime list` and environment resolution) see the user's version.
 
-The `moat runtime` command group lets you create and inspect runtimes. All changes are persisted to your config file (`$HOME/.config/moat/moat-config.yaml`, or `moat-config.yaml` in the current directory).
+The `moat runtime` command group lets you create, inspect and modify runtimes. All changes are persisted to your config file (`$HOME/.config/moat/moat-config.yaml`, or `moat-config.yaml` in the current directory).
 
 ## Subcommands
 
@@ -23,6 +23,7 @@ The `moat runtime` command group lets you create and inspect runtimes. All chang
 |---|---|
 | `moat runtime create` | Create a new runtime |
 | `moat runtime list` | List runtime names |
+| `moat runtime set` | Change one or more variables of an existing runtime |
 
 The global flags `-c/--config` and `-d/--debug` are available on every command.
 
@@ -45,6 +46,7 @@ Names must be non-empty and contain only **alphanumeric characters and underscor
 ### Default and user runtimes
 
 - `moat runtime create` only ever adds to the **user** section (`runtimes.{name}`); it never modifies the defaults.
+- `moat runtime set` modifies an **existing** runtime, user-specified or default. When the given runtime is a default runtime, a user runtime with the same name is created from the default runtime's settings (with the changes applied) and overwrites the default in all lookups; the defaults themselves are never modified.
 - When a runtime is looked up by name, a user runtime takes precedence over a default runtime with the same name.
 - Creating a runtime with the name of a default runtime (e.g. `apptainer`) is therefore a valid way to **override the default** — for example, to point every environment at a different image without touching `defaults`.
 
@@ -106,6 +108,46 @@ moat runtime create -n apptainer --type apptainer \
     --cachedir $HOME/.cache/moat/images
 ```
 
+## `moat runtime set`
+
+Change one or more variables of an **existing** runtime. Only the flags you give are modified; every other variable of the runtime (and all other runtimes) keeps its current value. The change is written to the config file.
+
+```
+moat runtime set -n NAME ( [--type TYPE] | [--imageurl URL] | [--cachedir DIR] | [--passenv VAL] | [--mountcwd VAL] )...
+```
+
+| Flag | Required | Description |
+|---|---|---|
+| `-n, --name` | yes | Name of the runtime to modify |
+| `--type` | see note | New runtime type (e.g. `apptainer`) |
+| `--imageurl` | see note | New container image URL |
+| `--cachedir` | see note | New directory for caching container images |
+| `--passenv` | see note | Pass the host environment variables into the container (default: `true`) |
+| `--mountcwd` | see note | Bind-mount the caller's current working directory into the container (default: `false`) |
+
+At least one of `--type`, `--imageurl`, `--cachedir`, `--passenv`, or `--mountcwd` must be given. For the boolean flags, `VAL` is `true` or `false` (the bare flag means `true`). The runtime must already exist, either as a user runtime or as a default runtime.
+
+Behavior:
+
+- When the given runtime is a **default** runtime (e.g. `apptainer`), a **user** runtime with the same name is created from the default runtime's settings with the given changes applied, so that it overwrites the default runtime in all lookups (see [Default and user runtimes](#default-and-user-runtimes)). Nothing under `defaults.runtimes` is modified.
+- The updated specification is **validated before it is written to disk** (e.g. the `apptainer` type requires `imageurl` and `cachedir`), and the full resulting configuration is re-validated as well. On failure the config file is left untouched.
+- The `--cachedir` path is expanded and resolved to an absolute path before it is stored.
+- The configuration currently requires `passenv` to be `true`; setting `--passenv=false` is rejected by validation.
+- On success, prints `Set NAME.field = [value]` for every changed variable and `Runtime updated successfully.`
+
+Examples:
+
+```shell
+# Point a user runtime at a different image
+moat runtime set -n myrt --imageurl ghcr.io/aaltorse/moat:v0.1.0
+
+# Mount the working directory in the default apptainer runtime
+moat runtime set -n apptainer --mountcwd
+
+# Change several variables at once
+moat runtime set -n myrt --imageurl ghcr.io/aaltorse/moat:latest --cachedir $HOME/.cache/moat/images --mountcwd
+```
+
 ## `moat runtime list`
 
 List the names of all available runtimes — the default runtimes plus all user runtimes — one per line, sorted alphabetically. When a user runtime has the same name as a default runtime, the name appears only once.
@@ -136,7 +178,7 @@ moat runtime list -n myrt
 
 ## Notes
 
-- `moat runtime create` works at the runtime level. To fine-tune an individual field of an existing runtime (or a default runtime), use [`moat config set`](CONFIG.md#moat-config-set) on `runtimes.{name}.*` / `defaults.runtimes.{name}.*` keys, or open the file with [`moat config edit`](CONFIG.md#moat-config-edit).
+- To fine-tune an individual field of an existing runtime, use [`moat runtime set`](#moat-runtime-set). To modify a field under `defaults.runtimes.{name}.*` directly (which `moat runtime set` never touches), use [`moat config set`](CONFIG.md#moat-config-set) on `defaults.runtimes.{name}.*` keys, or open the file with [`moat config edit`](CONFIG.md#moat-config-edit).
 - There is no `runtime remove` yet: to get rid of a user runtime, delete its `runtimes.{name}` entry from the config file (or reset it with `moat config edit`).
 - `mountcwd` set here is the runtime-level default; an environment's own `mountcwd` field takes precedence when set (see [ENV.md](ENV.md)).
 
@@ -156,4 +198,7 @@ moat config set envs.myproj.runtime moat-v0-1-0
 
 # 4. Verify it is in the list
 moat runtime list -n moat-v0-1-0
+
+# 5. Later, point the runtime at a newer image
+moat runtime set -n moat-v0-1-0 --imageurl ghcr.io/aaltorse/moat:v0.1.1
 ```

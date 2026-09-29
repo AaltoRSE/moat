@@ -68,8 +68,10 @@ moat/
 │   │   ├── runtime.go          # CreateRuntimeCmd(); assembles subcommands
 │   │   ├── create.go           # CreateRuntimeCreateCmd(); calls internal/runtimes.CreateRuntime()
 │   │   ├── list.go             # CreateRuntimeListCmd(); lists available runtimes via internal/config.GetRuntimes()
+│   │   ├── set.go              # CreateRuntimeSetCmd(); calls internal/runtimes.SetRuntime()
 │   │   ├── runtime_test.go     # Shared runtime command test suite (RuntimeTestSuite) + suite runner
 │   │   ├── create_test.go      # Tests for the runtime create subcommand
+│   │   ├── set_test.go         # Tests for the runtime set subcommand
 │   │   └── list_test.go        # Tests for the runtime list subcommand
 │   └── version/                # `moat version` command
 │       ├── version.go          # CreateVersionCmd(); prints internal/version.MoatVersion
@@ -78,7 +80,7 @@ moat/
 ├── internal/                   # Business logic; never imported by cmd/ in reverse
 │   ├── types/                  # Canonical location for ALL shared types (see rules below)
 │   │   ├── config.go           # Config, Defaults
-│   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields)
+│   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields), RuntimeUpdate (field/value pair used by runtime set)
 │   │   └── moatenv.go          # MoatEnv
 │   ├── config/
 │   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, SetConfigPath, ValidateConfig, GetConfigAsString, CreateDefaultConfig, GetConfigFile, GetVariableType
@@ -99,6 +101,7 @@ moat/
 │   ├── runtimes/
 │   │   ├── runtime.go             # Runtime interface + GetRuntime factory
 │   │   ├── create.go              # CreateRuntime
+│   │   ├── set.go                 # SetRuntime
 │   │   ├── apptainerruntime.go    # ApptainerRuntime implementation
 │   │   └── apptainerruntime_test.go # ApptainerRuntime test suite (ApptainerRuntimeTestSuite, fake apptainer binary)
 │   ├── utils/
@@ -144,7 +147,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 - `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `show-defaults`, `edit`.
 - `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `set`, `remove`.
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
-- `cmd/runtime/runtime.go` — `CreateRuntimeCmd()` builds the `runtime` command and attaches `create` and `list`.
+- `cmd/runtime/runtime.go` — `CreateRuntimeCmd()` builds the `runtime` command and attaches `create`, `list`, and `set`.
 - `cmd/init/init.go` — `CreateInitCmd()` builds the `init` command (no subcommands).
 - `cmd/version/version.go` — `CreateVersionCmd()` builds the `version` command (no subcommands), which prints `internal/version.MoatVersion`.
 
@@ -169,6 +172,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 | `Config` | `config.go` | Root config struct: `Defaults`, `Envs map[string]MoatEnv`, `Runtimes map[string]RuntimeSpec` |
 | `Defaults` | `config.go` | Default runtime settings: `Runtime string`, `Runtimes map[string]RuntimeSpec` |
 | `RuntimeSpec` | `runtimespec.go` | Config fields for any runtime (type, imageurl, cachedir, passenv, mountcwd) |
+| `RuntimeUpdate` | `runtimespec.go` | A single field/value pair used by `moat runtime set` to change one runtime field |
 | `MoatEnv` | `moatenv.go` | An individual named environment (home, mounts, readonlymounts, mountcwd, runtime, passenv, command) |
 
 **Rule:** If you define a struct in `internal/runtimes`, `internal/env`, or any other package, and it is later referenced by a second package, move it to `internal/types`.
@@ -212,6 +216,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 
 - `runtime.go` defines the `Runtime` interface and the `GetRuntime(cfg *viper.Viper, name string) (Runtime, error)` factory. These must remain in this file.
 - `create.go` defines `CreateRuntime(cfg *viper.Viper, name string, spec types.RuntimeSpec) error`, which creates a new user-specified runtime in the top-level `runtimes` key of the configuration. It validates the name and the spec (`config.ValidateRuntimeSpec`), resolves the spec's `CacheDir` to an absolute path, skips creation when a user-specified runtime with the same name already exists, and writes the configuration to disk via `config.WriteConfig` only after `config.ValidateConfig` passes.
+- `set.go` defines `SetRuntime(cfg *viper.Viper, name string, updates []types.RuntimeUpdate) error`, which changes the given fields of an existing runtime (user-specified or default) and writes the configuration to disk via `config.WriteConfig` only after `config.ValidateConfig` passes. Only the given fields are changed; all other fields keep their current values. When the named runtime is a default runtime, a user-specified runtime with the same name is created from the default runtime's specification with the given changes applied, so that it overwrites the default runtime in lookups; the default runtimes are never modified. The cache directory is resolved to an absolute path before storing.
 - The `Runtime` interface requires two methods: `Run(env types.MoatEnv, args []string, envVars []string) (int, error)` and `Shell(env types.MoatEnv) (int, error)`.
 - The runtime spec's `MountCWD` setting controls whether the runtime bind-mounts the caller's current working directory: when `ApptainerRuntime` is constructed from a spec with `MountCWD` enabled, `Run` adds `--bind <cwd> --pwd <cwd>` to the apptainer command line (unless the working directory is already given as an environment mount). The environment's `MountCWD` (`types.MoatEnv.MountCWD`) has priority over the runtime's `MountCWD`: when it is non-nil, its value overwrites the runtime's setting. The `mountcwd` default for the apptainer runtime is registered as `false` in `internal/config.CreateDefaultConfig`.
 - Each runtime is implemented in its own file: `apptainerruntime.go`, and future runtimes in `{name}.go`.
