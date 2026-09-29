@@ -1,5 +1,11 @@
 FROM ubuntu:24.04
 
+# Arguments and software versions
+ARG VSCODIUM_VERSION=1.135.06055
+ARG CODEX_VERSION=0.159.0
+ARG NVM_VERSION=0.40.8
+ARG NODE_VERSION=24
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Upgrade existing packages
@@ -32,8 +38,6 @@ RUN apt-get update && \
   apt-get install -y code && \
   rm -rf /var/lib/apt/lists/*
 
-ARG VSCODIUM_VERSION=1.135.06055
-
 # Install VSCodium
 RUN wget -q https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/codium_${VSCODIUM_VERSION}_amd64.deb && \
   apt-get update && \
@@ -65,10 +69,8 @@ RUN apt-get update && \
 
 # Install basic command line tools
 RUN apt-get update && \
-  apt-get install -y git vim nano bash zsh jq ripgrep && \
+  apt-get install -y git vim neovim emacs nano bash zsh jq ripgrep ddgr && \
   rm -rf /var/lib/apt/lists/*
-
-ARG CODEX_VERSION=0.154.0
 
 # Install codex
 RUN wget -q https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-x86_64-unknown-linux-musl.tar.gz && \
@@ -91,12 +93,8 @@ RUN curl -fsSL https://opencode.ai/install | \
     sed 's/INSTALL_DIR=.*/INSTALL_DIR=$OPENCODE_INSTALL_DIR/' | \
     bash
 
-ARG NVM_VERSION=0.40.7
-ARG NODE_VERSION=24
-
-ENV NVM_DIR=/opt/nvm
-
 # Install nvm
+ENV NVM_DIR=/opt/nvm
 RUN mkdir $NVM_DIR && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
 
 # Install node
@@ -108,6 +106,14 @@ RUN . /opt/nvm/nvm.sh && npm install -g --ignore-scripts @earendil-works/pi-codi
 
 # Install cline
 RUN . /opt/nvm/nvm.sh && npm install -g cline
+
+# Install oh-my-pi
+RUN . /opt/nvm/nvm.sh && npm install -g @oh-my-pi/pi-coding-agent
+
+# Install Slurm
+RUN apt-get update && \
+  apt-get install -y slurm-client && \
+  rm -rf /var/lib/apt/lists/*
 
 # Create typical mount points
 RUN mkdir -p /project /scratch /local /l /m /u
