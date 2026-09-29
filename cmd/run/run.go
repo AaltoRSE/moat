@@ -5,7 +5,7 @@ package run
 
 import (
 	"github.com/AaltoRSE/moat/internal/config"
-	"github.com/AaltoRSE/moat/internal/runtimes"
+	"github.com/AaltoRSE/moat/internal/engines"
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ This command allows you to run a specific command within the moat environment.`,
 		Run: func(cmd *cobra.Command, args []string) {
 
 			var (
-				runtime    runtimes.Runtime
+				runtime    engines.Runtime
 				err        error
 				envVars    []string
 				parsedArgs []string
@@ -88,7 +88,7 @@ This command allows you to run a specific command within the moat environment.`,
 			// Log the runtime name
 			log.Debug().Msgf("Using runtime: %s", runtimeName)
 
-			runtime, err = runtimes.GetRuntime(config.CmdConfig, runtimeName)
+			runtime, err = engines.GetRuntime(config.CmdConfig, runtimeName)
 			if err != nil {
 				log.Error().Msgf("Failed to get a runtime: %v", err)
 				return

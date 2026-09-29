@@ -4,7 +4,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/moat/internal/config"
-	"github.com/AaltoRSE/moat/internal/runtimes"
+	"github.com/AaltoRSE/moat/internal/runtime"
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/cobra"
 )
@@ -66,7 +66,7 @@ Examples:
 				MountCWD: mountCWD,
 			}
 
-			if err := runtimes.CreateRuntime(config.CmdConfig, name, spec); err != nil {
+			if err := runtime.CreateRuntime(config.CmdConfig, name, spec); err != nil {
 				log.Error().Msgf("could not create runtime: %v", err)
 			}
 		},

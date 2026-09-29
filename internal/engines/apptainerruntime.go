@@ -1,4 +1,4 @@
-package runtimes
+package engines
 
 import (
 	"fmt"
@@ -12,6 +12,8 @@ import (
 	"github.com/AaltoRSE/moat/internal/utils"
 )
 
+// NewApptainerRuntimeFromSpec returns a new ApptainerRuntime built from
+// the given runtime spec.
 func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 	return &ApptainerRuntime{
 		ImageUrl: spec.ImageUrl,
@@ -21,6 +23,9 @@ func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 	}
 }
 
+// ApptainerRuntime is a runtime engine that executes commands inside
+// Apptainer containers. The container image is pulled into CacheDir with
+// apptainer when it is not cached yet.
 type ApptainerRuntime struct {
 	ImageUrl string
 	CacheDir string
@@ -28,12 +33,18 @@ type ApptainerRuntime struct {
 	MountCWD bool
 }
 
+// ApptainerImage describes a container image: its file name and path in
+// the cache directory, and the URL it is pulled from.
 type ApptainerImage struct {
 	Name string
 	Path string
 	Url  string
 }
 
+// GetImage returns the image description for the runtime, computing the
+// cached image file path from the image URL and the cache directory. It
+// creates the cache directory when it does not exist. It returns an error
+// if the cache directory is invalid or cannot be created.
 func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 
 	cacheDir, err := utils.SanitizeFolderPath(f.CacheDir)
@@ -97,6 +108,11 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 	return image.Path, nil
 }
 
+// Run executes args as a command inside the container environment env
+// and returns the exit code of the execution. The envVars are set for the
+// executed command, and the caller's environment is passed through to the
+// container when pass-env is enabled. It returns an error if no command is
+// given, the image cannot be pulled, or the command fails to execute.
 func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []string) (int, error) {
 	log.Debug().Msg("Run called")
 	var (
@@ -203,6 +219,8 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	return 0, nil
 }
 
+// Shell opens an interactive shell inside the container environment env
+// and returns the exit code of the shell.
 func (f *ApptainerRuntime) Shell(env types.MoatEnv) (int, error) {
 	log.Debug().Msg("Shell called")
 	return 0, nil

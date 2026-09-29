@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/AaltoRSE/moat/internal/config"
-	"github.com/AaltoRSE/moat/internal/runtimes"
+	"github.com/AaltoRSE/moat/internal/runtime"
 	"github.com/AaltoRSE/moat/internal/types"
 	"github.com/spf13/cobra"
 )
@@ -94,7 +94,7 @@ Examples:
 				return
 			}
 
-			if err := runtimes.SetRuntime(config.CmdConfig, name, updates); err != nil {
+			if err := runtime.SetRuntime(config.CmdConfig, name, updates); err != nil {
 				log.Error().Msgf("could not set runtime: %v", err)
 			}
 		},

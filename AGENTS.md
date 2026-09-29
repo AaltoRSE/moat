@@ -66,9 +66,9 @@ moat/
 │   │   └── run.go              # CreateRunCmd(); resolves env + runtime, sanitizes args, calls runtime.Run()
 │   ├── runtime/                # `moat runtime` command group
 │   │   ├── runtime.go          # CreateRuntimeCmd(); assembles subcommands
-│   │   ├── create.go           # CreateRuntimeCreateCmd(); calls internal/runtimes.CreateRuntime()
+│   │   ├── create.go           # CreateRuntimeCreateCmd(); calls internal/runtime.CreateRuntime()
 │   │   ├── list.go             # CreateRuntimeListCmd(); lists available runtimes via internal/config.GetRuntimes()
-│   │   ├── set.go              # CreateRuntimeSetCmd(); calls internal/runtimes.SetRuntime()
+│   │   ├── set.go              # CreateRuntimeSetCmd(); calls internal/runtime.SetRuntime()
 │   │   ├── runtime_test.go     # Shared runtime command test suite (RuntimeTestSuite) + suite runner
 │   │   ├── create_test.go      # Tests for the runtime create subcommand
 │   │   ├── set_test.go         # Tests for the runtime set subcommand
@@ -98,10 +98,11 @@ moat/
 │   │   └── logging.go          # InitLogging (zerolog setup)
 │   ├── version/
 │   │   └── version.go          # MoatVersion, set at build time via -ldflags
-│   ├── runtimes/
+│   ├── runtime/                # Runtime management: internal functions for the `moat runtime` command group
+│   │   ├── create.go           # CreateRuntime
+│   │   └── set.go              # SetRuntime
+│   ├── engines/                # Runtime engines that execute commands inside container environments
 │   │   ├── runtime.go             # Runtime interface + GetRuntime factory
-│   │   ├── create.go              # CreateRuntime
-│   │   ├── set.go                 # SetRuntime
 │   │   ├── apptainerruntime.go    # ApptainerRuntime implementation
 │   │   └── apptainerruntime_test.go # ApptainerRuntime test suite (ApptainerRuntimeTestSuite, fake apptainer binary)
 │   ├── utils/
@@ -175,7 +176,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 | `RuntimeUpdate` | `runtimespec.go` | A single field/value pair used by `moat runtime set` to change one runtime field |
 | `MoatEnv` | `moatenv.go` | An individual named environment (home, mounts, readonlymounts, mountcwd, runtime, passenv, command) |
 
-**Rule:** If you define a struct in `internal/runtimes`, `internal/env`, or any other package, and it is later referenced by a second package, move it to `internal/types`.
+**Rule:** If you define a struct in `internal/engines`, `internal/env`, or any other package, and it is later referenced by a second package, move it to `internal/types`.
 
 ---
 
@@ -212,17 +213,25 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 
 ---
 
-### `internal/runtimes` — runtime abstraction
+### `internal/runtime` — runtime management
 
-- `runtime.go` defines the `Runtime` interface and the `GetRuntime(cfg *viper.Viper, name string) (Runtime, error)` factory. These must remain in this file.
+- Internal functions for the `moat runtime` command group (`cmd/runtime/`); they mutate the configuration and persist changes to the config file.
+- One file per operation: `create.go`, `set.go`.
 - `create.go` defines `CreateRuntime(cfg *viper.Viper, name string, spec types.RuntimeSpec) error`, which creates a new user-specified runtime in the top-level `runtimes` key of the configuration. It validates the name and the spec (`config.ValidateRuntimeSpec`), resolves the spec's `CacheDir` to an absolute path, skips creation when a user-specified runtime with the same name already exists, and writes the configuration to disk via `config.WriteConfig` only after `config.ValidateConfig` passes.
 - `set.go` defines `SetRuntime(cfg *viper.Viper, name string, updates []types.RuntimeUpdate) error`, which changes the given fields of an existing runtime (user-specified or default) and writes the configuration to disk via `config.WriteConfig` only after `config.ValidateConfig` passes. Only the given fields are changed; all other fields keep their current values. When the named runtime is a default runtime, a user-specified runtime with the same name is created from the default runtime's specification with the given changes applied, so that it overwrites the default runtime in lookups; the default runtimes are never modified. The cache directory is resolved to an absolute path before storing.
+
+---
+
+### `internal/engines` — runtime engines
+
+- Runtime engines implement the actual runtime functionality: executing commands and shells inside container environments. They are used by `moat run` through the `Runtime` interface.
+- `runtime.go` defines the `Runtime` interface and the `GetRuntime(cfg *viper.Viper, name string) (Runtime, error)` factory. These must remain in this file.
 - The `Runtime` interface requires two methods: `Run(env types.MoatEnv, args []string, envVars []string) (int, error)` and `Shell(env types.MoatEnv) (int, error)`.
 - The runtime spec's `MountCWD` setting controls whether the runtime bind-mounts the caller's current working directory: when `ApptainerRuntime` is constructed from a spec with `MountCWD` enabled, `Run` adds `--bind <cwd> --pwd <cwd>` to the apptainer command line (unless the working directory is already given as an environment mount). The environment's `MountCWD` (`types.MoatEnv.MountCWD`) has priority over the runtime's `MountCWD`: when it is non-nil, its value overwrites the runtime's setting. The `mountcwd` default for the apptainer runtime is registered as `false` in `internal/config.CreateDefaultConfig`.
 - Each runtime is implemented in its own file: `apptainerruntime.go`, and future runtimes in `{name}.go`.
 - Implementation-specific helper structs that are **private to one runtime** (e.g. `ApptainerImage`) may be defined in the same file as the implementation.
-- The `Runtime` interface itself must stay in `runtime.go`; if it is referenced from another package, do not duplicate it — import from `internal/runtimes`.
-- New runtime: add a new `{name}.go` implementing `Runtime`, then register it in `GetRuntime`.
+- The `Runtime` interface itself must stay in `runtime.go`; if it is referenced from another package, do not duplicate it — import from `internal/engines`.
+- New runtime: add a new `{name}.go` implementing `Runtime`, then register it in `GetRuntime` in `runtime.go`.
 
 ---
 
@@ -370,8 +379,8 @@ Before committing, re-run the documented examples and compare the printed output
 ## Adding a new runtime
 
 1. Add any runtime-specific config type fields to `internal/types/runtimespec.go` (alongside the existing `RuntimeSpec` fields, or as a new type if the runtime is structurally different).
-2. Implement `internal/runtimes/{name}.go` with a struct that satisfies the `Runtime` interface (implementing both `Run` and `Shell`).
-3. Register the new runtime type string in `GetRuntime` in `internal/runtimes/runtime.go`.
+2. Implement `internal/engines/{name}.go` with a struct that satisfies the `Runtime` interface (implementing both `Run` and `Shell`).
+3. Register the new runtime type string in `GetRuntime` in `internal/engines/runtime.go`.
 4. Add a constructor function (e.g. `New{Name}RuntimeFromSpec`) in the same file, mirroring `NewApptainerRuntimeFromSpec`.
 5. Update `RUNTIME.md` (spec fields, `create` flags) and `CONFIG.md` if new spec fields or config keys are introduced — see User-facing documentation.
 

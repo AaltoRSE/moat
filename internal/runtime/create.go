@@ -1,4 +1,11 @@
-package runtimes
+// Package runtime provides functions for managing runtimes in the moat
+// configuration.
+//
+// The functions in this package create and update user-specified runtimes
+// and persist the changes to the config file; they are used by the moat
+// runtime command group. Executing commands inside environments is
+// handled by the runtime engines in the engines package.
+package runtime
 
 import (
 	"fmt"
