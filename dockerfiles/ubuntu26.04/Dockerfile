@@ -133,6 +133,9 @@ RUN . /opt/nvm/nvm.sh && npm install -g --ignore-scripts @earendil-works/pi-codi
 # Install cline
 RUN . /opt/nvm/nvm.sh && npm install -g cline
 
+# Install bun
+RUN . /opt/nvm/nvm.sh && npm install -g bun
+
 # Install oh-my-pi
 RUN . /opt/nvm/nvm.sh && npm install -g @oh-my-pi/pi-coding-agent
 
