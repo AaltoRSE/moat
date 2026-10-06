@@ -28,6 +28,33 @@ You can also point moat at an explicit file, without relying on the search locat
 > [!NOTE]
 > If no config file is found, moat does not fail: commands run against the built-in default configuration. Use [`moat init`](#moat-init) to create a config file — see [First-time setup](#first-time-setup).
 
+### Environment variable overrides
+
+Every default configuration key can be overridden with an environment variable of the form `MOAT_<KEY>`, where the dots of the key are replaced with underscores. The built-in default keys and their environment variables:
+
+| Key | Environment variable |
+|---|---|
+| `defaults.runtime` | `MOAT_DEFAULTS_RUNTIME` |
+| `defaults.runtimes.apptainer.type` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_TYPE` |
+| `defaults.runtimes.apptainer.imageurl` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL` |
+| `defaults.runtimes.apptainer.cachedir` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_CACHEDIR` |
+| `defaults.runtimes.apptainer.passenv` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_PASSENV` |
+| `defaults.runtimes.apptainer.mountcwd` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_MOUNTCWD` |
+
+Example:
+
+```shell
+export MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL=ghcr.io/aaltorse/moat:v0.1.0
+moat config show
+```
+
+Behavior:
+
+- An environment variable overrides both the config file value and the built-in default of its key, so it is a way to switch, e.g., the container image without touching the config file.
+- Boolean keys accept `true`/`false` (Go's boolean rules apply).
+- `moat config show` and `moat config show-defaults` both reflect the environment variable overrides; `show-defaults` still shows only the built-in defaults, never config file values.
+- The overrides are not persisted by themselves, but a configuration written to the config file (`moat init`, `moat config set`, `append`, or `prepend`) stores the values in effect at write time, including any environment variable overrides.
+
 ### Structure
 
 The configuration has three top-level sections:
@@ -235,6 +262,10 @@ moat config show
 
 Aliases: `list`, `view`.
 
+Behavior:
+
+- Environment variable overrides (see [Environment variable overrides](#environment-variable-overrides)) are reflected in the output.
+
 Example:
 
 ```shell
@@ -268,6 +299,7 @@ Behavior:
 
 - No config file is read, so it works before `moat init` has been run and never shows user values.
 - The output reflects the running moat binary: `defaults.runtimes.apptainer.imageurl` is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
+- Environment variable overrides (see [Environment variable overrides](#environment-variable-overrides)) are reflected in the output.
 
 Example:
 

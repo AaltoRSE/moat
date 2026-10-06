@@ -178,6 +178,7 @@ moat runtime list -n myrt
 
 ## Notes
 
+- The default apptainer runtime settings can also be overridden temporarily with environment variables (`MOAT_DEFAULTS_RUNTIMES_APPTAINER_*`) — see [Environment variable overrides](CONFIG.md#environment-variable-overrides) in [CONFIG.md](CONFIG.md).
 - To fine-tune an individual field of an existing runtime, use [`moat runtime set`](#moat-runtime-set). To modify a field under `defaults.runtimes.{name}.*` directly (which `moat runtime set` never touches), use [`moat config set`](CONFIG.md#moat-config-set) on `defaults.runtimes.{name}.*` keys, or open the file with [`moat config edit`](CONFIG.md#moat-config-edit).
 - There is no `runtime remove` yet: to get rid of a user runtime, delete its `runtimes.{name}` entry from the config file (or reset it with `moat config edit`).
 - `mountcwd` set here is the runtime-level default; an environment's own `mountcwd` field takes precedence when set (see [ENV.md](ENV.md)).

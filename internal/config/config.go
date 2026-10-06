@@ -84,9 +84,19 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 }
 
 // CreateDefaultConfig creates a new viper configuration instance with the
-// default moat configuration values registered on it.
+// default moat configuration values registered on it. Environment
+// variable overrides are enabled: each registered key is overridden by
+// the environment variable MOAT_<KEY>, where the dots of the key are
+// replaced by underscores (e.g. the key defaults.runtimes.apptainer.type
+// maps to MOAT_DEFAULTS_RUNTIMES_APPTAINER_TYPE).
 func CreateDefaultConfig() *viper.Viper {
 	cfg := viper.New()
+
+	// Let the registered keys be overridden by environment variables
+	// (AutomaticEnv with the MOAT_ prefix, dots replaced by underscores).
+	cfg.SetEnvPrefix("MOAT")
+	cfg.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	cfg.AutomaticEnv()
 
 	var imageTag string
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/AaltoRSE/moat/internal/version"
@@ -21,10 +22,32 @@ func expectedDefaultImageURL() string {
 	return fmt.Sprintf("ghcr.io/aaltorse/moat:%s", tag)
 }
 
+// clearMoatDefaultEnvVars unsets all MOAT_DEFAULTS_* environment variables
+// for the duration of the test and restores them on cleanup, so that the
+// default-configuration assertions are independent of the ambient
+// environment.
+func clearMoatDefaultEnvVars(t *testing.T) {
+	t.Helper()
+	for _, kv := range os.Environ() {
+		key, _, _ := strings.Cut(kv, "=")
+		if !strings.HasPrefix(key, "MOAT_DEFAULTS_") {
+			continue
+		}
+		old, ok := os.LookupEnv(key)
+		require.NoError(t, os.Unsetenv(key))
+		t.Cleanup(func() {
+			if ok {
+				_ = os.Setenv(key, old)
+			}
+		})
+	}
+}
+
 // TestInitConfigNoConfigFile verifies that InitConfig does not return an
 // error when an explicitly given configuration file is not present and
 // that the returned configuration holds the default configuration contents.
 func TestInitConfigNoConfigFile(t *testing.T) {
+	clearMoatDefaultEnvVars(t)
 	cfgFile := filepath.Join(t.TempDir(), "moat-config.yaml")
 
 	cfg, err := InitConfig(cfgFile)
@@ -51,6 +74,7 @@ func TestInitConfigNoConfigFile(t *testing.T) {
 // locations and that the returned configuration holds the default
 // configuration contents.
 func TestInitConfigNoConfigFileInSearchPaths(t *testing.T) {
+	clearMoatDefaultEnvVars(t)
 	// Point the user home directory at an empty temporary directory so
 	// that $HOME/.config/moat cannot contain a config file.
 	t.Setenv("HOME", t.TempDir())
@@ -134,6 +158,115 @@ func TestInitConfigExplicitFileOverridesMoatConfigEnv(t *testing.T) {
 	// The explicitly given file was loaded, not the one from MOAT_CONFIG.
 	assert.Equal(t, explicitFile, cfg.ConfigFileUsed())
 	assert.Equal(t, "fromflag", cfg.GetString("defaults.runtime"))
+}
+
+// TestCreateDefaultConfigApptainerRuntimeEnvVars verifies that
+// CreateDefaultConfig returns a viper instance in which the
+// defaults.runtimes.apptainer.* keys follow the
+// MOAT_DEFAULTS_RUNTIMES_APPTAINER_* environment variables, even without
+// going through InitConfig.
+func TestCreateDefaultConfigApptainerRuntimeEnvVars(t *testing.T) {
+	clearMoatDefaultEnvVars(t)
+
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL", "ghcr.io/aaltorse/moat:env")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_CACHEDIR", "/tmp/moat_tests/env-cache")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_PASSENV", "false")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_MOUNTCWD", "true")
+
+	cfg := CreateDefaultConfig()
+
+	assert.Equal(t, "apptainer", cfg.GetString("defaults.runtimes.apptainer.type"))
+	assert.Equal(t, "ghcr.io/aaltorse/moat:env", cfg.GetString("defaults.runtimes.apptainer.imageurl"))
+	assert.Equal(t, "/tmp/moat_tests/env-cache", cfg.GetString("defaults.runtimes.apptainer.cachedir"))
+	assert.False(t, cfg.GetBool("defaults.runtimes.apptainer.passenv"))
+	assert.True(t, cfg.GetBool("defaults.runtimes.apptainer.mountcwd"))
+}
+
+// TestInitConfigApptainerRuntimeEnvVars verifies that the
+// defaults.runtimes.apptainer.* keys follow the
+// MOAT_DEFAULTS_RUNTIMES_APPTAINER_* environment variables (MOAT prefix,
+// dots replaced by underscores).
+func TestInitConfigApptainerRuntimeEnvVars(t *testing.T) {
+	clearMoatDefaultEnvVars(t)
+
+	// Point the user home directory and working directory at empty
+	// temporary directories so that the search paths cannot contain a
+	// config file.
+	t.Setenv("HOME", t.TempDir())
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(t.TempDir()))
+	t.Cleanup(func() { _ = os.Chdir(wd) })
+
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL", "ghcr.io/aaltorse/moat:env")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_CACHEDIR", "/tmp/moat_tests/env-cache")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_PASSENV", "false")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_MOUNTCWD", "true")
+
+	cfg, err := InitConfig("")
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// The overridden keys hold the environment variable values.
+	assert.Equal(t, "apptainer", cfg.GetString("defaults.runtimes.apptainer.type"))
+	assert.Equal(t, "ghcr.io/aaltorse/moat:env", cfg.GetString("defaults.runtimes.apptainer.imageurl"))
+	assert.Equal(t, "/tmp/moat_tests/env-cache", cfg.GetString("defaults.runtimes.apptainer.cachedir"))
+	assert.False(t, cfg.GetBool("defaults.runtimes.apptainer.passenv"))
+	assert.True(t, cfg.GetBool("defaults.runtimes.apptainer.mountcwd"))
+}
+
+// TestInitConfigApptainerRuntimeTypeEnvVar verifies that
+// MOAT_DEFAULTS_RUNTIMES_APPTAINER_TYPE overrides the default runtime type
+// and that the environment-override configuration still passes validation.
+func TestInitConfigApptainerRuntimeTypeEnvVar(t *testing.T) {
+	clearMoatDefaultEnvVars(t)
+
+	t.Setenv("HOME", t.TempDir())
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(t.TempDir()))
+	t.Cleanup(func() { _ = os.Chdir(wd) })
+
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_TYPE", "custom")
+
+	cfg, err := InitConfig("")
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	assert.Equal(t, "custom", cfg.GetString("defaults.runtimes.apptainer.type"))
+
+	// The configuration with the environment override must still validate.
+	require.NoError(t, ValidateConfig(cfg))
+}
+
+// TestGetRuntimeSpecApptainerEnvVars verifies that GetRuntimeSpec returns
+// the apptainer runtime spec with the
+// MOAT_DEFAULTS_RUNTIMES_APPTAINER_* environment variable overrides
+// applied.
+func TestGetRuntimeSpecApptainerEnvVars(t *testing.T) {
+	clearMoatDefaultEnvVars(t)
+
+	t.Setenv("HOME", t.TempDir())
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(t.TempDir()))
+	t.Cleanup(func() { _ = os.Chdir(wd) })
+
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL", "ghcr.io/aaltorse/moat:env")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_CACHEDIR", "/tmp/moat_tests/env-cache")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_MOUNTCWD", "true")
+
+	cfg, err := InitConfig("")
+	require.NoError(t, err)
+
+	spec, err := GetRuntimeSpec(cfg, "apptainer")
+	require.NoError(t, err)
+
+	assert.Equal(t, "apptainer", spec.Type)
+	assert.Equal(t, "ghcr.io/aaltorse/moat:env", spec.ImageUrl)
+	assert.Equal(t, "/tmp/moat_tests/env-cache", spec.CacheDir)
+	assert.True(t, spec.PassEnv)
+	assert.True(t, spec.MountCWD)
 }
 
 // TestSetConfigPathSameSourceAndOutput verifies that SetConfigPath
