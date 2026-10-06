@@ -112,7 +112,7 @@ RUN . /opt/nvm/nvm.sh && npm install -g @oh-my-pi/pi-coding-agent
 
 # Install Slurm
 RUN apt-get update && \
-  apt-get install -y slurm-client && \
+  apt-get install -y slurm-client bind9-host && \
   rm -rf /var/lib/apt/lists/*
 
 # Create typical mount points

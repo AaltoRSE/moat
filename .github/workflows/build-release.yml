@@ -1,3 +1,5 @@
+name: Build release
+
 on:
   workflow_dispatch:
   push:
@@ -6,6 +8,10 @@ on:
 
 permissions:
   contents: write
+
+# Set MOAT_VERSION environment variable
+env:
+  MOAT_VERSION: ${{ github.ref_name }}
 
 jobs:
   build:
