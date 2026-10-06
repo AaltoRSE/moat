@@ -239,6 +239,64 @@ func TestInitConfigApptainerRuntimeTypeEnvVar(t *testing.T) {
 	require.NoError(t, ValidateConfig(cfg))
 }
 
+// TestInitConfigFileOverridesApptainerRuntimeEnvVars verifies that
+// configuration file values take precedence over the
+// MOAT_DEFAULTS_RUNTIMES_APPTAINER_* environment variable values: the
+// environment variables override only the built-in defaults, not values
+// given in the configuration file.
+func TestInitConfigFileOverridesApptainerRuntimeEnvVars(t *testing.T) {
+	clearMoatDefaultEnvVars(t)
+
+	t.Setenv("HOME", t.TempDir())
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(t.TempDir()))
+	t.Cleanup(func() { _ = os.Chdir(wd) })
+
+	// The environment variables give values that differ from the
+	// configuration file and the built-in defaults.
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL", "ghcr.io/aaltorse/moat:fromenv")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_CACHEDIR", "/tmp/moat_tests/fromenv")
+	t.Setenv("MOAT_DEFAULTS_RUNTIMES_APPTAINER_MOUNTCWD", "true")
+
+	// The configuration file sets imageurl and cachedir, but not
+	// mountcwd.
+	cfgFile := filepath.Join(t.TempDir(), "moat-config.yaml")
+	require.NoError(t, os.WriteFile(cfgFile, []byte(
+		"defaults:\n"+
+			"  runtime: apptainer\n"+
+			"  runtimes:\n"+
+			"    apptainer:\n"+
+			"      type: apptainer\n"+
+			"      imageurl: ghcr.io/aaltorse/moat:fromfile\n"+
+			"      cachedir: /tmp/moat_tests/fromfile\n"+
+			"      passenv: true\n"+
+			"envs: {}\n"), 0o644))
+
+	cfg, err := InitConfig(cfgFile)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// The configuration file values take precedence over the
+	// environment variable values.
+	assert.Equal(t, "apptainer", cfg.GetString("defaults.runtimes.apptainer.type"))
+	assert.Equal(t, "ghcr.io/aaltorse/moat:fromfile", cfg.GetString("defaults.runtimes.apptainer.imageurl"))
+	assert.Equal(t, "/tmp/moat_tests/fromfile", cfg.GetString("defaults.runtimes.apptainer.cachedir"))
+	assert.True(t, cfg.GetBool("defaults.runtimes.apptainer.passenv"))
+
+	// A key the configuration file does not set still follows the
+	// environment variable.
+	assert.True(t, cfg.GetBool("defaults.runtimes.apptainer.mountcwd"))
+
+	// The runtime spec lookup (used by moat run) also reflects the
+	// configuration file values over the environment variable values.
+	spec, err := GetRuntimeSpec(cfg, "apptainer")
+	require.NoError(t, err)
+	assert.Equal(t, "apptainer", spec.Type)
+	assert.Equal(t, "ghcr.io/aaltorse/moat:fromfile", spec.ImageUrl)
+	assert.Equal(t, "/tmp/moat_tests/fromfile", spec.CacheDir)
+}
+
 // TestGetRuntimeSpecApptainerEnvVars verifies that GetRuntimeSpec returns
 // the apptainer runtime spec with the
 // MOAT_DEFAULTS_RUNTIMES_APPTAINER_* environment variable overrides

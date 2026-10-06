@@ -50,7 +50,7 @@ moat config show
 
 Behavior:
 
-- An environment variable overrides both the config file value and the built-in default of its key, so it is a way to switch, e.g., the container image without touching the config file.
+- An environment variable overrides the built-in default of its key, but a value given in your configuration file takes precedence over the environment variable value. So an environment variable is a way to switch, e.g., the container image without editing the config file — unless the config file sets that key, in which case the config file value wins.
 - Boolean keys accept `true`/`false` (Go's boolean rules apply).
 - `moat config show` and `moat config show-defaults` both reflect the environment variable overrides; `show-defaults` still shows only the built-in defaults, never config file values.
 - The overrides are not persisted by themselves, but a configuration written to the config file (`moat init`, `moat config set`, `append`, or `prepend`) stores the values in effect at write time, including any environment variable overrides.

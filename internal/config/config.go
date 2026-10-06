@@ -83,21 +83,18 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 	return cfg, nil
 }
 
-// CreateDefaultConfig creates a new viper configuration instance with the
-// default moat configuration values registered on it. Environment
-// variable overrides are enabled: each registered key is overridden by
-// the environment variable MOAT_<KEY>, where the dots of the key are
-// replaced by underscores (e.g. the key defaults.runtimes.apptainer.type
-// maps to MOAT_DEFAULTS_RUNTIMES_APPTAINER_TYPE).
+// CreateDefaultConfig creates a new viper configuration instance holding
+// the default moat configuration values. The built-in default values are
+// first resolved against environment variables on a temporary
+// configuration (AutomaticEnv with the MOAT_ prefix and dots replaced by
+// underscores, so the key defaults.runtimes.apptainer.imageurl is
+// overridden by MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL), and the
+// resolved values are copied as defaults onto the returned configuration
+// instance. The AutomaticEnv setting is not propagated to the returned
+// instance, so values from a configuration file take precedence over the
+// environment variable values, which in turn take precedence over the
+// built-in defaults.
 func CreateDefaultConfig() *viper.Viper {
-	cfg := viper.New()
-
-	// Let the registered keys be overridden by environment variables
-	// (AutomaticEnv with the MOAT_ prefix, dots replaced by underscores).
-	cfg.SetEnvPrefix("MOAT")
-	cfg.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	cfg.AutomaticEnv()
-
 	var imageTag string
 
 	if version.MoatVersion != "" {
@@ -106,13 +103,38 @@ func CreateDefaultConfig() *viper.Viper {
 		imageTag = "latest"
 	}
 
-	cfg.SetDefault("defaults.runtimes.apptainer.type", "apptainer")
-	cfg.SetDefault("defaults.runtimes.apptainer.imageurl", fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag))
-	cfg.SetDefault("defaults.runtimes.apptainer.cachedir", "$HOME/.cache/moat/images")
-	cfg.SetDefault("defaults.runtimes.apptainer.passenv", true)
-	cfg.SetDefault("defaults.runtimes.apptainer.mountcwd", false)
-	cfg.SetDefault("defaults.runtime", "apptainer")
-	cfg.SetDefault("envs", map[string]types.MoatEnv{})
+	// The built-in default configuration values.
+	defaults := map[string]any{
+		"defaults.runtimes.apptainer.type":     "apptainer",
+		"defaults.runtimes.apptainer.imageurl": fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag),
+		"defaults.runtimes.apptainer.cachedir": "$HOME/.cache/moat/images",
+		"defaults.runtimes.apptainer.passenv":  true,
+		"defaults.runtimes.apptainer.mountcwd": false,
+		"defaults.runtime":                     "apptainer",
+		"envs":                                 map[string]types.MoatEnv{},
+	}
+
+	// Resolve the default values against the environment variables on a
+	// temporary configuration: with the MOAT_ prefix and dots replaced by
+	// underscores, the key defaults.runtimes.apptainer.imageurl is
+	// overridden by MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL.
+	temp := viper.New()
+	temp.SetEnvPrefix("MOAT")
+	temp.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	temp.AutomaticEnv()
+	for key, value := range defaults {
+		temp.SetDefault(key, value)
+	}
+
+	// Return a copy of the resolved temporary configuration: the
+	// environment-resolved values become the defaults of a fresh
+	// configuration instance, and the AutomaticEnv setting of the
+	// temporary configuration is not carried over, so that configuration
+	// file values override the environment values.
+	cfg := viper.New()
+	for key := range defaults {
+		cfg.SetDefault(key, temp.Get(key))
+	}
 
 	return cfg
 }
