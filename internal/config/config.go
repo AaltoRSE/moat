@@ -24,10 +24,11 @@ var CmdConfig *viper.Viper
 
 // InitConfig initializes a viper configuration. It registers default
 // values, loads the config file (named moat-config.yaml) from the given
-// path or from the default search locations, unmarshals it into a
-// types.Config, and validates the result. If no config file is found, no
-// error is returned and the returned configuration holds the default
-// configuration contents.
+// path, from the path stored in the MOAT_CONFIG environment variable when
+// no path is given, or from the default search locations, unmarshals it
+// into a types.Config, and validates the result. If no config file is
+// found, no error is returned and the returned configuration holds the
+// default configuration contents.
 func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 
 	// Set viper configuration instance with the default values
@@ -35,6 +36,11 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 
 	cfg.SetConfigName("moat-config")
 	cfg.SetConfigType("yaml")
+	if cfgFile == "" {
+		// Fall back to the MOAT_CONFIG environment variable when no
+		// configuration file path is given.
+		cfgFile = os.Getenv("MOAT_CONFIG")
+	}
 	if cfgFile != "" {
 		cfg.SetConfigFile(cfgFile)
 	}

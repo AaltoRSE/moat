@@ -11,11 +11,19 @@ moat looks for a file named `moat-config.yaml` in:
 1. `$HOME/.config/moat/` (global), then
 2. the current directory (local override).
 
-You can point moat at an explicit file with the global `-c/--config` flag:
+You can also point moat at an explicit file, without relying on the search locations:
 
-```shell
-moat -c /path/to/moat-config.yaml config show
-```
+- Set the `MOAT_CONFIG` environment variable to the path of the configuration file:
+
+  ```shell
+  export MOAT_CONFIG=/path/to/moat-config.yaml
+  ```
+
+- Or use the global `-c/--config` flag, which takes priority over `MOAT_CONFIG`:
+
+  ```shell
+  moat -c /path/to/moat-config.yaml config show
+  ```
 
 > [!NOTE]
 > If no config file is found, moat does not fail: commands run against the built-in default configuration. Use [`moat init`](#moat-init) to create a config file — see [First-time setup](#first-time-setup).

@@ -78,6 +78,64 @@ func TestInitConfigNoConfigFileInSearchPaths(t *testing.T) {
 	assert.Empty(t, cfg.GetStringMap("envs"))
 }
 
+// TestInitConfigMoatConfigEnv verifies that InitConfig loads the
+// configuration file pointed to by the MOAT_CONFIG environment variable
+// when no configuration file path is given.
+func TestInitConfigMoatConfigEnv(t *testing.T) {
+	// Point the user home directory and working directory at empty
+	// temporary directories so that the search paths cannot contain a
+	// config file.
+	t.Setenv("HOME", t.TempDir())
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(t.TempDir()))
+	t.Cleanup(func() { _ = os.Chdir(wd) })
+
+	// Create a configuration file and point MOAT_CONFIG at it.
+	cfgFile := filepath.Join(t.TempDir(), "moat-config.yaml")
+	require.NoError(t, os.WriteFile(cfgFile, []byte("defaults:\n  runtime: custom\n"), 0o644))
+	t.Setenv("MOAT_CONFIG", cfgFile)
+
+	cfg, err := InitConfig("")
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// The configuration file from MOAT_CONFIG was loaded.
+	assert.Equal(t, cfgFile, cfg.ConfigFileUsed())
+	assert.Equal(t, "custom", cfg.GetString("defaults.runtime"))
+}
+
+// TestInitConfigExplicitFileOverridesMoatConfigEnv verifies that an
+// explicitly given configuration file path takes priority over the
+// MOAT_CONFIG environment variable.
+func TestInitConfigExplicitFileOverridesMoatConfigEnv(t *testing.T) {
+	// Point the user home directory and working directory at empty
+	// temporary directories so that the search paths cannot contain a
+	// config file.
+	t.Setenv("HOME", t.TempDir())
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(t.TempDir()))
+	t.Cleanup(func() { _ = os.Chdir(wd) })
+
+	// Create two configuration files and point MOAT_CONFIG at one of
+	// them.
+	envFile := filepath.Join(t.TempDir(), "env-config.yaml")
+	require.NoError(t, os.WriteFile(envFile, []byte("defaults:\n  runtime: fromenv\n"), 0o644))
+	t.Setenv("MOAT_CONFIG", envFile)
+
+	explicitFile := filepath.Join(t.TempDir(), "explicit-config.yaml")
+	require.NoError(t, os.WriteFile(explicitFile, []byte("defaults:\n  runtime: fromflag\n"), 0o644))
+
+	cfg, err := InitConfig(explicitFile)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	// The explicitly given file was loaded, not the one from MOAT_CONFIG.
+	assert.Equal(t, explicitFile, cfg.ConfigFileUsed())
+	assert.Equal(t, "fromflag", cfg.GetString("defaults.runtime"))
+}
+
 // TestSetConfigPathSameSourceAndOutput verifies that SetConfigPath
 // returns an error when the output path is the same as the path of the
 // found configuration and leaves the configuration file path untouched.
