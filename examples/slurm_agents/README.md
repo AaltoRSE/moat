@@ -100,8 +100,11 @@ The project directory is mounted at the same path and is your working
 directory. Check that the Slurm client works from inside the container:
 
 ```shell
-moat run -n slurm_agents squeue
+squeue
 ```
+
+If you see queue information, Slurm works in the container. You can then
+exit with `exit`.
 
 > [!NOTE]
 > The first `moat run` pulls the rockylinux9 image (several GB) into
