@@ -1,0 +1,18 @@
+defaults:
+    runtime: apptainer
+    runtimes:
+        apptainer:
+            cachedir: $WRKDIR/issues/moat/images
+            imageurl: ghcr.io/aaltorse/moat:v0.2.3-rockylinux9
+            mountcwd: false
+            passenv: true
+            type: apptainer
+envs:
+    slurm_agents:
+        command: bash
+        home: $WRKDIR/agents-home/
+        mountcwd: true
+        mounts:
+            - /run/munge
+            - /etc/passwd
+            - /etc/group

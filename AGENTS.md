@@ -120,6 +120,12 @@ moat/
 │       └── entrypoint.sh
 │
 ├── examples/                   # Example configurations; one directory per example, each with its own README
+│   ├── simple_agents/          # CLI coding agents with a shared fake home and the current directory mounted
+│   │   ├── README.md
+│   │   └── moat-config.yaml
+│   ├── slurm_agents/           # CLI coding agents on a RHEL 9 cluster with Slurm support in the container
+│   │   ├── README.md
+│   │   └── moat-config.yaml
 │   └── vscode/                 # VSCode/VSCodium in moat
 │       ├── README.md
 │       └── moat-config.yaml
