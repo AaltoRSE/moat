@@ -28,6 +28,7 @@ moat/
 ├── ENV.md                      # User-facing docs for the `moat env` command group
 ├── CONFIG.md                   # User-facing docs for the `moat config` command group
 ├── RUNTIME.md                  # User-facing docs for the `moat runtime` command group
+├── EXAMPLES.md                 # Index of the example configurations in examples/
 ├── _config.yml                 # GitHub Pages config; docs are served from the repo root
 │
 ├── cmd/                        # CLI layer — Cobra commands only, no business logic
@@ -117,6 +118,11 @@ moat/
 │   └── ubuntu24.04/            # Container image used by the apptainer runtime
 │       ├── Dockerfile
 │       └── entrypoint.sh
+│
+├── examples/                   # Example configurations; one directory per example, each with its own README
+│   └── vscode/                 # VSCode/VSCodium in moat
+│       ├── README.md
+│       └── moat-config.yaml
 │
 ├── .github/
 │   └── workflows/
@@ -327,6 +333,7 @@ User-facing documentation lives at the **repository root** next to `README.md` �
 | `ENV.md` | The `moat env` command group: what an environment is (fake home, mounts, read-only mounts, default command) and every `moat env` subcommand. |
 | `CONFIG.md` | The `moat config` command group: config file location and structure, the settable keys and their types, and every `moat config` subcommand. |
 | `RUNTIME.md` | The `moat runtime` command group: runtime specifications, default vs. user runtimes, and every `moat runtime` subcommand. |
+| `EXAMPLES.md` | Index of the example configurations in `examples/`: one entry per example with a relative link to its README and a one-line description. |
 
 ### Structure
 
@@ -352,6 +359,21 @@ The command-group documents share a fixed skeleton; new documents and new sectio
 - Each fact lives in exactly one document; cross-link with relative links instead of duplicating content.
 - Examples must be realistic and copy-pasteable — they should work on a fresh install.
 
+### Examples
+
+Working example configurations live under `examples/`, one directory per example; `EXAMPLES.md` at the repository root is their index.
+
+- An example directory `examples/{name}/` contains its own `README.md` plus the configuration file(s) it describes (e.g. `moat-config.yaml`). Directories without a README are work in progress and must not be listed in `EXAMPLES.md`.
+- `EXAMPLES.md` lists every finished example with a relative link to its `README.md` (e.g. `[VSCode / vscodium](examples/vscode/README.md)`) and a one-line description. Add or remove entries in the same change as the example itself.
+- An example `README.md` follows this default structure:
+  1. A title (`# {Topic} in moat`) and a short introduction saying what the example does and which files it contains.
+  2. `## Motivation` — the user experience the example provides (which expectations from the uncontainerized workflow it preserves) and when the user should use it.
+  3. `## Trying out the configuration` — numbered, copy-pasteable steps that take a fresh system all the way to a working example: install the latest `moat` release, install the example configuration, create the required folders, and run the command(s).
+  4. `## Implementation details` — the choices made in the example's configuration file (the fake home, the mounts, the default commands, …) and the reasoning behind them, including any containment trade-offs.
+- Keep the steps concise and end-user-facing: short `shell` blocks, one action per line, no implementation details (Go packages, internal functions, source file paths).
+- **Never recommend `sudo` or root privileges in an example.** Everything an example needs (the moat binary, the configuration, fake homes, project folders) lives in the user's home directory; install the binary to `~/.local/bin` and note that the directory must be in `PATH`.
+- Verify example instructions by following the README from scratch on a fresh install.
+
 ### Keeping the documentation up to date
 
 Update the documentation **in the same change** as the code it describes; do not leave stale documents for a follow-up.
@@ -364,6 +386,7 @@ Update the documentation **in the same change** as the code it describes; do not
 | New/changed config key or default | `CONFIG.md` (key table + structure examples) and any example config in the other documents |
 | New runtime type or runtime spec field | `RUNTIME.md` (spec table + `create` flags) and `CONFIG.md` (`defaults.runtimes.{name}.*` / `runtimes.{name}.*` keys) |
 | New environment field | `ENV.md` and the `envs.{name}.*` table in `CONFIG.md` |
+| New/changed example | The example's own README and its entry in `EXAMPLES.md` |
 
 Before committing, re-run the documented examples and compare the printed output against the document.
 

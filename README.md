@@ -68,6 +68,10 @@ Currently moat uses Apptainer as a runtime. In the future other runtimes might b
 
 For more on runtimes, see [RUNTIME.md](./RUNTIME.md)
 
+## Examples
+
+See [EXAMPLES.md](./EXAMPLES.md) for ready-to-use example configurations, such as running VSCode or VSCodium in moat.
+
 ## AI usage in the project
 
 This project has been created using AI assistance, but all contributions by the AI have been reviewed by a human.

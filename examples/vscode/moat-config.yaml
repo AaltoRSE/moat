@@ -1,0 +1,15 @@
+envs:
+    vscode:
+        command: code --wait .
+        home: $HOME/moat/agents-home
+        mounts:
+            - $HOME/moat/vscode-projects
+            - /run/user
+            - /run/dbus
+    vscodium:
+        command: codium --wait .
+        home: $HOME/moat/agents-home
+        mounts:
+            - $HOME/moat/vscodium-projects
+            - /run/user
+            - /run/dbus
