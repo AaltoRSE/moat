@@ -233,9 +233,10 @@ func (suite *RuntimeTestSuite) TestSetDefaultRuntime() {
 	assert.True(suite.T(), userSpec.PassEnv)
 	assert.False(suite.T(), userSpec.MountCWD)
 
-	// The user runtime must overwrite the default runtime in lookups
+	// The user runtime must overwrite the default runtime in lookups;
+	// the other default runtimes (docker) are unaffected
 	allRuntimes := config.GetRuntimes(cfg)
-	assert.Len(suite.T(), allRuntimes, 1)
+	assert.Len(suite.T(), allRuntimes, 2)
 	assert.Equal(suite.T(), "ghcr.io/aaltorse/moat:set", allRuntimes["apptainer"].ImageUrl)
 }
 

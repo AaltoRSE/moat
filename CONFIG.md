@@ -40,6 +40,11 @@ Every default configuration key can be overridden with an environment variable o
 | `defaults.runtimes.apptainer.cachedir` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_CACHEDIR` |
 | `defaults.runtimes.apptainer.passenv` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_PASSENV` |
 | `defaults.runtimes.apptainer.mountcwd` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_MOUNTCWD` |
+| `defaults.runtimes.docker.type` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_TYPE` |
+| `defaults.runtimes.docker.imageurl` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_IMAGEURL` |
+| `defaults.runtimes.docker.cachedir` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_CACHEDIR` |
+| `defaults.runtimes.docker.passenv` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_PASSENV` |
+| `defaults.runtimes.docker.mountcwd` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_MOUNTCWD` |
 
 Example:
 
@@ -75,6 +80,12 @@ defaults:
             type: apptainer
             imageurl: ghcr.io/aaltorse/moat:latest
             cachedir: $HOME/.cache/moat/images
+            passenv: true
+            mountcwd: false
+        docker:
+            type: docker
+            imageurl: ghcr.io/aaltorse/moat:latest
+            cachedir: $HOME/.cache/moat/
             passenv: true
             mountcwd: false
 envs:
@@ -150,9 +161,9 @@ Unknown keys are rejected with an error such as `key "envs.vscode.bogus" not fou
 | Key | Type | Description |
 |---|---|---|
 | `defaults.runtime` | string | Default runtime used when an environment has no `runtime` of its own |
-| `defaults.runtimes.{name}.type` | string | Runtime type, e.g. `apptainer` |
+| `defaults.runtimes.{name}.type` | string | Runtime type, e.g. `apptainer` or `docker` |
 | `defaults.runtimes.{name}.imageurl` | string | Container image pulled for this runtime |
-| `defaults.runtimes.{name}.cachedir` | string | Directory where container images are cached |
+| `defaults.runtimes.{name}.cachedir` | string | Directory where container images are cached (for `docker`: scratch directory for run-time files — see [RUNTIME.md](RUNTIME.md#runtime-types)) |
 | `defaults.runtimes.{name}.passenv` | bool | Pass the host environment variables into the container |
 | `defaults.runtimes.{name}.mountcwd` | bool | Bind-mount the directory you run `moat run` from, and use it as the working directory, for every environment that uses this runtime (default: `false`) |
 | `runtimes.{name}.*` | as above | Runtime specs here override the matching `defaults.runtimes.{name}` entry |
@@ -276,8 +287,15 @@ defaults:
         apptainer:
             cachedir: $HOME/.cache/moat/images
             imageurl: ghcr.io/aaltorse/moat:latest
+            mountcwd: false
             passenv: true
             type: apptainer
+        docker:
+            cachedir: $HOME/.cache/moat/
+            imageurl: ghcr.io/aaltorse/moat:latest
+            mountcwd: false
+            passenv: true
+            type: docker
 envs:
     vscode:
         command: code --wait .
@@ -298,7 +316,7 @@ moat config show-defaults
 Behavior:
 
 - No config file is read, so it works before `moat init` has been run and never shows user values.
-- The output reflects the running moat binary: `defaults.runtimes.apptainer.imageurl` is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
+- The output reflects the running moat binary: the `imageurl` of the default runtimes (`apptainer` and `docker`) is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
 - Environment variable overrides (see [Environment variable overrides](#environment-variable-overrides)) are reflected in the output.
 
 Example:
@@ -314,6 +332,12 @@ defaults:
             mountcwd: false
             passenv: true
             type: apptainer
+        docker:
+            cachedir: $HOME/.cache/moat/
+            imageurl: ghcr.io/aaltorse/moat:v0.1.0
+            mountcwd: false
+            passenv: true
+            type: docker
 envs: {}
 ```
 
@@ -350,7 +374,7 @@ Behavior:
 - The target file is overwritten when it already exists; its parent directories are created when they do not exist.
 - If a configuration file has already been found and no `-o` is given, nothing is written; the path of the found file is reported instead.
 - If `-o` is the same as the path of the found configuration file, an error is reported and nothing is written.
-- The written file reflects the running moat binary: `defaults.runtimes.apptainer.imageurl` is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
+- The written file reflects the running moat binary: the `imageurl` of the default runtimes (`apptainer` and `docker`) is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
 
 On success, prints `Initialized configuration: <path>`; when nothing is written, it prints `Configuration already exists: <path>` instead.
 

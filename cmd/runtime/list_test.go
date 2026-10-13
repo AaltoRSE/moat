@@ -34,7 +34,7 @@ func (suite *RuntimeTestSuite) TestList() {
 	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
 	require.NoError(suite.T(), err)
-	assert.Equal(suite.T(), "apptainer\n", capturedOutput)
+	assert.Equal(suite.T(), "apptainer\ndocker\n", capturedOutput)
 }
 
 // TestListWithName tests that runtime list with the -n/--name flag prints
@@ -80,7 +80,7 @@ func (suite *RuntimeTestSuite) TestListWithUserRuntime() {
 	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
 	require.NoError(suite.T(), err)
-	assert.Equal(suite.T(), "apptainer\ncustom\n", capturedOutput)
+	assert.Equal(suite.T(), "apptainer\ncustom\ndocker\n", capturedOutput)
 }
 
 // TestListWithOverwrittenDefaultRuntime tests that a user-specified
@@ -101,13 +101,13 @@ func (suite *RuntimeTestSuite) TestListWithOverwrittenDefaultRuntime() {
 	capturedOutput, err := capture.StopCapture()
 	require.NoError(suite.T(), err)
 	// Only one runtime with the name apptainer must be listed
-	assert.Equal(suite.T(), "apptainer\n", capturedOutput)
+	assert.Equal(suite.T(), "apptainer\ndocker\n", capturedOutput)
 
 	// The user-specified runtime spec must take precedence over the
 	// default runtime spec
 	cfg, err := config.InitConfig(configFile)
 	require.NoError(suite.T(), err)
 	runtimes := config.GetRuntimes(cfg)
-	assert.Len(suite.T(), runtimes, 1)
+	assert.Len(suite.T(), runtimes, 2)
 	assert.Equal(suite.T(), spec.ImageUrl, runtimes["apptainer"].ImageUrl)
 }

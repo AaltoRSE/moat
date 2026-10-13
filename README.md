@@ -10,9 +10,9 @@ moat is a small command line client that makes it easy to execute AI tools in co
 ## Installation
 
 > [!IMPORTANT]
-> Currently only Linux is supported, because Apptainer needs to be installed
+> Currently only Linux is supported, because a container runtime (Apptainer or Docker) needs to be installed.
 
-1. Install [Apptainer](https://apptainer.org/).
+1. Install [Apptainer](https://apptainer.org/) (the default runtime) or [Docker](https://docs.docker.com/).
 2. Download the `moat`-binary and run it.
 
 Alternatively, you can build the project yourself with `go`:
@@ -64,7 +64,7 @@ moat run --name example-env my_program
 
 ## Runtimes
 
-Currently moat uses Apptainer as a runtime. In the future other runtimes might be added.
+moat ships with two runtimes: **Apptainer** (the default) and **Docker**. The runtime of an environment is selected in the configuration.
 
 For more on runtimes, see [RUNTIME.md](./RUNTIME.md)
 

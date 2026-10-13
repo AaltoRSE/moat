@@ -105,7 +105,9 @@ moat/
 │   ├── engines/                # Runtime engines that execute commands inside container environments
 │   │   ├── runtime.go             # Runtime interface + GetRuntime factory
 │   │   ├── apptainerruntime.go    # ApptainerRuntime implementation
-│   │   └── apptainerruntime_test.go # ApptainerRuntime test suite (ApptainerRuntimeTestSuite, fake apptainer binary)
+│   │   ├── apptainerruntime_test.go # ApptainerRuntime test suite (ApptainerRuntimeTestSuite, fake apptainer binary)
+│   │   ├── dockerruntime.go       # DockerRuntime implementation
+│   │   └── dockerruntime_test.go  # DockerRuntime test suite (DockerRuntimeTestSuite, fake docker binary)
 │   ├── utils/
 │   │   ├── checks.go           # CheckFolderExists, CheckEnvironmentName, CheckMounts
 │   │   ├── dirops.go           # CreateMountDirs

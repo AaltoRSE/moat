@@ -158,7 +158,7 @@ func (suite *RuntimeTestSuite) TestCreateOverwriteDefaultRuntime() {
 	assert.True(suite.T(), exists)
 	assert.Equal(suite.T(), spec, createdSpec)
 	allRuntimes := config.GetRuntimes(cfg)
-	assert.Len(suite.T(), allRuntimes, 1)
+	assert.Len(suite.T(), allRuntimes, 2)
 	assert.Equal(suite.T(), spec.ImageUrl, allRuntimes["apptainer"].ImageUrl)
 }
 

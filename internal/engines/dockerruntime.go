@@ -11,6 +11,8 @@ import (
 	"github.com/AaltoRSE/moat/internal/utils"
 )
 
+// NewDockerRuntimeFromSpec returns a new DockerRuntime built from the
+// given runtime spec.
 func NewDockerRuntimeFromSpec(spec *types.RuntimeSpec) *DockerRuntime {
 	return &DockerRuntime{
 		ImageUrl: spec.ImageUrl,
@@ -20,13 +22,35 @@ func NewDockerRuntimeFromSpec(spec *types.RuntimeSpec) *DockerRuntime {
 	}
 }
 
+// DockerRuntime is a runtime engine that executes commands inside Docker
+// containers. The container image is pulled from its registry with docker
+// before every execution — Docker caches pulled images itself, so
+// CacheDir is not an image cache but the scratch directory for the
+// temporary passwd file that provides the container with the current
+// user's account information (see [DockerRuntime.Run]). CacheDir must
+// exist when the runtime is used.
 type DockerRuntime struct {
+	// ImageUrl is the reference of the container image that is pulled and
+	// executed.
 	ImageUrl string
+	// CacheDir is the scratch directory in which the temporary passwd file
+	// of each execution is created.
 	CacheDir string
-	PassEnv  bool
+	// PassEnv is the default of the pass-env setting: when true, the
+	// caller's environment variables are passed through to the executed
+	// command. An environment's own pass-env setting overrides it.
+	PassEnv bool
+	// MountCWD is the default of the mount-cwd setting: when true, the
+	// caller's current working directory is bind-mounted into the container
+	// and used as the working directory. An environment's own mount-cwd
+	// setting overrides it.
 	MountCWD bool
 }
 
+// Pull pulls the runtime image with docker and returns the image
+// reference. Unlike the Apptainer runtime, the image is pulled on every
+// call; Docker keeps its own image cache, so repeated pulls are cheap. It
+// returns an error if the pull fails.
 func (f *DockerRuntime) Pull(passEnv bool) (string, error) {
 	if err := utils.Run(utils.RunArgs{
 		Command: "docker",
@@ -41,6 +65,20 @@ func (f *DockerRuntime) Pull(passEnv bool) (string, error) {
 	return f.ImageUrl, nil
 }
 
+// Run executes args as a command inside the container environment env
+// and returns the exit code of the execution. The envVars are set for the
+// executed command, and the caller's environment is passed through to the
+// container when pass-env is enabled. It returns an error if no command is
+// given, the image cannot be pulled, or the command fails to execute.
+//
+// The command runs in a fresh, read-only container that is named
+// moat-<random> and removed afterwards, running as the current user. The
+// environment's home directory is bind-mounted at the caller's home
+// directory path, followed by the environment's mounts and read-only
+// mounts. The /etc/passwd file of the image is copied into a temporary
+// file in CacheDir, augmented with the current user's account line, and
+// mounted back into the container so that tools inside it can resolve the
+// current user; the temporary file is removed when Run returns.
 func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) (int, error) {
 	log.Debug().Msg("Run called")
 	var (
@@ -65,6 +103,8 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 		return 1, err
 	}
 
+	// The cache directory is mounted into the container so that the
+	// passwd copy can be written into it.
 	cacheMount := fmt.Sprintf("type=bind,source=%s,target=%s", cacheDir, cacheDir)
 
 	passWdTemp, err := os.CreateTemp(cacheDir, "passwd.*")
@@ -174,6 +214,8 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 	// Run as the current user
 	dockerArgs = append(dockerArgs, userArgs...)
 
+	// The fake home directory is mounted at the caller's home directory
+	// path.
 	homeMount := fmt.Sprintf("type=bind,source=%s,target=%s", env.Home, os.Getenv("HOME"))
 
 	// Add home mounts to docker arguments
