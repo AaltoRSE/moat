@@ -110,6 +110,11 @@ func CreateDefaultConfig() *viper.Viper {
 		"defaults.runtimes.apptainer.cachedir": "$HOME/.cache/moat/images",
 		"defaults.runtimes.apptainer.passenv":  true,
 		"defaults.runtimes.apptainer.mountcwd": false,
+		"defaults.runtimes.docker.type":        "docker",
+		"defaults.runtimes.docker.imageurl":    fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag),
+		"defaults.runtimes.docker.cachedir":    "$HOME/.cache/moat/",
+		"defaults.runtimes.docker.passenv":     true,
+		"defaults.runtimes.docker.mountcwd":    false,
 		"defaults.runtime":                     "apptainer",
 		"envs":                                 map[string]types.MoatEnv{},
 	}

@@ -39,6 +39,8 @@ func GetRuntime(cfg *viper.Viper, name string) (Runtime, error) {
 	switch runtimeSpec.Type {
 	case "apptainer":
 		return NewApptainerRuntimeFromSpec(&runtimeSpec), nil
+	case "docker":
+		return NewDockerRuntimeFromSpec(&runtimeSpec), nil
 	}
 
 	return nil, fmt.Errorf("no runtime found")
