@@ -34,7 +34,10 @@ type DockerRuntimeTestSuite struct {
 //  2. run ... <image> cp /etc/passwd <file>: a minimal passwd file is
 //     written to <file>, as a container would deliver it; the invocation
 //     is not logged.
-//  3. run ... <image> <args>: the arguments are logged, the contents of a
+//  3. run ... <image> cp /etc/group <file>: a minimal group file is
+//     written to <file>, as a container would deliver it; the invocation
+//     is not logged.
+//  4. run ... <image> <args>: the arguments are logged, the contents of a
 //     bind-mounted passwd file are appended to the passwd dump file, and
 //     the run succeeds.
 //
@@ -44,12 +47,17 @@ const fakeDockerScript = `#!/bin/sh
 PATH=/usr/bin:/bin
 export PATH
 
-# The passwd copy run carries /etc/passwd as the second-to-last argument:
-# write a minimal passwd file to the target and exit without logging.
+# The passwd and group copy runs carry /etc/passwd or /etc/group as the
+# second-to-last argument: write a minimal file to the target and exit
+# without logging.
 prev=""
 for arg in "$@"; do
     if [ "$prev" = "/etc/passwd" ]; then
         printf 'root:x:0:0:root:/root:/bin/sh\n' > "$arg"
+        exit 0
+    fi
+    if [ "$prev" = "/etc/group" ]; then
+        printf 'root:x:0:\n' > "$arg"
         exit 0
     fi
     prev="$arg"
@@ -70,9 +78,9 @@ printf '\n' >> "<logFile>"
 # Dump the contents of a bind-mounted passwd file, if any.
 for arg in "$@"; do
     case "$arg" in
-    type=bind,source=*,target=/etc/passwd)
+    type=bind,source=*,target=/etc/passwd,readonly)
         src="${arg#type=bind,source=}"
-        src="${src%,target=/etc/passwd}"
+        src="${src%,target=/etc/passwd,readonly}"
         cat "$src" >> "<passwdDumpFile>" 2>/dev/null
         ;;
     esac
@@ -202,9 +210,9 @@ func argValueAfter(args []string, flag string) string {
 	return ""
 }
 
-// passwdMountArg returns the value of the --mount flag that bind-mounts a
-// temporary passwd file from cacheDir to /etc/passwd, or an empty string
-// when no such mount is present.
+// passwdMountArg returns the value of the --mount flag that bind-mounts
+// a temporary passwd file from cacheDir read-only at /etc/passwd, or an
+// empty string when no such mount is present.
 func passwdMountArg(args []string, cacheDir string) string {
 	for i := 0; i+1 < len(args); i++ {
 		if args[i] != "--mount" {
@@ -212,7 +220,7 @@ func passwdMountArg(args []string, cacheDir string) string {
 		}
 		value := args[i+1]
 		if strings.HasPrefix(value, "type=bind,source="+cacheDir+string(os.PathSeparator)+"passwd.") &&
-			strings.HasSuffix(value, ",target=/etc/passwd") {
+			strings.HasSuffix(value, ",target=/etc/passwd,readonly") {
 			return value
 		}
 	}
