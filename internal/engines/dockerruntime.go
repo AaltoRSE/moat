@@ -181,7 +181,52 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 	}
 
 	// Create passwd mount
-	passwdMount := fmt.Sprintf("type=bind,source=%s,target=/etc/passwd", passWdTemp.Name())
+	passwdMount := fmt.Sprintf("type=bind,source=%s,target=/etc/passwd,readonly", passWdTemp.Name())
+
+	groupsTemp, err := os.CreateTemp(cacheDir, "groups.*")
+	if err != nil {
+		return 1, err
+	}
+	defer func() {
+		if err := os.Remove(groupsTemp.Name()); err != nil {
+			log.Error().Err(err).Msg("Error removing temporary groups file")
+		}
+	}()
+
+	groupsCmd := []string{"run", "--rm", "--tty", "--interactive"}
+	groupsCmd = append(groupsCmd, userArgs...)
+	groupsCmd = append(groupsCmd, "--mount", cacheMount)
+	groupsCmd = append(groupsCmd, f.ImageUrl)
+
+	// Add copy command
+	groupsCmd = append(groupsCmd, "cp", "/etc/group", groupsTemp.Name())
+
+	// Obtain groups from the image
+	if err := utils.Run(utils.RunArgs{
+		Command: "docker",
+		Args:    groupsCmd,
+		Env:     []string{},
+		PassEnv: passEnv,
+	}); err != nil {
+		return 1, err
+	}
+
+	// Add user to the container's groups file
+	file, err = os.OpenFile(groupsTemp.Name(), os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return 1, err
+	}
+
+	if _, err = fmt.Fprintf(file, "%s:x:%d:%s\n", os.Getenv("USER"), os.Getgid(), os.Getenv("USER")); err != nil {
+		return 1, err
+	}
+
+	if err = file.Close(); err != nil {
+		return 1, err
+	}
+
+	// Create groups mount
+	groupsMount := fmt.Sprintf("type=bind,source=%s,target=/etc/group,readonly", groupsTemp.Name())
 
 	// The environment's MountCWD setting overrides the runtime's MountCWD
 	// setting when it is set
@@ -254,6 +299,9 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 
 	// Add passwd mount to ensure the container has the correct user information
 	dockerArgs = append(dockerArgs, []string{"--mount", passwdMount}...)
+
+	// Add groups mount to ensure the container has the correct group information
+	dockerArgs = append(dockerArgs, []string{"--mount", groupsMount}...)
 
 	// Mount working directory if requested and not already mounted
 	if !workingDirMounted && mountCWD {
