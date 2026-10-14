@@ -80,11 +80,12 @@ func SanitizeMountsPaths(mounts []string) ([]string, error) {
 // the single argument cannot be parsed.
 func SanitizeArgs(args []string) (envVars []string, command []string, err error) {
 	if len(args) == 1 {
-		envVars, command, err = shellwords.ParseWithEnvs(args[0])
+		envVars, command, err = shellwords.ParseWithEnvs(os.ExpandEnv(args[0]))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to parse arguments with shellwords")
 			return nil, nil, err
 		}
+		log.Debug().Msgf("Sanitized command line arguments: %v", args)
 		return envVars, command, nil
 	}
 
@@ -93,5 +94,6 @@ func SanitizeArgs(args []string) (envVars []string, command []string, err error)
 			return nil, nil, fmt.Errorf("argument %q contains a space", arg)
 		}
 	}
+
 	return []string{}, args, nil
 }

@@ -56,6 +56,7 @@ This command allows you to run a specific command within the moat environment.`,
 					return
 				}
 				command = []string{*env.Command}
+				log.Debug().Msgf("Using default command from environment: %s", *env.Command)
 			}
 
 			// Return an error if no command is available to run
