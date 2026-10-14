@@ -65,6 +65,23 @@ func (f *DockerRuntime) Pull(passEnv bool) (string, error) {
 	return f.ImageUrl, nil
 }
 
+func (f *DockerRuntime) getEnvArgs() []string {
+	var (
+		envVars []string
+		envArgs []string
+	)
+	envVars = os.Environ()
+	for _, envVar := range envVars {
+		envArgs = append(envArgs, "--env", envVar)
+	}
+
+	return envArgs
+}
+
+func (f *DockerRuntime) getUserArgs() []string {
+	return []string{"--user", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())}
+}
+
 // Run executes args as a command inside the container environment env
 // and returns the exit code of the execution. The envVars are set for the
 // executed command, and the caller's environment is passed through to the
@@ -88,14 +105,28 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 		passEnv           bool
 		mountCWD          bool
 		workingDirMounted bool
+		envArgs           []string
 	)
+
+	// Check if PassEnv is set in the environment
+	if env.PassEnv == nil {
+		passEnv = f.PassEnv
+	} else {
+		passEnv = *env.PassEnv
+	}
+
+	if passEnv {
+		envArgs = f.getEnvArgs()
+	} else {
+		envArgs = []string{}
+	}
 
 	if len(args) < 1 {
 		return 1, fmt.Errorf("no command provided to run")
 	}
 
 	// Run as the current user
-	userArgs := []string{"--user", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())}
+	userArgs := f.getUserArgs()
 
 	cacheDir, err := utils.SanitizeFolderPath(f.CacheDir)
 
@@ -151,13 +182,6 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 
 	// Create passwd mount
 	passwdMount := fmt.Sprintf("type=bind,source=%s,target=/etc/passwd", passWdTemp.Name())
-
-	// Check if PassEnv is set in the environment
-	if env.PassEnv == nil {
-		passEnv = f.PassEnv
-	} else {
-		passEnv = *env.PassEnv
-	}
 
 	// The environment's MountCWD setting overrides the runtime's MountCWD
 	// setting when it is set
@@ -239,6 +263,9 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 		log.Debug().Str("workingDir", workingDir).Msg("Setting working directory for current directory")
 		dockerArgs = append(dockerArgs, []string{"--workdir", workingDir}...)
 	}
+
+	// Add env arguments to the docker arguments
+	dockerArgs = append(dockerArgs, envArgs...)
 
 	// Add the image path to arguments
 	dockerArgs = append(dockerArgs, imageUrl)
