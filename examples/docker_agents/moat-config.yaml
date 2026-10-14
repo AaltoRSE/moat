@@ -1,0 +1,6 @@
+envs:
+    agents:
+        command: bash
+        home: $HOME/moat/agents-home
+        mountcwd: true
+        runtime: docker
