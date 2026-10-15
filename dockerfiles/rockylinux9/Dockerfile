@@ -28,17 +28,30 @@ RUN mkdir -p /opt/slurm && \
   cd /opt/slurm && \
   wget -q https://github.com/SchedMD/slurm/releases/download/slurm-${SLURM_VERSION_GITHUB}/slurm-${SLURM_VERSION}.tar.bz2
 
-# Build slurm
+# Build slurm (rpmbuild always builds for the architecture it runs on, and
+# multi-platform builds run this stage on the target platform)
 RUN cd /opt/slurm && \
   rpmbuild -ta slurm-${SLURM_VERSION}.tar.bz2
 
+# Collect the built RPMs in an architecture-independent directory, excluding
+# debug packages
+RUN mkdir -p /opt/slurm-binaries && \
+  find /root/rpmbuild/RPMS -name '*.rpm' ! -name '*debuginfo*' ! -name '*debugsource*' \
+    -exec cp {} /opt/slurm-binaries/ \;
+
 FROM rockylinux:9
+
+# Target architecture, set automatically by BuildKit for multi-platform builds
+# (falls back to the build host's architecture for a plain `docker build`)
+ARG TARGETARCH
 
 # Arguments and software versions
 ARG VSCODIUM_VERSION=1.135.06055
 ARG CODEX_VERSION=0.159.0
 ARG NVM_VERSION=0.40.8
 ARG NODE_VERSION=24
+# Needed in this stage so the slurm install glob matches the copied RPMs
+ARG SLURM_VERSION=26.05.4
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -68,9 +81,14 @@ RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
   dnf clean all
 
 # Install VSCodium
-RUN wget -q https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/codium-${VSCODIUM_VERSION}-el8.x86_64.rpm && \
-  dnf install -y ./codium-${VSCODIUM_VERSION}-el8.x86_64.rpm && \
-  rm -f codium-${VSCODIUM_VERSION}-el8.x86_64.rpm && \
+RUN case "${TARGETARCH:-$(uname -m)}" in \
+      amd64|x86_64) RPM_ARCH="x86_64" ;; \
+      arm64|aarch64) RPM_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
+    esac && \
+  wget -q "https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/codium-${VSCODIUM_VERSION}-el8.${RPM_ARCH}.rpm" && \
+  dnf install -y "./codium-${VSCODIUM_VERSION}-el8.${RPM_ARCH}.rpm" && \
+  rm -f "codium-${VSCODIUM_VERSION}-el8.${RPM_ARCH}.rpm" && \
   dnf clean all
 
 # Add locales
@@ -89,11 +107,16 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8 && \
   export LANG=en_US.UTF-8
 
 # Add Google Chrome for logging into Github Copilot
-RUN dnf update -y && \
+RUN case "${TARGETARCH:-$(uname -m)}" in \
+      amd64|x86_64) RPM_ARCH="x86_64" ;; \
+      arm64|aarch64) RPM_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
+    esac && \
+  dnf update -y && \
   cd /tmp && \
-  wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm && \
-  dnf install -y ./google-chrome-stable_current_x86_64.rpm && \
-  rm -f ./google-chrome-stable_current_x86_64.rpm && \
+  wget -q "https://dl.google.com/linux/direct/google-chrome-stable_current_${RPM_ARCH}.rpm" && \
+  dnf install -y "./google-chrome-stable_current_${RPM_ARCH}.rpm" && \
+  rm -f "./google-chrome-stable_current_${RPM_ARCH}.rpm" && \
   dnf clean all
 
 # Install basic command line tools
@@ -101,12 +124,17 @@ RUN dnf update -y && \
   dnf install -y git vim neovim emacs nano bash zsh jq ripgrep ddgr && \
   dnf clean all
 
-# Install codex
-RUN wget -q https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-x86_64-unknown-linux-musl.tar.gz && \
-  tar -xzf codex-x86_64-unknown-linux-musl.tar.gz -C /usr/local/bin && \
-  mv /usr/local/bin/codex-x86_64-unknown-linux-musl /usr/local/bin/codex && \
+# Install codex (release assets use the rust target triple: x86_64 / aarch64)
+RUN case "${TARGETARCH:-$(uname -m)}" in \
+      amd64|x86_64) CODEX_ARCH="x86_64" ;; \
+      arm64|aarch64) CODEX_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
+    esac && \
+  wget -q "https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz" && \
+  tar -xzf "codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz" -C /usr/local/bin && \
+  mv "/usr/local/bin/codex-${CODEX_ARCH}-unknown-linux-musl" /usr/local/bin/codex && \
   chmod +x /usr/local/bin/codex && \
-  rm -f codex-x86_64-unknown-linux-musl.tar.gz
+  rm -f "codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz"
 
 # Install claude
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
@@ -148,12 +176,12 @@ RUN mkdir -p /project /scratch /local /l /m /u
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 
-# Copy slurm binaries
+# Copy slurm binaries (the build stage built them for the target architecture)
 RUN mkdir -p /opt/slurm-binaries
 
-COPY --from=slurm_build /root/rpmbuild/RPMS/x86_64/*.rpm /opt/slurm-binaries
+COPY --from=slurm_build /opt/slurm-binaries/ /opt/slurm-binaries/
 
-# Install slurm
+# Install slurm (the copied RPMs match the target architecture)
 RUN dnf update -y && \
   dnf install -y /opt/slurm-binaries/slurm-${SLURM_VERSION}*.rpm munge && \
   dnf clean all

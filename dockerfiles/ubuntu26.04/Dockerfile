@@ -26,6 +26,8 @@ RUN cd /opt/slurm/slurm-${SLURM_VERSION} && \
 
 FROM ubuntu:26.04
 
+ARG TARGETARCH
+
 # Arguments and software versions
 ARG VSCODIUM_VERSION=1.135.06055
 ARG CODEX_VERSION=0.159.0
@@ -65,10 +67,11 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/*
 
 # Install VSCodium
-RUN wget -q https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/codium_${VSCODIUM_VERSION}_amd64.deb && \
+RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
+  wget -q "https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/codium_${VSCODIUM_VERSION}_${ARCH}.deb" && \
   apt-get update && \
-  apt-get install -y ./codium_${VSCODIUM_VERSION}_amd64.deb && \
-  rm -f codium_${VSCODIUM_VERSION}_amd64.deb && \
+  apt-get install -y "./codium_${VSCODIUM_VERSION}_${ARCH}.deb" && \
+  rm -f "codium_${VSCODIUM_VERSION}_${ARCH}.deb" && \
   rm -rf /var/lib/apt/lists/*
 
 # Add locales
@@ -86,11 +89,12 @@ RUN sed -i -e 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && \
   update-locale LANG=en_US.UTF-8
 
 # Add Google Chrome for logging into Github Copilot
-RUN apt-get update && \
+RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
+  apt-get update && \
   cd /tmp && \
-  wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
-  apt-get install -y ./google-chrome-stable_current_amd64.deb && \
-  rm -f ./google-chrome-stable_current_amd64.deb && \
+  wget -q "https://dl.google.com/linux/direct/google-chrome-stable_current_${ARCH}.deb" && \
+  apt-get install -y "./google-chrome-stable_current_${ARCH}.deb" && \
+  rm -f "./google-chrome-stable_current_${ARCH}.deb" && \
   rm -rf /var/lib/apt/lists/*
 
 # Install basic command line tools
@@ -98,12 +102,17 @@ RUN apt-get update && \
   apt-get install -y git vim neovim emacs nano bash zsh jq ripgrep ddgr && \
   rm -rf /var/lib/apt/lists/*
 
-# Install codex
-RUN wget -q https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-x86_64-unknown-linux-musl.tar.gz && \
-  tar -xzf codex-x86_64-unknown-linux-musl.tar.gz -C /usr/local/bin && \
-  mv /usr/local/bin/codex-x86_64-unknown-linux-musl /usr/local/bin/codex && \
+# Install codex (release assets use the rust target triple: x86_64 / aarch64)
+RUN case "${TARGETARCH:-$(dpkg --print-architecture)}" in \
+      amd64) CODEX_ARCH="x86_64" ;; \
+      arm64) CODEX_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH:-$(dpkg --print-architecture)}" >&2; exit 1 ;; \
+    esac && \
+  wget -q "https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz" && \
+  tar -xzf "codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz" -C /usr/local/bin && \
+  mv "/usr/local/bin/codex-${CODEX_ARCH}-unknown-linux-musl" /usr/local/bin/codex && \
   chmod +x /usr/local/bin/codex && \
-  rm -f codex-x86_64-unknown-linux-musl.tar.gz
+  rm -f "codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz"
 
 # Install claude
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
@@ -150,9 +159,13 @@ RUN mkdir -p /opt/slurm-binaries
 
 COPY --from=slurm_build /opt/slurm/*.deb /opt/slurm-binaries
 
-# Install slurm
-RUN apt-get update && \
-  apt-get install -y /opt/slurm-binaries/slurm-smd-client_*_amd64.deb /opt/slurm-binaries/slurm-smd_*_amd64.deb munge && \
+# Install slurm (the debs copied from the build stage match the target architecture)
+RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
+  apt-get update && \
+  apt-get install -y \
+    /opt/slurm-binaries/slurm-smd-client_*_${ARCH}.deb \
+    /opt/slurm-binaries/slurm-smd_*_${ARCH}.deb \
+    munge && \
   rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT [ "/entrypoint.sh" ]
