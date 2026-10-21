@@ -85,6 +85,15 @@ The configuration references `$WRKDIR`, which moat expands when it runs, so
 the same file works on any cluster as long as `$WRKDIR` points at the right
 place.
 
+> [!NOTE]
+> Clusters often provide Singularity rather than Apptainer. If the
+> `apptainer` command does not exist but `singularity` does, point the
+> apptainer runtime at it (see [CONFIG.md](../../CONFIG.md)):
+>
+> ```shell
+> moat config set defaults.runtimes.apptainer.executable singularity
+> ```
+
 ### 5. Enter the container and check Slurm
 
 From a project folder, `moat run` without a command runs the environment's

@@ -7,6 +7,17 @@
 
 moat is a small command line client that makes it easy to execute AI tools in containerized environments.
 
+## Contents
+
+- [Installation](#installation)
+- [Configuring moat](#configuring-moat)
+- [Environments](#environments)
+  - [Creating an environment](#creating-an-environment)
+  - [Running your program in the environment](#running-your-program-in-the-environment)
+- [Runtimes](#runtimes)
+- [Examples](#examples)
+- [AI usage in the project](#ai-usage-in-the-project)
+
 ## Installation
 
 1. Install [Apptainer](https://apptainer.org/) (the default runtime) or [Docker](https://docs.docker.com/). If you're using Linux, you can use either. On Mac only Docker is supported.

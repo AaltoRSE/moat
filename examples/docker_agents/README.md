@@ -58,6 +58,14 @@ mkdir -p ~/.config/moat
 curl -fsSL -o ~/.config/moat/moat-config.yaml https://raw.githubusercontent.com/AaltoRSE/moat/main/examples/docker_agents/moat-config.yaml
 ```
 
+> [!NOTE]
+> If you use Podman instead of Docker, point the docker runtime at it
+> (see [CONFIG.md](../../CONFIG.md)):
+>
+> ```shell
+> moat config set defaults.runtimes.docker.executable podman
+> ```
+
 ### 4. Create the fake home and the scratch directory
 
 ```shell

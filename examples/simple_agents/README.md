@@ -45,6 +45,14 @@ mkdir -p ~/.config/moat
 curl -fsSL -o ~/.config/moat/moat-config.yaml https://raw.githubusercontent.com/AaltoRSE/moat/main/examples/simple_agents/moat-config.yaml
 ```
 
+> [!NOTE]
+> If your system provides Singularity instead of Apptainer, point the
+> apptainer runtime at it (see [CONFIG.md](../../CONFIG.md)):
+>
+> ```shell
+> moat config set defaults.runtimes.apptainer.executable singularity
+> ```
+
 ### 3. Create the fake home
 
 ```shell

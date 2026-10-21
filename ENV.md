@@ -9,6 +9,23 @@ An **environment** is a named, self-contained container setup. It consists of:
 
 The `moat env` command group lets you create, inspect, copy, modify, and remove environments. All changes are persisted to your config file (`$HOME/.config/moat/moat-config.yaml`, or `moat-config.yaml` in the current directory).
 
+## Contents
+
+- [Subcommands](#subcommands)
+- [Common concepts](#common-concepts)
+  - [Environment names](#environment-names)
+  - [Fake home (`-H/--home`)](#fake-home--h--home)
+  - [Mounts (`-m/--mount`, `-r/--ro-mount`)](#mounts--m--mount--r--ro-mount)
+  - [Command (`-C/--command`)](#command--c--command)
+  - [Non-interactive mode (`-y/--yes`)](#non-interactive-mode--y--yes)
+- [`moat env create`](#moat-env-create)
+- [`moat env copy`](#moat-env-copy)
+- [`moat env list`](#moat-env-list)
+- [`moat env show`](#moat-env-show)
+- [`moat env set`](#moat-env-set)
+- [`moat env remove`](#moat-env-remove)
+- [Typical workflow](#typical-workflow)
+
 ## Subcommands
 
 | Command | Purpose |

@@ -18,6 +18,21 @@ There are two sources of runtimes:
 
 The `moat runtime` command group lets you create, inspect and modify runtimes. All changes are persisted to your config file (`$HOME/.config/moat/moat-config.yaml`, or `moat-config.yaml` in the current directory).
 
+## Contents
+
+- [Subcommands](#subcommands)
+- [Common concepts](#common-concepts)
+  - [Runtime names](#runtime-names)
+  - [Runtime specifications](#runtime-specifications)
+  - [Runtime types](#runtime-types)
+  - [Default and user runtimes](#default-and-user-runtimes)
+  - [Using runtimes](#using-runtimes)
+- [`moat runtime create`](#moat-runtime-create)
+- [`moat runtime set`](#moat-runtime-set)
+- [`moat runtime list`](#moat-runtime-list)
+- [Notes](#notes)
+- [Typical workflow](#typical-workflow)
+
 ## Subcommands
 
 | Command | Purpose |

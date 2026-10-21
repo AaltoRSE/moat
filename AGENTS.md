@@ -348,15 +348,16 @@ User-facing documentation lives at the **repository root** next to `README.md` �
 The command-group documents share a fixed skeleton; new documents and new sections must match it:
 
 1. `# moat {group} — managing {noun}` title, followed by a short introduction that defines the core concept (in bold) and notes where changes are persisted.
-2. `## Subcommands` — a `| Command | Purpose |` table listing every subcommand, followed by a note that the global `-c/--config` and `-d/--debug` flags are available on every command.
-3. A concepts section (`## Common concepts`, `## The config file`, `## Keys`, …) covering rules shared by several subcommands (naming, path expansion, key types, non-interactive mode, …).
-4. One `## moat {group} {sub}` section per subcommand, each containing, in order:
+2. `## Contents` — a linked table of contents of the sections that follow.
+3. `## Subcommands` — a `| Command | Purpose |` table listing every subcommand, followed by a note that the global `-c/--config` and `-d/--debug` flags are available on every command.
+4. A concepts section (`## Common concepts`, `## The config file`, `## Keys`, …) covering rules shared by several subcommands (naming, path expansion, key types, non-interactive mode, …).
+5. One `## moat {group} {sub}` section per subcommand, each containing, in order:
    - the usage synopsis in a code block (e.g. `moat env create -n NAME -H HOME [-m MOUNT]... [-y]`),
    - a `| Flag | Required | Description |` table (use `see note` where a flag is only conditionally required),
    - `Behavior:` bullets covering prompts, validation, error cases, and what the command prints,
    - `Examples:` in a `shell` code block.
-5. `## Notes` — edge cases and cross-references to the sibling documents (where useful).
-6. `## Typical workflow` — a numbered end-to-end example.
+6. `## Notes` — edge cases and cross-references to the sibling documents (where useful).
+7. `## Typical workflow` — a numbered end-to-end example.
 
 ### Style
 

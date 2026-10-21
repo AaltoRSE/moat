@@ -4,6 +4,25 @@ moat stores all of its settings in a single YAML file. The `moat config` command
 
 Every change made with `set`, `append`, or `prepend` is **validated before it is written to disk**: if the key is unknown, the value has the wrong type, or the resulting configuration is invalid, the change is rejected and the config file is left untouched.
 
+## Contents
+
+- [The config file](#the-config-file)
+  - [Environment variable overrides](#environment-variable-overrides)
+  - [Structure](#structure)
+  - [First-time setup](#first-time-setup)
+- [Subcommands](#subcommands)
+- [Keys](#keys)
+  - [Settable keys](#settable-keys)
+- [`moat config set`](#moat-config-set)
+- [`moat config append`](#moat-config-append)
+- [`moat config prepend`](#moat-config-prepend)
+- [`moat config show`](#moat-config-show)
+- [`moat config show-defaults`](#moat-config-show-defaults)
+- [`moat config edit`](#moat-config-edit)
+- [`moat init`](#moat-init)
+- [Notes](#notes)
+- [Typical workflow](#typical-workflow)
+
 ## The config file
 
 moat looks for a file named `moat-config.yaml` in:
@@ -53,6 +72,13 @@ Example:
 ```shell
 export MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL=ghcr.io/aaltorse/moat:v0.1.0
 moat config show
+```
+
+The runtime executables can be overridden the same way. If your system provides **Singularity** instead of Apptainer, point the apptainer runtime at it; if you use **Podman** instead of Docker, point the docker runtime at it:
+
+```shell
+export MOAT_DEFAULTS_RUNTIMES_APPTAINER_EXECUTABLE=singularity
+export MOAT_DEFAULTS_RUNTIMES_DOCKER_EXECUTABLE=podman
 ```
 
 Behavior:
@@ -167,7 +193,7 @@ Unknown keys are rejected with an error such as `key "envs.vscode.bogus" not fou
 |---|---|---|
 | `defaults.runtime` | string | Default runtime used when an environment has no `runtime` of its own |
 | `defaults.runtimes.{name}.type` | string | Runtime type, e.g. `apptainer` or `docker` |
-| `defaults.runtimes.{name}.executable` | string | Executable that runs the container (default: `apptainer` for the `apptainer` type, `docker` for the `docker` type — see [RUNTIME.md](RUNTIME.md#runtime-types)) |
+| `defaults.runtimes.{name}.executable` | string | Executable that runs the container (default: `apptainer` for the `apptainer` type, `docker` for the `docker` type; e.g. set it to `singularity` or `podman` when your container engine is installed under that name — see [RUNTIME.md](RUNTIME.md#runtime-types)) |
 | `defaults.runtimes.{name}.imageurl` | string | Container image pulled for this runtime |
 | `defaults.runtimes.{name}.cachedir` | string | Directory where container images are cached (for `docker`: scratch directory for run-time files — see [RUNTIME.md](RUNTIME.md#runtime-types)) |
 | `defaults.runtimes.{name}.passenv` | bool | Pass the host environment variables into the container |
@@ -209,6 +235,12 @@ moat config set defaults.runtimes.apptainer.imageurl ghcr.io/aaltorse/moat:v0.1.
 
 # Change where container images are cached
 moat config set defaults.runtimes.apptainer.cachedir /home/user/.cache/moat/images
+
+# Use singularity instead of apptainer (when the engine is installed as singularity)
+moat config set defaults.runtimes.apptainer.executable singularity
+
+# Use podman instead of docker
+moat config set defaults.runtimes.docker.executable podman
 
 # Set the default command of an environment (quote multi-word commands)
 moat config set envs.vscode.command "code --wait ."
