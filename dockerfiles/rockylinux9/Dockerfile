@@ -32,6 +32,18 @@ RUN dnf update -y && \
   dnf install -y ca-certificates wget gpg bind-utils && \
   dnf clean all
 
+  COPY slurm-binaries /opt/slurm-binaries/
+
+# Install slurm (the copied RPMs match the target architecture)
+RUN dnf update -y && \
+  case "${TARGETARCH:-$(uname -m)}" in \
+      amd64|x86_64) RPM_ARCH="x86_64" ;; \
+      arm64|aarch64) RPM_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
+    esac && \
+  dnf install -y /opt/slurm-binaries/slurm-${SLURM_VERSION}*${RPM_ARCH}.rpm munge && \
+  dnf clean all
+
 # Install Microsoft's packaging key
 RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
   echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" | tee /etc/yum.repos.d/vscode.repo > /dev/null && \
@@ -137,17 +149,5 @@ COPY entrypoint.sh /entrypoint.sh
 
 # Copy slurm binaries (the build stage built them for the target architecture)
 RUN mkdir -p /opt/slurm-binaries
-
-COPY slurm-binaries /opt/slurm-binaries/
-
-# Install slurm (the copied RPMs match the target architecture)
-RUN dnf update -y && \
-  case "${TARGETARCH:-$(uname -m)}" in \
-      amd64|x86_64) RPM_ARCH="x86_64" ;; \
-      arm64|aarch64) RPM_ARCH="aarch64" ;; \
-      *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
-    esac && \
-  dnf install -y /opt/slurm-binaries/slurm-${SLURM_VERSION}*${RPM_ARCH}.rpm munge && \
-  dnf clean all
 
 ENTRYPOINT [ "/entrypoint.sh" ]
