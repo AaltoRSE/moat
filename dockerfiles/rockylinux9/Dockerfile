@@ -1,44 +1,3 @@
-FROM rockylinux:9 AS slurm_build
-
-ARG SLURM_VERSION=26.05.4
-ARG SLURM_VERSION_GITHUB=26-05-4-1
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Upgrade existing packages
-RUN dnf update -y && \
-  dnf upgrade -y && \
-  dnf clean all
-
-# Install development tools
-RUN dnf update -y && \
-  dnf install -y dnf-plugins-core && \
-  dnf config-manager --set-enabled crb && \
-  dnf group install -y development && \
-  dnf group install -y rpm-development-tools && \
-  dnf clean all
-
-# Install Slurm dependencies
-RUN dnf update -y && \
-  dnf install -y mariadb-devel munge munge-libs munge-devel pam-devel perl-ExtUtils-MakeMaker perl-devel readline-devel bind-utils wget && \
-  dnf clean all
-
-# Obtain slurm source code
-RUN mkdir -p /opt/slurm && \
-  cd /opt/slurm && \
-  wget -q https://github.com/SchedMD/slurm/releases/download/slurm-${SLURM_VERSION_GITHUB}/slurm-${SLURM_VERSION}.tar.bz2
-
-# Build slurm (rpmbuild always builds for the architecture it runs on, and
-# multi-platform builds run this stage on the target platform)
-RUN cd /opt/slurm && \
-  rpmbuild -ta slurm-${SLURM_VERSION}.tar.bz2
-
-# Collect the built RPMs in an architecture-independent directory, excluding
-# debug packages
-RUN mkdir -p /opt/slurm-binaries && \
-  find /root/rpmbuild/RPMS -name '*.rpm' ! -name '*debuginfo*' ! -name '*debugsource*' \
-    -exec cp {} /opt/slurm-binaries/ \;
-
 FROM rockylinux:9
 
 # Target architecture, set automatically by BuildKit for multi-platform builds
@@ -179,11 +138,16 @@ COPY entrypoint.sh /entrypoint.sh
 # Copy slurm binaries (the build stage built them for the target architecture)
 RUN mkdir -p /opt/slurm-binaries
 
-COPY --from=slurm_build /opt/slurm-binaries/ /opt/slurm-binaries/
+COPY slurm-binaries /opt/slurm-binaries/
 
 # Install slurm (the copied RPMs match the target architecture)
 RUN dnf update -y && \
-  dnf install -y /opt/slurm-binaries/slurm-${SLURM_VERSION}*.rpm munge && \
+  case "${TARGETARCH:-$(uname -m)}" in \
+      amd64|x86_64) RPM_ARCH="x86_64" ;; \
+      arm64|aarch64) RPM_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
+    esac && \
+  dnf install -y /opt/slurm-binaries/slurm-${SLURM_VERSION}*${RPM_ARCH}.rpm munge && \
   dnf clean all
 
 ENTRYPOINT [ "/entrypoint.sh" ]

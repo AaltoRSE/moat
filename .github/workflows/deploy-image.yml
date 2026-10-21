@@ -4,28 +4,79 @@ name: Create and publish a Docker image
 # Configures this workflow to run every time a tag change is pushed to the repository
 on:
   push:
-    workflow_dispatch:
     tags: ['*']
-
+  workflow_dispatch:
 
 # Defines two custom environment variables for the workflow. These are used for the Container registry domain, and a name for the Docker image that this workflow builds.
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   PLATFORMS: linux/amd64,linux/arm64
+  SLURM_VERSION: 26.05.4
+  SLURM_VERSION_GITHUB: 26-05-4-1
+  # Where the composite action places the built binaries on the runner; shared
+  # by the cache, the build step, and the artifact upload.
+  SLURM_BINARIES_PATH: /tmp/slurm-binaries
 
-# There is a single job in this workflow. It's configured to run on the latest available version of Ubuntu.
+# Two jobs: `build-slurm` builds the Slurm binaries natively for each OS/arch
+# combination, and `build-and-push-image` builds and pushes the multi-platform
+# images from those binaries.
 jobs:
+  build-slurm:
+    # Build natively: arm64 on a dedicated arm runner, everything else on the
+    # default (amd64) runner.
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-26.04-arm' || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        os: [ubuntu26.04, rockylinux9]
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # Cache slurm binaries for faster subsequent builds. The key includes a
+      # hash of the build Dockerfiles so recipe changes invalidate the cache.
+      - name: Cache Slurm binaries
+        id: cache-slurm
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.SLURM_BINARIES_PATH }}/*
+          key: slurm-${{ env.SLURM_VERSION }}-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('actions/build-slurm/Dockerfile.*') }}
+
+      # Build the Slurm Docker image for the specified OS and architecture.
+      # Skipped on a cache hit; the restored binaries are uploaded below.
+      - name: Build Slurm Docker image
+        uses: ./actions/build-slurm
+        if: steps.cache-slurm.outputs.cache-hit != 'true'
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+          slurm_version: ${{ env.SLURM_VERSION }}
+          slurm_version_github: ${{ env.SLURM_VERSION_GITHUB }}
+          output_path: ${{ env.SLURM_BINARIES_PATH }}
+
+      # Upload the built (or cache-restored) Slurm binaries as artifacts.
+      # Uses a literal name/path so it also works when the build was skipped.
+      - name: Upload Slurm binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: slurm-${{ env.SLURM_VERSION }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ env.SLURM_BINARIES_PATH }}/*
+          if-no-files-found: error
+
   build-and-push-image:
     runs-on: ubuntu-latest
     # Build multiple images
+    needs: build-slurm
     strategy:
       matrix:
         include:
-          - suffix: ubuntu26.04
+          - os: ubuntu26.04
             context: dockerfiles/ubuntu26.04
             latest: true
-          - suffix: rockylinux9
+          - os: rockylinux9
             context: dockerfiles/rockylinux9
             latest: false
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
@@ -37,6 +88,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      # Download the Slurm binaries built in the previous job (both
+      # architectures merged into the build context)
+      - name: Download Slurm binaries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: slurm-${{ env.SLURM_VERSION }}-${{ matrix.os }}-*
+          path: ${{ matrix.context }}/slurm-binaries
+          merge-multiple: true
 
       # Set up QEMU for multi-platform builds
       - name: Set up QEMU
@@ -76,7 +136,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: true
-          tags: ${{ matrix.latest && (steps.meta.outputs.tags) || ''}}${{ matrix.latest && (steps.meta.outputs.tags != '' && ',' || '') || '' }}${{ steps.meta.outputs.tags }}-${{ matrix.suffix }}
+          tags: ${{ matrix.latest && (steps.meta.outputs.tags) || ''}}${{ matrix.latest && (steps.meta.outputs.tags != '' && ',' || '') || '' }}${{ steps.meta.outputs.tags }}-${{ matrix.os }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ env.PLATFORMS }}
 

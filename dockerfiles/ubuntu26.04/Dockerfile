@@ -1,29 +1,3 @@
-FROM ubuntu:26.04 AS slurm_build
-
-ARG SLURM_VERSION=26.05.4
-ARG SLURM_VERSION_GITHUB=26-05-4-1
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install Slurm
-RUN apt-get update && \
-  apt-get install -y build-essential fakeroot devscripts equivs bind9-host wget && \
-  rm -rf /var/lib/apt/lists/*
-
-# Obtain slurm source code
-RUN mkdir -p /opt/slurm && \
-  cd /opt/slurm && \
-  wget -q https://github.com/SchedMD/slurm/releases/download/slurm-${SLURM_VERSION_GITHUB}/slurm-${SLURM_VERSION}.tar.bz2 && \
-  tar xf slurm-${SLURM_VERSION}.tar.bz2
-
-# Build slurm
-RUN cd /opt/slurm/slurm-${SLURM_VERSION} && \
-  mk-build-deps debian/control && \
-  apt-get update && \
-  apt-get install -y ./slurm-smd-build-deps_${SLURM_VERSION}-1_all.deb && \
-  debuild -b -uc -us && \
-  rm -rf /var/lib/apt/lists/*
-
 FROM ubuntu:26.04
 
 ARG TARGETARCH
@@ -157,7 +131,7 @@ COPY entrypoint.sh /entrypoint.sh
 # Copy slurm binaries
 RUN mkdir -p /opt/slurm-binaries
 
-COPY --from=slurm_build /opt/slurm/*.deb /opt/slurm-binaries
+COPY slurm-binaries/*.deb /opt/slurm-binaries
 
 # Install slurm (the debs copied from the build stage match the target architecture)
 RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \

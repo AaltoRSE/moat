@@ -1,0 +1,60 @@
+name: Build Slurm
+description: Build the Slurm workload manager using a Docker container.
+inputs:
+  os:
+    description: The operating system to use for the Docker build.
+    required: true
+  arch:
+    description: The architecture to use for the Docker build.
+    required: true
+  slurm_version:
+    description: The version of Slurm to build.
+    required: true
+  slurm_version_github:
+    description: The GitHub version of Slurm to build.
+    required: true
+  output_path:
+    description: Directory on the runner where the built binaries are placed.
+    required: false
+    default: /tmp/slurm-binaries
+runs:
+  using: 'composite'
+  steps:
+  - name: Build slurm
+    shell: bash
+    run: |
+      set -euo pipefail
+
+      if [[ "${{ inputs.os }}" == "ubuntu26.04" ]]; then
+        export DOCKERFILE=Dockerfile.ubuntu26_04
+      elif [[ "${{ inputs.os }}" == "rockylinux9" ]]; then
+        export DOCKERFILE=Dockerfile.rockylinux9
+      else
+        echo "Unsupported OS: ${{ inputs.os }}"
+        exit 1
+      fi
+
+      export ARTIFACT_TAG="slurm-${{ inputs.slurm_version }}-${{ inputs.os }}-${{ inputs.arch }}"
+      export ARTIFACT_PATH="${{ inputs.output_path }}"
+
+      echo "Building slurm version ${{ inputs.slurm_version }} in a Docker container for OS: ${{ inputs.os }} and ARCH: ${{ inputs.arch }} with tag $ARTIFACT_TAG..."
+      docker build --platform "linux/${{ inputs.arch }}" \
+        -f "actions/build-slurm/$DOCKERFILE" \
+        -t "$ARTIFACT_TAG" \
+        --build-arg "SLURM_VERSION=${{ inputs.slurm_version }}" \
+        --build-arg "SLURM_VERSION_GITHUB=${{ inputs.slurm_version_github }}" \
+        actions/build-slurm
+
+      # Start the container detached. The image has no meaningful long-running
+      # command, but `docker cp` also works on stopped containers, so the
+      # container may exit immediately.
+      echo "Starting container for $ARTIFACT_TAG..."
+      container_id=$(docker run -d "$ARTIFACT_TAG")
+
+      echo "Copying slurm binaries from the container..."
+      mkdir -p "$ARTIFACT_PATH"
+      docker cp "$container_id:/opt/slurm-binaries/." "$ARTIFACT_PATH/"
+
+      echo "Cleaning up the container and image..."
+      docker rm -f "$container_id" > /dev/null
+      docker rmi "$ARTIFACT_TAG" > /dev/null

@@ -9,11 +9,12 @@ moat is a small command line client that makes it easy to execute AI tools in co
 
 ## Installation
 
-> [!IMPORTANT]
-> Currently only Linux is supported, because a container runtime (Apptainer or Docker) needs to be installed.
-
-1. Install [Apptainer](https://apptainer.org/) (the default runtime) or [Docker](https://docs.docker.com/).
-2. Download the `moat`-binary and run it.
+1. Install [Apptainer](https://apptainer.org/) (the default runtime) or [Docker](https://docs.docker.com/). If you're using Linux, you can use either. On Mac only Docker is supported.
+2. Download the `moat`-binary and run it:
+```sh
+curl -sSL https://github.com/AaltoRSE/moat/releases/latest/download/moat_$(uname -s)_$(uname -m).tar.gz | tar -xz -C . moat
+./moat
+```
 
 Alternatively, you can build the project yourself with `go`:
 ```shell
