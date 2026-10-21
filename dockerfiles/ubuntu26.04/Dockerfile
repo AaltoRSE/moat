@@ -28,7 +28,11 @@ RUN apt-get update && \
 COPY slurm-binaries/*.deb /opt/slurm-binaries
 
 # Install slurm (the debs copied from the build stage match the target architecture)
-RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
+RUN case "${TARGETARCH:-$(dpkg --print-architecture)}" in \
+      amd64) ARCH="x86_64" ;; \
+      arm64) ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH:-$(dpkg --print-architecture)}" >&2; exit 1 ;; \
+    esac && \
   apt-get update && \
   apt-get install -y \
     /opt/slurm-binaries/slurm-smd-client_*_${ARCH}.deb \
