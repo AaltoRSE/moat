@@ -27,10 +27,12 @@ RUN apt-get update && \
 
 COPY slurm-binaries/*.deb /opt/slurm-binaries
 
+# List Slurm binaries for debugging
+RUN ls /opt/slurm-binaries
+
 # Install slurm (the debs copied from the build stage match the target architecture)
 RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
   apt-get update && \
-  ls /opt/slurm-binaries && \
   apt-get install -y \
     /opt/slurm-binaries/slurm-smd-client_*_${ARCH}.deb \
     /opt/slurm-binaries/slurm-smd_*_${ARCH}.deb \

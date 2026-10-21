@@ -34,9 +34,11 @@ RUN dnf update -y && \
 
 COPY slurm-binaries /opt/slurm-binaries/
 
+# List Slurm binaries for debugging
+RUN ls /opt/slurm-binaries
+
 # Install slurm (the copied RPMs match the target architecture)
 RUN dnf update -y && \
-  ls /opt/slurm-binaries && \
   case "${TARGETARCH:-$(uname -m)}" in \
       amd64|x86_64) RPM_ARCH="x86_64" ;; \
       arm64|aarch64) RPM_ARCH="aarch64" ;; \
