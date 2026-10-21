@@ -32,10 +32,11 @@ RUN dnf update -y && \
   dnf install -y ca-certificates wget gpg bind-utils && \
   dnf clean all
 
-  COPY slurm-binaries /opt/slurm-binaries/
+COPY slurm-binaries /opt/slurm-binaries/
 
 # Install slurm (the copied RPMs match the target architecture)
 RUN dnf update -y && \
+  ls /opt/slurm-binaries && \
   case "${TARGETARCH:-$(uname -m)}" in \
       amd64|x86_64) RPM_ARCH="x86_64" ;; \
       arm64|aarch64) RPM_ARCH="aarch64" ;; \
