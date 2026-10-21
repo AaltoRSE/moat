@@ -81,6 +81,30 @@ func (suite *RuntimeTestSuite) TestCreateWithPassEnvMountCWD() {
 	assert.True(suite.T(), createdSpec.MountCWD)
 }
 
+// TestCreateWithExecutable tests that runtime create with the
+// --executable flag stores the executable of the runtime.
+func (suite *RuntimeTestSuite) TestCreateWithExecutable() {
+	spec := createRuntimeSpec()
+	spec.Executable = "my-apptainer"
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "create", "--name", "custom", "--type", spec.Type, "--executable", spec.Executable, "--imageurl", spec.ImageUrl, "--cachedir", spec.CacheDir})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Runtime created successfully.")
+
+	// The stored runtime must have the executable as given
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	createdSpec, exists := config.GetUserRuntimes(cfg)["custom"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), spec, createdSpec)
+	assert.Equal(suite.T(), "my-apptainer", createdSpec.Executable)
+}
+
 // TestCreateExisting tests that runtime create with the name of an
 // existing user-specified runtime does not modify the configuration.
 func (suite *RuntimeTestSuite) TestCreateExisting() {

@@ -13,13 +13,20 @@ import (
 )
 
 // NewApptainerRuntimeFromSpec returns a new ApptainerRuntime built from
-// the given runtime spec.
+// the given runtime spec. The executable is taken from the spec's
+// Executable setting, falling back to "apptainer" when the spec does not
+// set it.
 func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
+	executable := spec.Executable
+	if executable == "" {
+		executable = "apptainer"
+	}
 	return &ApptainerRuntime{
-		ImageUrl: spec.ImageUrl,
-		CacheDir: spec.CacheDir,
-		PassEnv:  spec.PassEnv,
-		MountCWD: spec.MountCWD,
+		Executable: executable,
+		ImageUrl:   spec.ImageUrl,
+		CacheDir:   spec.CacheDir,
+		PassEnv:    spec.PassEnv,
+		MountCWD:   spec.MountCWD,
 	}
 }
 
@@ -27,10 +34,12 @@ func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 // Apptainer containers. The container image is pulled into CacheDir with
 // apptainer when it is not cached yet.
 type ApptainerRuntime struct {
-	ImageUrl string
-	CacheDir string
-	PassEnv  bool
-	MountCWD bool
+	// Executable is the command used to invoke apptainer.
+	Executable string
+	ImageUrl   string
+	CacheDir   string
+	PassEnv    bool
+	MountCWD   bool
 }
 
 // ApptainerImage describes a container image: its file name and path in
@@ -96,7 +105,7 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 	}
 
 	if err := utils.Run(utils.RunArgs{
-		Command: "apptainer",
+		Command: f.Executable,
 		Args:    []string{"pull", image.Path, image.Url},
 		Env:     []string{},
 		PassEnv: passEnv,
@@ -213,7 +222,7 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 
 	log.Debug().Bool("passEnv", passEnv).Msg("PassEnv")
 
-	if err := utils.Run(utils.RunArgs{Command: "apptainer", Args: apptainerArgs, Env: cmdEnv, PassEnv: passEnv}); err != nil {
+	if err := utils.Run(utils.RunArgs{Command: f.Executable, Args: apptainerArgs, Env: cmdEnv, PassEnv: passEnv}); err != nil {
 		return 1, err
 	}
 	return 0, nil

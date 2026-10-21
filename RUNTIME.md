@@ -5,6 +5,7 @@ A **runtime** describes how moat starts a container: which container image is us
 A runtime specification consists of:
 
 - `type` — the runtime type, e.g. `apptainer` or `docker`,
+- `executable` — the command that runs the container (optional; `apptainer` for the `apptainer` type and `docker` for the `docker` type by default),
 - `imageurl` — the container image that is pulled (required for `apptainer`),
 - `cachedir` — the directory where pulled images are cached (required for `apptainer`; used as a scratch directory by `docker`),
 - `passenv` — whether the host environment variables are passed into the container, and
@@ -38,6 +39,7 @@ Names must be non-empty and contain only **alphanumeric characters and underscor
 | Field | Description |
 |---|---|
 | `type` | Runtime type, `apptainer` or `docker`. Required. |
+| `executable` | Command used to run the container, e.g. `apptainer`, `docker`, or a wrapper script. Optional: when it is not set, the `apptainer` type uses `apptainer` and the `docker` type uses `docker`. |
 | `imageurl` | URL of the container image that is pulled (e.g. `ghcr.io/aaltorse/moat:latest`). Required for the `apptainer` type. The `docker` type also runs this image — moat does not enforce it, but `docker pull` needs a valid image reference at run time. |
 | `cachedir` | Directory where pulled images are cached. Required for the `apptainer` type. The directory is created automatically on first use if it does not exist. The path may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded, and relative paths are resolved to absolute ones before the runtime is stored. For the `docker` type the directory is not an image cache (Docker keeps its own); it is the scratch directory for the temporary user-identification file written for every run, and it **must exist**. |
 | `passenv` | Pass the host environment variables into the container (default: `true`). |
@@ -47,8 +49,8 @@ Names must be non-empty and contain only **alphanumeric characters and underscor
 
 The runtime type decides which container technology `moat run` uses:
 
-- **`apptainer`** (the default) — the image is pulled with `apptainer pull` into `cachedir` as a `.sif` file and reused from there while it exists. Apptainer needs no daemon, and no root privileges.
-- **`docker`** — requires a working `docker` CLI and daemon, and permission to run containers as your user (e.g. membership in the `docker` group). The image is pulled with `docker pull` before every run; Docker's own image cache makes repeated runs cheap. Every run creates a fresh container named `moat-xxxx` (`xxxx` is random) that is removed afterwards and whose root filesystem is read-only. The container runs as the invoking user: its `/etc/passwd` is taken from the image, augmented with your user's account line, and mounted back in so that tools inside the container can resolve your user. For that, `cachedir` is used as the scratch directory and must exist.
+- **`apptainer`** (the default) — the image is pulled with `apptainer pull` into `cachedir` as a `.sif` file and reused from there while it exists. Apptainer needs no daemon, and no root privileges. A differently named or wrapped apptainer binary can be used with the `executable` field.
+- **`docker`** — requires a working `docker` CLI (or another compatible executable, see `executable`) and daemon, and permission to run containers as your user (e.g. membership in the `docker` group). The image is pulled with `docker pull` before every run; Docker's own image cache makes repeated runs cheap. Every run creates a fresh container named `moat-xxxx` (`xxxx` is random) that is removed afterwards and whose root filesystem is read-only. The container runs as the invoking user: its `/etc/passwd` is taken from the image, augmented with your user's account line, and mounted back in so that tools inside the container can resolve your user. For that, `cachedir` is used as the scratch directory and must exist.
 
 Both types mount the environment's fake home directory at your home directory path and apply the environment's mounts and read-only mounts (see [ENV.md](ENV.md)).
 
@@ -76,13 +78,14 @@ At run time, the image is pulled (for `apptainer` into `cachedir`, reusing a cac
 Create a new runtime and write it to the config file.
 
 ```
-moat runtime create -n NAME --type TYPE [--imageurl URL] [--cachedir DIR] [--passenv] [--mountcwd]
+moat runtime create -n NAME --type TYPE [--executable EXEC] [--imageurl URL] [--cachedir DIR] [--passenv] [--mountcwd]
 ```
 
 | Flag | Required | Description |
 |---|---|---|
 | `-n, --name` | yes | Name of the runtime |
 | `--type` | yes | Type of the runtime (`apptainer` or `docker`) |
+| `--executable` | no | Executable that runs the container (default: `apptainer` for the `apptainer` type, `docker` for the `docker` type) |
 | `--imageurl` | see note | URL of the container image (required for the `apptainer` type) |
 | `--cachedir` | see note | Directory for caching container images (required for the `apptainer` type) |
 | `--passenv` | no | Pass the environment variables to the container (default: `true`) |
@@ -94,6 +97,7 @@ Behavior:
 - If a user runtime with the same name already exists, nothing is done (`Runtime already exists.`).
 - Creating a runtime with the name of a **default** runtime is allowed and overwrites that default in all lookups (see [Default and user runtimes](#default-and-user-runtimes)).
 - The `--cachedir` path is expanded and resolved to an absolute path before it is stored.
+- When `--executable` is not given, the runtime is stored without an `executable` value and the type's default executable (`apptainer` or `docker`) is used at run time.
 - The configuration currently requires `passenv` to be `true`; creating a runtime with `--passenv=false` is rejected by validation.
 - On success, prints `Creating runtime 'NAME'` and `Runtime created successfully.`
 
@@ -120,6 +124,12 @@ moat runtime create -n docker-lab --type docker \
 moat runtime create -n apptainer --type apptainer \
     --imageurl ghcr.io/aaltorse/moat:latest \
     --cachedir $HOME/.cache/moat/images
+
+# A runtime that uses a differently named container engine command
+moat runtime create -n custom-exe --type apptainer \
+    --imageurl ghcr.io/aaltorse/moat:latest \
+    --cachedir $HOME/.cache/moat/images \
+    --executable my-apptainer
 ```
 
 ## `moat runtime set`
@@ -127,19 +137,20 @@ moat runtime create -n apptainer --type apptainer \
 Change one or more variables of an **existing** runtime. Only the flags you give are modified; every other variable of the runtime (and all other runtimes) keeps its current value. The change is written to the config file.
 
 ```
-moat runtime set -n NAME ( [--type TYPE] | [--imageurl URL] | [--cachedir DIR] | [--passenv VAL] | [--mountcwd VAL] )...
+moat runtime set -n NAME ( [--type TYPE] | [--executable EXEC] | [--imageurl URL] | [--cachedir DIR] | [--passenv VAL] | [--mountcwd VAL] )...
 ```
 
 | Flag | Required | Description |
 |---|---|---|
 | `-n, --name` | yes | Name of the runtime to modify |
 | `--type` | see note | New runtime type (`apptainer` or `docker`) |
+| `--executable` | see note | New executable that runs the container |
 | `--imageurl` | see note | New container image URL |
 | `--cachedir` | see note | New directory for caching container images |
 | `--passenv` | see note | Pass the host environment variables into the container (default: `true`) |
 | `--mountcwd` | see note | Bind-mount the caller's current working directory into the container (default: `false`) |
 
-At least one of `--type`, `--imageurl`, `--cachedir`, `--passenv`, or `--mountcwd` must be given. For the boolean flags, `VAL` is `true` or `false` (the bare flag means `true`). The runtime must already exist, either as a user runtime or as a default runtime.
+At least one of `--type`, `--executable`, `--imageurl`, `--cachedir`, `--passenv`, or `--mountcwd` must be given. For the boolean flags, `VAL` is `true` or `false` (the bare flag means `true`). The runtime must already exist, either as a user runtime or as a default runtime.
 
 Behavior:
 
@@ -160,6 +171,9 @@ moat runtime set -n apptainer --mountcwd
 
 # Change several variables at once
 moat runtime set -n myrt --imageurl ghcr.io/aaltorse/moat:latest --cachedir $HOME/.cache/moat/images --mountcwd
+
+# Use a different container engine command
+moat runtime set -n myrt --executable singularity
 ```
 
 ## `moat runtime list`

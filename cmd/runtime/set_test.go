@@ -67,6 +67,37 @@ func (suite *RuntimeTestSuite) TestSetImageurl() {
 	assert.Equal(suite.T(), spec.MountCWD, updatedSpec.MountCWD)
 }
 
+// TestSetExecutable tests that runtime set updates the executable
+// variable of an existing user runtime and leaves the other variables of
+// the runtime untouched.
+func (suite *RuntimeTestSuite) TestSetExecutable() {
+	spec := suite.createSetRuntime()
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "set", "--name", "custom", "--executable", "my-apptainer"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Set custom.executable = [my-apptainer]")
+	assert.Contains(suite.T(), capturedOutput, "Runtime updated successfully.")
+	assert.NotContains(suite.T(), capturedOutput, "Overriding default runtime")
+
+	// The updated runtime must have the new executable and keep the other
+	// variables of the original specification
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	updatedSpec, exists := config.GetUserRuntimes(cfg)["custom"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), "my-apptainer", updatedSpec.Executable)
+	assert.Equal(suite.T(), spec.Type, updatedSpec.Type)
+	assert.Equal(suite.T(), spec.ImageUrl, updatedSpec.ImageUrl)
+	assert.Equal(suite.T(), spec.CacheDir, updatedSpec.CacheDir)
+	assert.Equal(suite.T(), spec.PassEnv, updatedSpec.PassEnv)
+	assert.Equal(suite.T(), spec.MountCWD, updatedSpec.MountCWD)
+}
+
 // TestSetCachedir tests that runtime set with a relative --cachedir path
 // stores the cache directory as an absolute path.
 func (suite *RuntimeTestSuite) TestSetCachedir() {
@@ -230,6 +261,7 @@ func (suite *RuntimeTestSuite) TestSetDefaultRuntime() {
 	home, err := os.UserHomeDir()
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), filepath.Join(home, ".cache", "moat", "images"), userSpec.CacheDir)
+	assert.Equal(suite.T(), "apptainer", userSpec.Executable)
 	assert.True(suite.T(), userSpec.PassEnv)
 	assert.False(suite.T(), userSpec.MountCWD)
 

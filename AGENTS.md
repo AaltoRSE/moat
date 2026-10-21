@@ -186,7 +186,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 |---|---|---|
 | `Config` | `config.go` | Root config struct: `Defaults`, `Envs map[string]MoatEnv`, `Runtimes map[string]RuntimeSpec` |
 | `Defaults` | `config.go` | Default runtime settings: `Runtime string`, `Runtimes map[string]RuntimeSpec` |
-| `RuntimeSpec` | `runtimespec.go` | Config fields for any runtime (type, imageurl, cachedir, passenv, mountcwd) |
+| `RuntimeSpec` | `runtimespec.go` | Config fields for any runtime (type, executable, imageurl, cachedir, passenv, mountcwd) |
 | `RuntimeUpdate` | `runtimespec.go` | A single field/value pair used by `moat runtime set` to change one runtime field |
 | `MoatEnv` | `moatenv.go` | An individual named environment (home, mounts, readonlymounts, mountcwd, runtime, passenv, command) |
 

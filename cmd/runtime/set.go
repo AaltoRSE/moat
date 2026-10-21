@@ -56,6 +56,14 @@ Examples:
 				}
 				updates = append(updates, types.RuntimeUpdate{Field: "type", Value: []string{value}})
 			}
+			if cmd.Flags().Changed("executable") {
+				value, err := cmd.Flags().GetString("executable")
+				if err != nil {
+					log.Error().Msgf("could not get executable flag: %v", err)
+					return
+				}
+				updates = append(updates, types.RuntimeUpdate{Field: "executable", Value: []string{value}})
+			}
 			if cmd.Flags().Changed("imageurl") {
 				value, err := cmd.Flags().GetString("imageurl")
 				if err != nil {
@@ -90,7 +98,7 @@ Examples:
 			}
 
 			if len(updates) == 0 {
-				log.Error().Msgf("no variables to set: give at least one of --type, --imageurl, --cachedir, --passenv or --mountcwd")
+				log.Error().Msgf("no variables to set: give at least one of --type, --executable, --imageurl, --cachedir, --passenv or --mountcwd")
 				return
 			}
 
@@ -102,6 +110,7 @@ Examples:
 
 	setCmd.Flags().StringP("name", "n", "", "Name of the runtime")
 	setCmd.Flags().String("type", "", "Type of the runtime (e.g. apptainer)")
+	setCmd.Flags().String("executable", "", "Executable that runs the container (default: apptainer for the apptainer type, docker for the docker type)")
 	setCmd.Flags().String("imageurl", "", "URL of the container image (required for the apptainer type)")
 	setCmd.Flags().String("cachedir", "", "Directory for caching container images (required for the apptainer type)")
 	setCmd.Flags().Bool("passenv", true, "Pass the environment variables to the container")

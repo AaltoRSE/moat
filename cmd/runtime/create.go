@@ -37,6 +37,11 @@ Examples:
 				log.Error().Msgf("could not get type flag: %v", err)
 				return
 			}
+			executable, err := cmd.Flags().GetString("executable")
+			if err != nil {
+				log.Error().Msgf("could not get executable flag: %v", err)
+				return
+			}
 			imageUrl, err := cmd.Flags().GetString("imageurl")
 			if err != nil {
 				log.Error().Msgf("could not get imageurl flag: %v", err)
@@ -59,11 +64,12 @@ Examples:
 			}
 
 			spec := types.RuntimeSpec{
-				Type:     runtimeType,
-				ImageUrl: imageUrl,
-				CacheDir: cacheDir,
-				PassEnv:  passEnv,
-				MountCWD: mountCWD,
+				Type:       runtimeType,
+				Executable: executable,
+				ImageUrl:   imageUrl,
+				CacheDir:   cacheDir,
+				PassEnv:    passEnv,
+				MountCWD:   mountCWD,
 			}
 
 			if err := runtime.CreateRuntime(config.CmdConfig, name, spec); err != nil {
@@ -74,6 +80,7 @@ Examples:
 
 	createCmd.Flags().StringP("name", "n", "", "Name of the runtime")
 	createCmd.Flags().String("type", "", "Type of the runtime (e.g. apptainer)")
+	createCmd.Flags().String("executable", "", "Executable that runs the container (default: apptainer for the apptainer type, docker for the docker type)")
 	createCmd.Flags().String("imageurl", "", "URL of the container image (required for the apptainer type)")
 	createCmd.Flags().String("cachedir", "", "Directory for caching container images (required for the apptainer type)")
 	createCmd.Flags().Bool("passenv", true, "Pass the environment variables to the container")

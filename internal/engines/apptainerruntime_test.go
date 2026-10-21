@@ -218,6 +218,56 @@ func (suite *ApptainerRuntimeTestSuite) TestRunDoesNotMountCWDWhenAlreadyMounted
 	assert.False(suite.T(), hasPwdArg(apptainerArgs, suite.WorkDir))
 }
 
+// TestNewRuntimeDefaultsExecutable tests that the runtime defaults to the
+// apptainer executable when the runtime spec does not set one.
+func (suite *ApptainerRuntimeTestSuite) TestNewRuntimeDefaultsExecutable() {
+	runtime := NewApptainerRuntimeFromSpec(&types.RuntimeSpec{Type: "apptainer"})
+
+	assert.Equal(suite.T(), "apptainer", runtime.Executable)
+}
+
+// TestNewRuntimeUsesSpecExecutable tests that the runtime uses the
+// executable given in the runtime spec.
+func (suite *ApptainerRuntimeTestSuite) TestNewRuntimeUsesSpecExecutable() {
+	runtime := NewApptainerRuntimeFromSpec(&types.RuntimeSpec{Type: "apptainer", Executable: "my-apptainer"})
+
+	assert.Equal(suite.T(), "my-apptainer", runtime.Executable)
+}
+
+// TestRunUsesSpecExecutable tests that Run invokes the executable given
+// in the runtime spec instead of the default apptainer binary.
+func (suite *ApptainerRuntimeTestSuite) TestRunUsesSpecExecutable() {
+	// Install a fake binary under a custom name on the PATH.
+	fakeBinDir := suite.T().TempDir()
+	customLogFile := filepath.Join(fakeBinDir, "custom-args.log")
+	script := strings.ReplaceAll(fakeApptainerScript, "<logFile>", customLogFile)
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(fakeBinDir, "my-apptainer"), []byte(script), 0o755))
+	suite.T().Setenv("PATH", fakeBinDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	runtime := NewApptainerRuntimeFromSpec(&types.RuntimeSpec{
+		Type:       "apptainer",
+		Executable: "my-apptainer",
+		ImageUrl:   "test/example-image:1.0",
+		CacheDir:   suite.CacheDir,
+		PassEnv:    false,
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	defer func() {
+		_, _ = capture.StopCapture()
+	}()
+
+	code, err := runtime.Run(types.MoatEnv{Home: suite.HomeDir}, []string{"echo", "hello"}, nil)
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), 0, code)
+
+	// The custom binary must have been invoked with the user command.
+	contents, err := os.ReadFile(customLogFile)
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), string(contents), "echo\nhello")
+}
+
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestApptainerRuntimeTestSuite(t *testing.T) {

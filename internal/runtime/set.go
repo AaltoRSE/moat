@@ -117,6 +117,13 @@ func applyRuntimeUpdate(spec *types.RuntimeSpec, name string, update types.Runti
 		}
 		spec.Type = value
 		applied = value
+	case "executable":
+		value, err := singleRuntimeUpdateValue(update)
+		if err != nil {
+			return "", err
+		}
+		spec.Executable = value
+		applied = value
 	case "imageurl":
 		value, err := singleRuntimeUpdateValue(update)
 		if err != nil {

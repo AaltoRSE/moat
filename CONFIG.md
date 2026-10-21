@@ -36,11 +36,13 @@ Every default configuration key can be overridden with an environment variable o
 |---|---|
 | `defaults.runtime` | `MOAT_DEFAULTS_RUNTIME` |
 | `defaults.runtimes.apptainer.type` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_TYPE` |
+| `defaults.runtimes.apptainer.executable` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_EXECUTABLE` |
 | `defaults.runtimes.apptainer.imageurl` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_IMAGEURL` |
 | `defaults.runtimes.apptainer.cachedir` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_CACHEDIR` |
 | `defaults.runtimes.apptainer.passenv` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_PASSENV` |
 | `defaults.runtimes.apptainer.mountcwd` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_MOUNTCWD` |
 | `defaults.runtimes.docker.type` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_TYPE` |
+| `defaults.runtimes.docker.executable` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_EXECUTABLE` |
 | `defaults.runtimes.docker.imageurl` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_IMAGEURL` |
 | `defaults.runtimes.docker.cachedir` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_CACHEDIR` |
 | `defaults.runtimes.docker.passenv` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_PASSENV` |
@@ -78,12 +80,14 @@ defaults:
     runtimes:
         apptainer:
             type: apptainer
+            executable: apptainer
             imageurl: ghcr.io/aaltorse/moat:latest
             cachedir: $HOME/.cache/moat/images
             passenv: true
             mountcwd: false
         docker:
             type: docker
+            executable: docker
             imageurl: ghcr.io/aaltorse/moat:latest
             cachedir: $HOME/.cache/moat/
             passenv: true
@@ -121,6 +125,7 @@ defaults:
     runtimes:
         apptainer:
             type: apptainer
+            executable: apptainer
             imageurl: ghcr.io/aaltorse/moat:latest
             cachedir: $HOME/.cache/moat/images
             passenv: true
@@ -162,6 +167,7 @@ Unknown keys are rejected with an error such as `key "envs.vscode.bogus" not fou
 |---|---|---|
 | `defaults.runtime` | string | Default runtime used when an environment has no `runtime` of its own |
 | `defaults.runtimes.{name}.type` | string | Runtime type, e.g. `apptainer` or `docker` |
+| `defaults.runtimes.{name}.executable` | string | Executable that runs the container (default: `apptainer` for the `apptainer` type, `docker` for the `docker` type — see [RUNTIME.md](RUNTIME.md#runtime-types)) |
 | `defaults.runtimes.{name}.imageurl` | string | Container image pulled for this runtime |
 | `defaults.runtimes.{name}.cachedir` | string | Directory where container images are cached (for `docker`: scratch directory for run-time files — see [RUNTIME.md](RUNTIME.md#runtime-types)) |
 | `defaults.runtimes.{name}.passenv` | bool | Pass the host environment variables into the container |
@@ -286,12 +292,14 @@ defaults:
     runtimes:
         apptainer:
             cachedir: $HOME/.cache/moat/images
+            executable: apptainer
             imageurl: ghcr.io/aaltorse/moat:latest
             mountcwd: false
             passenv: true
             type: apptainer
         docker:
             cachedir: $HOME/.cache/moat/
+            executable: docker
             imageurl: ghcr.io/aaltorse/moat:latest
             mountcwd: false
             passenv: true
@@ -328,12 +336,14 @@ defaults:
     runtimes:
         apptainer:
             cachedir: $HOME/.cache/moat/images
+            executable: apptainer
             imageurl: ghcr.io/aaltorse/moat:v0.1.0
             mountcwd: false
             passenv: true
             type: apptainer
         docker:
             cachedir: $HOME/.cache/moat/
+            executable: docker
             imageurl: ghcr.io/aaltorse/moat:v0.1.0
             mountcwd: false
             passenv: true

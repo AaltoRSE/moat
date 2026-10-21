@@ -12,13 +12,19 @@ import (
 )
 
 // NewDockerRuntimeFromSpec returns a new DockerRuntime built from the
-// given runtime spec.
+// given runtime spec. The executable is taken from the spec's Executable
+// setting, falling back to "docker" when the spec does not set it.
 func NewDockerRuntimeFromSpec(spec *types.RuntimeSpec) *DockerRuntime {
+	executable := spec.Executable
+	if executable == "" {
+		executable = "docker"
+	}
 	return &DockerRuntime{
-		ImageUrl: spec.ImageUrl,
-		CacheDir: spec.CacheDir,
-		PassEnv:  spec.PassEnv,
-		MountCWD: spec.MountCWD,
+		Executable: executable,
+		ImageUrl:   spec.ImageUrl,
+		CacheDir:   spec.CacheDir,
+		PassEnv:    spec.PassEnv,
+		MountCWD:   spec.MountCWD,
 	}
 }
 
@@ -30,6 +36,8 @@ func NewDockerRuntimeFromSpec(spec *types.RuntimeSpec) *DockerRuntime {
 // user's account information (see [DockerRuntime.Run]). CacheDir must
 // exist when the runtime is used.
 type DockerRuntime struct {
+	// Executable is the command used to invoke docker.
+	Executable string
 	// ImageUrl is the reference of the container image that is pulled and
 	// executed.
 	ImageUrl string
@@ -53,7 +61,7 @@ type DockerRuntime struct {
 // returns an error if the pull fails.
 func (f *DockerRuntime) Pull(passEnv bool) (string, error) {
 	if err := utils.Run(utils.RunArgs{
-		Command: "docker",
+		Command: f.Executable,
 		Args:    []string{"pull", f.ImageUrl},
 		Env:     []string{},
 		PassEnv: passEnv,
@@ -158,7 +166,7 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 
 	// Obtain passwd from the image
 	if err := utils.Run(utils.RunArgs{
-		Command: "docker",
+		Command: f.Executable,
 		Args:    passwdCmd,
 		Env:     []string{},
 		PassEnv: passEnv,
@@ -203,7 +211,7 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 
 	// Obtain groups from the image
 	if err := utils.Run(utils.RunArgs{
-		Command: "docker",
+		Command: f.Executable,
 		Args:    groupsCmd,
 		Env:     []string{},
 		PassEnv: passEnv,
@@ -326,7 +334,7 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 
 	log.Debug().Bool("passEnv", passEnv).Msg("PassEnv")
 
-	if err := utils.Run(utils.RunArgs{Command: "docker", Args: dockerArgs, Env: cmdEnv, PassEnv: passEnv}); err != nil {
+	if err := utils.Run(utils.RunArgs{Command: f.Executable, Args: dockerArgs, Env: cmdEnv, PassEnv: passEnv}); err != nil {
 		return 1, err
 	}
 	return 0, nil

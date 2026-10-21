@@ -443,6 +443,59 @@ func (suite *DockerRuntimeTestSuite) TestRunFailsWhenPullFails() {
 	require.NoFileExists(suite.T(), suite.LogFile)
 }
 
+// TestNewRuntimeDefaultsExecutable tests that the runtime defaults to the
+// docker executable when the runtime spec does not set one.
+func (suite *DockerRuntimeTestSuite) TestNewRuntimeDefaultsExecutable() {
+	runtime := NewDockerRuntimeFromSpec(&types.RuntimeSpec{Type: "docker"})
+
+	assert.Equal(suite.T(), "docker", runtime.Executable)
+}
+
+// TestNewRuntimeUsesSpecExecutable tests that the runtime uses the
+// executable given in the runtime spec.
+func (suite *DockerRuntimeTestSuite) TestNewRuntimeUsesSpecExecutable() {
+	runtime := NewDockerRuntimeFromSpec(&types.RuntimeSpec{Type: "docker", Executable: "my-docker"})
+
+	assert.Equal(suite.T(), "my-docker", runtime.Executable)
+}
+
+// TestRunUsesSpecExecutable tests that Run invokes the executable given
+// in the runtime spec instead of the default docker binary.
+func (suite *DockerRuntimeTestSuite) TestRunUsesSpecExecutable() {
+	// Install a fake binary under a custom name on the PATH.
+	fakeBinDir := suite.T().TempDir()
+	customLogFile := filepath.Join(fakeBinDir, "custom-args.log")
+	customPasswdDumpFile := filepath.Join(fakeBinDir, "custom-passwd.dump")
+	script := fakeDockerScript
+	script = strings.ReplaceAll(script, "<logFile>", customLogFile)
+	script = strings.ReplaceAll(script, "<passwdDumpFile>", customPasswdDumpFile)
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(fakeBinDir, "my-docker"), []byte(script), 0o755))
+	suite.T().Setenv("PATH", fakeBinDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	runtime := NewDockerRuntimeFromSpec(&types.RuntimeSpec{
+		Type:       "docker",
+		Executable: "my-docker",
+		ImageUrl:   "test/example-image:1.0",
+		CacheDir:   suite.CacheDir,
+		PassEnv:    false,
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	defer func() {
+		_, _ = capture.StopCapture()
+	}()
+
+	code, err := runtime.Run(types.MoatEnv{Home: suite.HomeDir}, []string{"echo", "hello"}, nil)
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), 0, code)
+
+	// The custom binary must have been invoked with the user command.
+	contents, err := os.ReadFile(customLogFile)
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), string(contents), "echo\nhello")
+}
+
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestDockerRuntimeTestSuite(t *testing.T) {
