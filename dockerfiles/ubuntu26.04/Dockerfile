@@ -25,10 +25,10 @@ RUN apt-get update && \
   apt-get install -y curl ca-certificates wget gpg && \
   rm -rf /var/lib/apt/lists/*
 
-COPY slurm-binaries/*.deb /opt/slurm-binaries
+COPY slurm-binaries /opt/slurm-binaries
 
 # List Slurm binaries for debugging
-RUN ls /opt/slurm-binaries
+RUN ls -l /opt/slurm-binaries
 
 # Install slurm (the debs copied from the build stage match the target architecture)
 RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \

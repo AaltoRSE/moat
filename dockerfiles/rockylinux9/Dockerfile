@@ -32,10 +32,10 @@ RUN dnf update -y && \
   dnf install -y ca-certificates wget gpg bind-utils && \
   dnf clean all
 
-COPY slurm-binaries /opt/slurm-binaries/
+COPY slurm-binaries /opt/slurm-binaries
 
 # List Slurm binaries for debugging
-RUN ls /opt/slurm-binaries
+RUN ls -l /opt/slurm-binaries
 
 # Install slurm (the copied RPMs match the target architecture)
 RUN dnf update -y && \

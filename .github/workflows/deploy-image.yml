@@ -98,6 +98,10 @@ jobs:
           path: ${{ matrix.context }}/slurm-binaries
           merge-multiple: true
 
+      # List the docker build context for debugging
+      - name: List docker build context
+        run: find ${{ matrix.context }}
+
       # Set up QEMU for multi-platform builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
