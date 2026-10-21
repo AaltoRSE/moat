@@ -5,8 +5,8 @@ FROM rockylinux:9
 ARG TARGETARCH
 
 # Arguments and software versions
-ARG VSCODIUM_VERSION=1.135.06055
-ARG CODEX_VERSION=0.159.0
+ARG VSCODIUM_VERSION=1.140.06880
+ARG CODEX_VERSION=0.163.0
 ARG NVM_VERSION=0.40.8
 ARG NODE_VERSION=24
 # Needed in this stage so the slurm install glob matches the copied RPMs
