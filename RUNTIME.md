@@ -30,6 +30,7 @@ The `moat runtime` command group lets you create, inspect and modify runtimes. A
 - [`moat runtime create`](#moat-runtime-create)
 - [`moat runtime set`](#moat-runtime-set)
 - [`moat runtime list`](#moat-runtime-list)
+- [`moat runtime cache list`](#moat-runtime-cache-list)
 - [Notes](#notes)
 - [Typical workflow](#typical-workflow)
 
@@ -40,6 +41,7 @@ The `moat runtime` command group lets you create, inspect and modify runtimes. A
 | `moat runtime create` | Create a new runtime |
 | `moat runtime list` | List runtime names |
 | `moat runtime set` | Change one or more variables of an existing runtime |
+| `moat runtime cache list` | List the images cached by a runtime |
 
 The global flags `-c/--config` and `-d/--debug` are available on every command.
 
@@ -218,6 +220,37 @@ moat runtime list
 moat runtime list -n myrt
 ```
 
+## `moat runtime cache list`
+
+List the container images that a runtime has cached locally, one per line. For the `apptainer` type these are the absolute paths of the `.sif` files in the runtime's [cache directory](#runtime-types); for the `docker` type they are the image references that `docker` reports for the repository of the runtime's image, i.e. all of its locally stored tags. Nothing is modified — the command only inspects the cache.
+
+```
+moat runtime cache list [-n NAME]
+```
+
+| Flag | Required | Description |
+|---|---|---|
+| `-n, --name` | no | List the images cached by this runtime (default: the default runtime, see [`defaults.runtime`](CONFIG.md#the-config-file)) |
+
+Behavior:
+
+- The images are listed one per line, sorted alphabetically.
+- When the named runtime does not exist, an error is reported and nothing is printed.
+- If the runtime has no cached images, prints `No cached images for runtime 'NAME'.`
+- The command never creates the cache directory and never pulls images; it reports what is cached right now.
+
+Examples:
+
+```shell
+# List the images cached by the default runtime
+moat runtime cache list
+#   /home/user/.cache/moat/images/ghcr.io_aaltorse_moat_latest.sif
+
+# List the images cached by a specific runtime
+moat runtime cache list -n moat-v0-1-0
+#   /home/user/.cache/moat/images/ghcr.io_aaltorse_moat_v0.1.0.sif
+```
+
 ---
 
 ## Notes
@@ -227,6 +260,7 @@ moat runtime list -n myrt
 - To fine-tune an individual field of an existing runtime, use [`moat runtime set`](#moat-runtime-set). To modify a field under `defaults.runtimes.{name}.*` directly (which `moat runtime set` never touches), use [`moat config set`](CONFIG.md#moat-config-set) on `defaults.runtimes.{name}.*` keys, or open the file with [`moat config edit`](CONFIG.md#moat-config-edit).
 - There is no `runtime remove` yet: to get rid of a user runtime, delete its `runtimes.{name}` entry from the config file (or reset it with `moat config edit`).
 - `mountcwd` set here is the runtime-level default; an environment's own `mountcwd` field takes precedence when set (see [ENV.md](ENV.md)).
+- To free the disk space used by an `apptainer` runtime's cache, delete the `.sif` files listed by [`moat runtime cache list`](#moat-runtime-cache-list); the image is pulled again on the next run. The `docker` type needs no manual cache management — Docker prunes its own images.
 
 ## Typical workflow
 

@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"github.com/AaltoRSE/moat/cmd/runtime/cache"
 	"github.com/spf13/cobra"
 )
 
@@ -15,11 +16,13 @@ func CreateRuntimeCmd() *cobra.Command {
 		Long: `Manage moat runtimes.
 
 This command allows you to manage your moat runtimes.
-You can create, list and modify runtimes.`,
+You can create, list and modify runtimes, and inspect their
+image caches.`,
 	}
 
 	runtimeCmd.AddCommand(CreateRuntimeCreateCmd())
 	runtimeCmd.AddCommand(CreateRuntimeListCmd())
 	runtimeCmd.AddCommand(CreateRuntimeSetCmd())
+	runtimeCmd.AddCommand(cache.CreateCacheCmd())
 	return runtimeCmd
 }

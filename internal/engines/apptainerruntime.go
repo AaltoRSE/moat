@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -115,6 +116,41 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 	}
 
 	return image.Path, nil
+}
+
+// CacheList returns the paths of the images cached in the runtime's cache
+// directory: every .sif file in the directory, sorted alphabetically. It
+// returns an empty list when the cache directory does not exist, and an
+// error if the cache directory is invalid or cannot be read.
+func (f *ApptainerRuntime) CacheList() ([]string, error) {
+
+	cacheDir, err := utils.SanitizeFolderPath(f.CacheDir)
+	if err != nil {
+		log.Error().Str("cacheDir", cacheDir).Msg("Invalid cache directory")
+		return nil, err
+	}
+
+	// A missing cache directory means that no images have been pulled yet
+	if !utils.CheckFolderExists(cacheDir) {
+		return []string{}, nil
+	}
+
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		log.Error().Err(err).Str("cacheDir", cacheDir).Msg("Error reading cache directory")
+		return nil, err
+	}
+
+	images := []string{}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sif") {
+			continue
+		}
+		images = append(images, filepath.Join(cacheDir, entry.Name()))
+	}
+	sort.Strings(images)
+
+	return images, nil
 }
 
 // Run executes args as a command inside the container environment env

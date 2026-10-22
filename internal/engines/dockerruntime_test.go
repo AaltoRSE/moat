@@ -40,6 +40,10 @@ type DockerRuntimeTestSuite struct {
 //  4. run ... <image> <args>: the arguments are logged, the contents of a
 //     bind-mounted passwd file are appended to the passwd dump file, and
 //     the run succeeds.
+//  5. images --format <format> <repository>: the references stored for
+//     the repository are printed — two tags for test/example-image and
+//     one for localhost:5000/moat, nothing for repositories containing
+//     "none"; the invocation is not logged.
 //
 // The placeholders <logFile> and <passwdDumpFile> are substituted with the
 // log and dump file paths when the script is written.
@@ -62,6 +66,24 @@ for arg in "$@"; do
     fi
     prev="$arg"
 done
+
+if [ "$1" = "images" ]; then
+    case "$4" in
+    *none*)
+        exit 0
+        ;;
+    test/example-image)
+        printf 'test/example-image:1.1\n'
+        printf 'test/example-image:1.0\n'
+        exit 0
+        ;;
+    localhost:5000/moat)
+        printf 'localhost:5000/moat:latest\n'
+        exit 0
+        ;;
+    esac
+    exit 0
+fi
 
 if [ "$1" = "pull" ]; then
     case "$2" in
@@ -494,6 +516,77 @@ func (suite *DockerRuntimeTestSuite) TestRunUsesSpecExecutable() {
 	contents, err := os.ReadFile(customLogFile)
 	require.NoError(suite.T(), err)
 	assert.Contains(suite.T(), string(contents), "echo\nhello")
+}
+
+// TestCacheList tests that CacheList returns the references of all tags
+// that docker reports for the repository of the runtime's image URL,
+// sorted alphabetically.
+func (suite *DockerRuntimeTestSuite) TestCacheList() {
+	images, err := suite.newRuntime(false).CacheList()
+
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), []string{"test/example-image:1.0", "test/example-image:1.1"}, images)
+}
+
+// TestCacheListNoImages tests that CacheList returns an empty list when
+// docker reports no images for the repository of the runtime's image URL.
+func (suite *DockerRuntimeTestSuite) TestCacheListNoImages() {
+	runtime := NewDockerRuntimeFromSpec(&types.RuntimeSpec{
+		Type:     "docker",
+		ImageUrl: "none/example-image:1.0",
+		CacheDir: suite.CacheDir,
+	})
+
+	images, err := runtime.CacheList()
+
+	require.NoError(suite.T(), err)
+	assert.Empty(suite.T(), images)
+}
+
+// TestCacheListUntaggedImage tests that CacheList handles an image URL
+// without a tag: the repository is looked up as is.
+func (suite *DockerRuntimeTestSuite) TestCacheListUntaggedImage() {
+	runtime := NewDockerRuntimeFromSpec(&types.RuntimeSpec{
+		Type:     "docker",
+		ImageUrl: "test/example-image",
+		CacheDir: suite.CacheDir,
+	})
+
+	images, err := runtime.CacheList()
+
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), []string{"test/example-image:1.0", "test/example-image:1.1"}, images)
+}
+
+// TestCacheListRegistryPort tests that CacheList keeps the port of a
+// registry host in the repository lookup.
+func (suite *DockerRuntimeTestSuite) TestCacheListRegistryPort() {
+	runtime := NewDockerRuntimeFromSpec(&types.RuntimeSpec{
+		Type:     "docker",
+		ImageUrl: "localhost:5000/moat:latest",
+		CacheDir: suite.CacheDir,
+	})
+
+	images, err := runtime.CacheList()
+
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), []string{"localhost:5000/moat:latest"}, images)
+}
+
+// TestCacheListEmptyImageUrl tests that CacheList reports an error and
+// does not invoke docker when the runtime spec does not set an image URL.
+func (suite *DockerRuntimeTestSuite) TestCacheListEmptyImageUrl() {
+	runtime := NewDockerRuntimeFromSpec(&types.RuntimeSpec{
+		Type:     "docker",
+		ImageUrl: "",
+		CacheDir: suite.CacheDir,
+	})
+
+	images, err := runtime.CacheList()
+
+	require.Error(suite.T(), err)
+	assert.Nil(suite.T(), images)
+	require.NoFileExists(suite.T(), suite.LogFile)
 }
 
 // In order for 'go test' to run this suite, we need to create

@@ -268,6 +268,48 @@ func (suite *ApptainerRuntimeTestSuite) TestRunUsesSpecExecutable() {
 	assert.Contains(suite.T(), string(contents), "echo\nhello")
 }
 
+// TestCacheList tests that CacheList returns the paths of the .sif files
+// in the cache directory, sorted alphabetically, and ignores other files
+// and directories.
+func (suite *ApptainerRuntimeTestSuite) TestCacheList() {
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(suite.CacheDir, "second.sif"), nil, 0o644))
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(suite.CacheDir, "first.sif"), nil, 0o644))
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(suite.CacheDir, "notes.txt"), nil, 0o644))
+	require.NoError(suite.T(), os.MkdirAll(filepath.Join(suite.CacheDir, "subdir.sif"), 0o755))
+
+	images, err := suite.newRuntime(false).CacheList()
+
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), []string{
+		filepath.Join(suite.CacheDir, "first.sif"),
+		filepath.Join(suite.CacheDir, "second.sif"),
+	}, images)
+}
+
+// TestCacheListEmptyCacheDir tests that CacheList returns an empty list
+// when the cache directory exists but contains no images.
+func (suite *ApptainerRuntimeTestSuite) TestCacheListEmptyCacheDir() {
+	images, err := suite.newRuntime(false).CacheList()
+
+	require.NoError(suite.T(), err)
+	assert.Empty(suite.T(), images)
+}
+
+// TestCacheListMissingCacheDir tests that CacheList returns an empty list
+// when the cache directory does not exist.
+func (suite *ApptainerRuntimeTestSuite) TestCacheListMissingCacheDir() {
+	runtime := NewApptainerRuntimeFromSpec(&types.RuntimeSpec{
+		Type:     "apptainer",
+		ImageUrl: "test/example-image:1.0",
+		CacheDir: filepath.Join(suite.CacheDir, "missing"),
+	})
+
+	images, err := runtime.CacheList()
+
+	require.NoError(suite.T(), err)
+	assert.Empty(suite.T(), images)
+}
+
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestApptainerRuntimeTestSuite(t *testing.T) {

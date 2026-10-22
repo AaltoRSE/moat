@@ -3,6 +3,7 @@ package engines
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -71,6 +72,69 @@ func (f *DockerRuntime) Pull(passEnv bool) (string, error) {
 	}
 
 	return f.ImageUrl, nil
+}
+
+// CacheList returns the references of the images that docker reports for
+// the repository of the runtime's image URL: every tag of that repository
+// that docker has stored locally, one reference per entry, sorted
+// alphabetically. It returns an empty list when docker reports no images,
+// and an error if the image URL is empty or the docker images call fails.
+func (f *DockerRuntime) CacheList() ([]string, error) {
+
+	repository := imageRepository(f.ImageUrl)
+	if repository == "" {
+		err := fmt.Errorf("invalid image URL: %q", f.ImageUrl)
+		log.Error().Err(err).Msg("Invalid image URL")
+		return nil, err
+	}
+
+	images, err := utils.RunCapture(utils.RunArgs{
+		Command: f.Executable,
+		Args:    []string{"images", "--format", "{{ .Repository }}:{{ .Tag }}", repository},
+		Env:     []string{},
+		PassEnv: false,
+	})
+
+	if err != nil {
+		log.Error().Err(err).Str("imageUrl", f.ImageUrl).Msg("Error listing images")
+		return nil, err
+	}
+
+	refs := []string{}
+	for _, ref := range strings.Split(strings.Trim(images, "\n"), "\n") {
+		if ref != "" {
+			refs = append(refs, ref)
+		}
+	}
+	sort.Strings(refs)
+
+	return refs, nil
+}
+
+// imageRepository returns the repository part of a docker image reference:
+// the reference with its tag and digest, if any, removed. The tag is the
+// component after the last colon, taken only when that colon follows the
+// last slash, so that the port of a registry host (e.g. the 5000 in
+// localhost:5000/repo) is kept as part of the repository.
+func imageRepository(imageUrl string) string {
+
+	// The digest, if any, ends the reference: everything from the @ on is
+	// not part of the repository
+	repository := imageUrl
+	if at := strings.Index(repository, "@"); at != -1 {
+		repository = repository[:at]
+	}
+
+	// The tag, if any, follows the last colon of the reference, which must
+	// come after the last slash: a colon before the last slash belongs to
+	// a registry host port, which is part of the repository
+	slash := strings.LastIndex(repository, "/")
+	colon := strings.LastIndex(repository, ":")
+	if colon > slash {
+		repository = repository[:colon]
+	}
+
+	return repository
 }
 
 func (f *DockerRuntime) getEnvArgs() []string {

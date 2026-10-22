@@ -70,6 +70,11 @@ moat/
 │   │   ├── create.go           # CreateRuntimeCreateCmd(); calls internal/runtime.CreateRuntime()
 │   │   ├── list.go             # CreateRuntimeListCmd(); lists available runtimes via internal/config.GetRuntimes()
 │   │   ├── set.go              # CreateRuntimeSetCmd(); calls internal/runtime.SetRuntime()
+│   │   ├── cache/              # `moat runtime cache` nested command group
+│   │   │   ├── cache.go        # CreateCacheCmd(); assembles subcommands
+│   │   │   ├── list.go         # CreateCacheListCmd(); lists cached images via engines.Runtime.CacheList()
+│   │   │   ├── cache_test.go   # Shared cache command test suite (CacheTestSuite) + suite runner
+│   │   │   └── list_test.go    # Tests for the runtime cache list subcommand
 │   │   ├── runtime_test.go     # Shared runtime command test suite (RuntimeTestSuite) + suite runner
 │   │   ├── create_test.go      # Tests for the runtime create subcommand
 │   │   ├── set_test.go         # Tests for the runtime set subcommand
@@ -162,9 +167,11 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 - `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `show-defaults`, `edit`.
 - `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `set`, `remove`.
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
-- `cmd/runtime/runtime.go` — `CreateRuntimeCmd()` builds the `runtime` command and attaches `create`, `list`, and `set`.
+- `cmd/runtime/runtime.go` — `CreateRuntimeCmd()` builds the `runtime` command and attaches `create`, `list`, and `set`, plus the nested `cache` command group built by `cache.CreateCacheCmd()`.
 - `cmd/init/init.go` — `CreateInitCmd()` builds the `init` command (no subcommands).
 - `cmd/version/version.go` — `CreateVersionCmd()` builds the `version` command (no subcommands), which prints `internal/version.MoatVersion`.
+
+Subcommands of subcommands (nested command groups) follow the same pattern one level deeper: a nested group `{group} {sub}` is its own package in `cmd/{group}/{sub}/`, with a `{sub}.go` file defining the group's `Create{Sub}Cmd()` constructor and one file per nested subcommand defining `Create{Sub}{SubSub}Cmd()`. The parent group's constructor attaches the nested group via `"github.com/AaltoRSE/moat/cmd/{group}/{sub}"` (e.g. `cmd/runtime/cache/list.go` defines `CreateCacheListCmd()` for `moat runtime cache list`, and `cmd/runtime/runtime.go` attaches it with `cache.CreateCacheCmd()`). Tests for nested subcommands live in the nested group's directory, with the shared suite type, `SetupTest`/`TearDownTest`, and the suite runner in `{sub}_test.go` (e.g. `CacheTestSuite` in `cmd/runtime/cache/cache_test.go`).
 
 `main.go` calls `root.CreateRootCmd().Execute()` directly. The root command's `PersistentPreRunE` hook initializes logging (`logging.InitLogging`) and configuration (`config.InitConfig`), storing the result in the package-level `config.CmdConfig` variable. All subcommands read the active configuration from `config.CmdConfig`.
 
