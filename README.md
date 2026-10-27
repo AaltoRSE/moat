@@ -62,7 +62,7 @@ Alternatively, you can build the project yourself with `go`:
 ```shell
 git clone https://github.com/AaltoRSE/moat.git
 cd moat
-go build -o moat
+go build -o moat -ldflags "-X github.com/AaltoRSE/moat/internal/version.MoatVersion=$(git describe --tags)"
 ```
 
 ## Configuring moat
