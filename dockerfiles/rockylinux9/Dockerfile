@@ -4,11 +4,11 @@ FROM rockylinux:9
 # (falls back to the build host's architecture for a plain `docker build`)
 ARG TARGETARCH
 
-# Arguments and software versions
-ARG VSCODIUM_VERSION=1.140.06880
-ARG CODEX_VERSION=0.163.0
-ARG NVM_VERSION=0.40.8
-ARG NODE_VERSION=24
+# Arguments and software versions (an empty version resolves to the latest release on GitHub)
+ARG VSCODIUM_VERSION=""
+ARG CODEX_VERSION=""
+ARG NVM_VERSION=""
+ARG NODE_VERSION=26
 # Needed in this stage so the slurm install glob matches the copied RPMs
 ARG SLURM_VERSION=26.05.4
 
@@ -29,7 +29,7 @@ RUN dnf update -y && \
 
 # Install wget and GPG for repository setup
 RUN dnf update -y && \
-  dnf install -y ca-certificates wget gpg bind-utils && \
+  dnf install -y ca-certificates curl wget gpg bind-utils && \
   dnf clean all
 
 COPY slurm-binaries /opt/slurm-binaries
@@ -54,12 +54,16 @@ RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
   dnf install -y code && \
   dnf clean all
 
-# Install VSCodium
+# Install VSCodium (latest version from GitHub when VSCODIUM_VERSION is empty)
 RUN case "${TARGETARCH:-$(uname -m)}" in \
       amd64|x86_64) RPM_ARCH="x86_64" ;; \
       arm64|aarch64) RPM_ARCH="aarch64" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
     esac && \
+  if [ -z "${VSCODIUM_VERSION}" ]; then \
+    VSCODIUM_VERSION="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/VSCodium/vscodium/releases/latest | sed -n 's|.*/tag/||p')" && \
+    [ -n "${VSCODIUM_VERSION}" ] || { echo "Failed to resolve the latest VSCodium version from GitHub" >&2; exit 1; }; \
+  fi && \
   wget -q "https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/codium-${VSCODIUM_VERSION}-el8.${RPM_ARCH}.rpm" && \
   dnf install -y "./codium-${VSCODIUM_VERSION}-el8.${RPM_ARCH}.rpm" && \
   rm -f "codium-${VSCODIUM_VERSION}-el8.${RPM_ARCH}.rpm" && \
@@ -104,6 +108,11 @@ RUN case "${TARGETARCH:-$(uname -m)}" in \
       arm64|aarch64) CODEX_ARCH="aarch64" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
     esac && \
+  if [ -z "${CODEX_VERSION}" ]; then \
+    CODEX_TAG="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/openai/codex/releases/latest | sed -n 's|.*/tag/||p')" && \
+    CODEX_VERSION="${CODEX_TAG#rust-v}" && \
+    [ -n "${CODEX_VERSION}" ] || { echo "Failed to resolve the latest codex version from GitHub" >&2; exit 1; }; \
+  fi && \
   wget -q "https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz" && \
   tar -xzf "codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz" -C /usr/local/bin && \
   mv "/usr/local/bin/codex-${CODEX_ARCH}-unknown-linux-musl" /usr/local/bin/codex && \
@@ -124,9 +133,18 @@ RUN curl -fsSL https://opencode.ai/install | \
     sed 's/INSTALL_DIR=.*/INSTALL_DIR=$OPENCODE_INSTALL_DIR/' | \
     bash
 
-# Install nvm
+# Install goose CLI
+RUN curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | CONFIGURE=false GOOSE_BIN_DIR=/usr/local/bin bash
+
+# Install nvm (latest version from GitHub when NVM_VERSION is empty)
 ENV NVM_DIR=/opt/nvm
-RUN mkdir $NVM_DIR && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
+RUN mkdir $NVM_DIR && \
+  if [ -z "${NVM_VERSION}" ]; then \
+    NVM_TAG="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/nvm-sh/nvm/releases/latest | sed -n 's|.*/tag/||p')" && \
+    NVM_VERSION="${NVM_TAG#v}" && \
+    [ -n "${NVM_VERSION}" ] || { echo "Failed to resolve the latest nvm version from GitHub" >&2; exit 1; }; \
+  fi && \
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
 
 # Install node
 RUN . /opt/nvm/nvm.sh && \
@@ -142,10 +160,20 @@ RUN . /opt/nvm/nvm.sh && npm install -g cline
 RUN . /opt/nvm/nvm.sh && npm install -g bun
 
 # Install oh-my-pi
-RUN . /opt/nvm/nvm.sh && npm install -g @oh-my-pi/pi-coding-agent
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | XDG_BIN_HOME=/usr/local/bin sh
+
+# Install micromamba
+RUN curl -L micro.mamba.pm/install.sh | PREFIX_LOCATION=/usr/local/bin sh
 
 # Create typical mount points
 RUN mkdir -p /project /scratch /local /l /m /u
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | XDG_BIN_HOME=/usr/local/bin sh
+
+# Install micromamba
+RUN curl -L micro.mamba.pm/install.sh | PREFIX_LOCATION=/usr/local/bin sh
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh

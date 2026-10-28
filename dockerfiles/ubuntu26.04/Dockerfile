@@ -2,11 +2,11 @@ FROM ubuntu:26.04
 
 ARG TARGETARCH
 
-# Arguments and software versions
-ARG VSCODIUM_VERSION=1.140.06880
-ARG CODEX_VERSION=0.163.0
-ARG NVM_VERSION=0.40.8
-ARG NODE_VERSION=24
+# Arguments and software versions (an empty version resolves to the latest release on GitHub)
+ARG VSCODIUM_VERSION=""
+ARG CODEX_VERSION=""
+ARG NVM_VERSION=""
+ARG NODE_VERSION=26
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -54,8 +54,12 @@ RUN apt-get update && \
   apt-get install -y code && \
   rm -rf /var/lib/apt/lists/*
 
-# Install VSCodium
+# Install VSCodium (latest version from GitHub when VSCODIUM_VERSION is empty)
 RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
+  if [ -z "${VSCODIUM_VERSION}" ]; then \
+    VSCODIUM_VERSION="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/VSCodium/vscodium/releases/latest | sed -n 's|.*/tag/||p')" && \
+    [ -n "${VSCODIUM_VERSION}" ] || { echo "Failed to resolve the latest VSCodium version from GitHub" >&2; exit 1; }; \
+  fi && \
   wget -q "https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/codium_${VSCODIUM_VERSION}_${ARCH}.deb" && \
   apt-get update && \
   apt-get install -y "./codium_${VSCODIUM_VERSION}_${ARCH}.deb" && \
@@ -96,6 +100,11 @@ RUN case "${TARGETARCH:-$(dpkg --print-architecture)}" in \
       arm64) CODEX_ARCH="aarch64" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH:-$(dpkg --print-architecture)}" >&2; exit 1 ;; \
     esac && \
+  if [ -z "${CODEX_VERSION}" ]; then \
+    CODEX_TAG="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/openai/codex/releases/latest | sed -n 's|.*/tag/||p')" && \
+    CODEX_VERSION="${CODEX_TAG#rust-v}" && \
+    [ -n "${CODEX_VERSION}" ] || { echo "Failed to resolve the latest codex version from GitHub" >&2; exit 1; }; \
+  fi && \
   wget -q "https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz" && \
   tar -xzf "codex-${CODEX_ARCH}-unknown-linux-musl.tar.gz" -C /usr/local/bin && \
   mv "/usr/local/bin/codex-${CODEX_ARCH}-unknown-linux-musl" /usr/local/bin/codex && \
@@ -116,9 +125,18 @@ RUN curl -fsSL https://opencode.ai/install | \
     sed 's/INSTALL_DIR=.*/INSTALL_DIR=$OPENCODE_INSTALL_DIR/' | \
     bash
 
-# Install nvm
+# Install goose CLI
+RUN curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | CONFIGURE=false GOOSE_BIN_DIR=/usr/local/bin bash
+
+# Install nvm (latest version from GitHub when NVM_VERSION is empty)
 ENV NVM_DIR=/opt/nvm
-RUN mkdir $NVM_DIR && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
+RUN mkdir $NVM_DIR && \
+  if [ -z "${NVM_VERSION}" ]; then \
+    NVM_TAG="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/nvm-sh/nvm/releases/latest | sed -n 's|.*/tag/||p')" && \
+    NVM_VERSION="${NVM_TAG#v}" && \
+    [ -n "${NVM_VERSION}" ] || { echo "Failed to resolve the latest nvm version from GitHub" >&2; exit 1; }; \
+  fi && \
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
 
 # Install node
 RUN . /opt/nvm/nvm.sh && \
@@ -135,6 +153,12 @@ RUN . /opt/nvm/nvm.sh && npm install -g bun
 
 # Install oh-my-pi
 RUN . /opt/nvm/nvm.sh && npm install -g @oh-my-pi/pi-coding-agent
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | XDG_BIN_HOME=/usr/local/bin sh
+
+# Install micromamba
+RUN curl -L micro.mamba.pm/install.sh | PREFIX_LOCATION=/usr/local/bin sh
 
 # Create typical mount points
 RUN mkdir -p /project /scratch /local /l /m /u
