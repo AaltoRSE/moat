@@ -29,7 +29,7 @@ RUN dnf update -y && \
 
 # Install wget and GPG for repository setup
 RUN dnf update -y && \
-  dnf install -y ca-certificates curl-minimal wget gpg bind-utils && \
+  dnf install -y libatomic ca-certificates curl-minimal wget gpg bind-utils && \
   dnf clean all
 
 COPY slurm-binaries /opt/slurm-binaries
@@ -160,8 +160,7 @@ RUN . /opt/nvm/nvm.sh && npm install -g cline
 RUN . /opt/nvm/nvm.sh && npm install -g bun
 
 # Install oh-my-pi
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | XDG_BIN_HOME=/usr/local/bin sh
+RUN . /opt/nvm/nvm.sh && npm install -g @oh-my-pi/pi-coding-agent
 
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | XDG_BIN_HOME=/usr/local/bin sh
