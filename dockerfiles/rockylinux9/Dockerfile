@@ -163,17 +163,14 @@ RUN . /opt/nvm/nvm.sh && npm install -g bun
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | XDG_BIN_HOME=/usr/local/bin sh
 
-# Install micromamba
-RUN curl -L micro.mamba.pm/install.sh | PREFIX_LOCATION=/usr/local/bin sh
-
-# Create typical mount points
-RUN mkdir -p /project /scratch /local /l /m /u
-
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | XDG_BIN_HOME=/usr/local/bin sh
 
 # Install micromamba
-RUN curl -L micro.mamba.pm/install.sh | PREFIX_LOCATION=/usr/local/bin sh
+RUN curl -L micro.mamba.pm/install.sh | SHELL=/bin/bash INIT_YES=no BIN_FOLDER=/usr/local/bin bash
+
+# Create typical mount points
+RUN mkdir -p /project /scratch /local /l /m /u
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
