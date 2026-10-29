@@ -47,7 +47,7 @@ moat/
 │   │   ├── showdefaults_test.go # Tests for the config show-defaults subcommand
 │   │   └── set_test.go         # Tests for the config set subcommand
 │   ├── env/                    # `moat env` command group
-│   │   ├── env.go              # CreateEnvCmd(); assembles subcommands; declares shared env flag groups (-n/--name, -H/--home, -m/--mount, -r/--ro-mount, -C/--command) as pflag.FlagSet factories
+│   │   ├── env.go              # CreateEnvCmd(); assembles subcommands; declares shared env flag groups (-n/--name, -H/--home, -m/--mount, -r/--ro-mount, -C/--command, --mountcwd) as pflag.FlagSet factories
 │   │   ├── create.go           # CreateEnvCreateCmd(); calls internal/env.CreateEnvironment()
 │   │   ├── copy.go             # CreateEnvCopyCmd(); calls internal/env.CopyEnvironment()
 │   │   ├── list.go             # CreateEnvListCmd(); reads config.CmdConfig directly (pre-existing exception)

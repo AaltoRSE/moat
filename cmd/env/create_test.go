@@ -89,6 +89,71 @@ func (suite *EnvTestSuite) TestCreateWithMounts() {
 	assert.Nil(suite.T(), createdEnv.Command)
 }
 
+// TestCreateWithMountCWD tests that env create registers a new environment
+// with working-directory mounting enabled when the --mountcwd flag is given
+// with an empty value (empty means true).
+func (suite *EnvTestSuite) TestCreateWithMountCWD() {
+	baseDir := filepath.Join(tests.MoatTestDir, "create_mountcwd")
+	home := filepath.Join(baseDir, "home")
+	// Start from a clean slate so the test verifies directory creation
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(baseDir)
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--yes", "--mountcwd="})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	// The fake home directory must have been created
+	assert.DirExists(suite.T(), home)
+
+	// Unmarshal the created configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	createdEnv, exists := envs["newenv"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), home, createdEnv.Home)
+	assert.NotNil(suite.T(), createdEnv.MountCWD)
+	assert.True(suite.T(), *createdEnv.MountCWD)
+}
+
+// TestCreateWithMountCWDFalse tests that env create stores an explicit
+// mountcwd: false when the --mountcwd flag is given the value false.
+func (suite *EnvTestSuite) TestCreateWithMountCWDFalse() {
+	baseDir := filepath.Join(tests.MoatTestDir, "create_mountcwd_false")
+	home := filepath.Join(baseDir, "home")
+	// Start from a clean slate so the test verifies directory creation
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(baseDir)
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--yes", "--mountcwd=false"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	// Unmarshal the created configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	createdEnv, exists := envs["newenv"]
+	assert.True(suite.T(), exists)
+	assert.NotNil(suite.T(), createdEnv.MountCWD)
+	assert.False(suite.T(), *createdEnv.MountCWD)
+}
+
 // TestCreateWithMountDestinations tests that env create handles mounts given
 // in the "source:destination" form: only the source directory is created and
 // the mount is stored with the absolute source path.

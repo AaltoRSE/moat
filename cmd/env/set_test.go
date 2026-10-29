@@ -36,6 +36,57 @@ func (suite *EnvTestSuite) TestSetCommand() {
 	assert.Equal(suite.T(), "code --wait .", *updatedEnv.Command)
 }
 
+// TestSetMountCWD tests that env set enables working-directory mounting of an
+// existing environment when the --mountcwd flag is given with an empty value
+// (empty means true).
+func (suite *EnvTestSuite) TestSetMountCWD() {
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--mountcwd", ""})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Set test.mountcwd = [true]")
+
+	// Unmarshal the updated configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	updatedEnv, exists := envs["test"]
+	assert.True(suite.T(), exists)
+	assert.NotNil(suite.T(), updatedEnv.MountCWD)
+	assert.True(suite.T(), *updatedEnv.MountCWD)
+	// The other variables of the environment must be untouched
+	assert.Equal(suite.T(), suite.BaseEnv.Home, updatedEnv.Home)
+	assert.Nil(suite.T(), updatedEnv.Command)
+}
+
+// TestSetMountCWDFalse tests that env set disables working-directory mounting
+// of an existing environment when the --mountcwd flag is given the value
+// false.
+func (suite *EnvTestSuite) TestSetMountCWDFalse() {
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test", "--mountcwd=false"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Set test.mountcwd = [false]")
+
+	// Unmarshal the updated configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	updatedEnv, exists := envs["test"]
+	assert.True(suite.T(), exists)
+	assert.NotNil(suite.T(), updatedEnv.MountCWD)
+	assert.False(suite.T(), *updatedEnv.MountCWD)
+}
+
 // TestSetMounts tests that env set replaces the mounts variable of an
 // existing environment with the list of mount paths given by repeated
 // --mount flags.

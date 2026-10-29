@@ -57,13 +57,18 @@ without prompting.`,
 			if command != "" {
 				commandPtr = &command
 			}
+			mountCWDPtr, err := getMountCWDValue(cmd)
+			if err != nil {
+				log.Error().Msgf("could not get mountcwd flag: %v", err)
+				return
+			}
 			yes, err := cmd.Flags().GetBool("yes")
 			if err != nil {
 				log.Error().Msgf("could not get yes flag: %v", err)
 				return
 			}
 
-			if err := env.CopyEnvironment(config.CmdConfig, source, name, home, mounts, roMounts, commandPtr, yes); err != nil {
+			if err := env.CopyEnvironment(config.CmdConfig, source, name, home, mounts, roMounts, mountCWDPtr, commandPtr, yes); err != nil {
 				log.Error().Msgf("could not copy environment: %v", err)
 			}
 		},

@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 
@@ -34,7 +35,8 @@ other variables of the environment keep their current values.
 Examples:
   moat env set -n test --command "code --wait ."
   moat env set -n test --home /home/user/project
-  moat env set -n test --mount /path/to/project --ro-mount /run/dbus`,
+  moat env set -n test --mount /path/to/project --ro-mount /run/dbus
+  moat env set -n test --mountcwd=true`,
 		Args: cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 
@@ -72,6 +74,13 @@ Examples:
 				}
 				updates = append(updates, update{"readonlymounts", roMounts})
 			}
+			mountCWDPtr, err := getMountCWDValue(cmd)
+			if err != nil {
+				log.Fatal().Msgf("%v", err)
+			}
+			if mountCWDPtr != nil {
+				updates = append(updates, update{"mountcwd", []string{strconv.FormatBool(*mountCWDPtr)}})
+			}
 			if cmd.Flags().Changed("command") {
 				command, err := cmd.Flags().GetString("command")
 				if err != nil {
@@ -81,7 +90,7 @@ Examples:
 			}
 
 			if len(updates) == 0 {
-				log.Fatal().Msgf("no variables to set: give at least one of --home, --mount, --ro-mount or --command")
+				log.Fatal().Msgf("no variables to set: give at least one of --home, --mount, --ro-mount, --command or --mountcwd")
 			}
 
 			for _, u := range updates {

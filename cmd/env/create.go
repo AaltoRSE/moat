@@ -56,10 +56,16 @@ without prompting.`,
 			if command != "" {
 				commandPtr = &command
 			}
+			mountCWDPtr, err := getMountCWDValue(cmd)
+			if err != nil {
+				log.Error().Msgf("could not get mountcwd flag: %v", err)
+				return
+			}
 			moatEnv := types.MoatEnv{
 				Home:           home,
 				Mounts:         mounts,
 				ReadOnlyMounts: roMounts,
+				MountCWD:       mountCWDPtr,
 				Command:        commandPtr,
 			}
 
