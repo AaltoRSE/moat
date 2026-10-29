@@ -29,7 +29,7 @@ RUN dnf update -y && \
 
 # Install wget and GPG for repository setup
 RUN dnf update -y && \
-  dnf install -y ca-certificates curl wget gpg bind-utils && \
+  dnf install -y ca-certificates curl-minimal wget gpg bind-utils && \
   dnf clean all
 
 COPY slurm-binaries /opt/slurm-binaries
