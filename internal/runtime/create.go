@@ -22,8 +22,8 @@ import (
 // given spec in the top-level runtimes key of the configuration and writes
 // the updated configuration to the config file.
 //
-// The name must be non-empty and contain only alphanumeric characters and
-// underscores. If a user-specified runtime with the same name already
+// The name must be non-empty and contain only alphanumeric characters,
+// underscores, and hyphens. If a user-specified runtime with the same name already
 // exists, the configuration is left unchanged and no error is returned.
 // Creating a runtime with the name of a default runtime is allowed; the
 // new runtime then overwrites the default runtime in runtime lookups.
@@ -36,8 +36,8 @@ func CreateRuntime(cfg *viper.Viper, name string, spec types.RuntimeSpec) error 
 
 	// Validate the runtime name
 	if !utils.CheckEnvironmentName(name) {
-		log.Error().Str("name", name).Msg("Invalid runtime name. Runtime name must be non-empty and contain only alphanumeric characters and underscores.")
-		return fmt.Errorf("invalid runtime name %q: name must be non-empty and contain only alphanumeric characters and underscores", name)
+		log.Error().Str("name", name).Msg("Invalid runtime name. Runtime name must be non-empty and contain only alphanumeric characters, underscores, and hyphens.")
+		return fmt.Errorf("invalid runtime name %q: name must be non-empty and contain only alphanumeric characters, underscores, and hyphens", name)
 	}
 
 	// Validate the runtime spec

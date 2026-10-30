@@ -24,9 +24,9 @@ func CheckFileExists(path string) bool {
 	return !info.IsDir()
 }
 
-// CheckEnvironmentName checks if the environment name is valid (non-empty and containing only alphanumeric characters and underscores).
+// CheckEnvironmentName checks if the environment name is valid (non-empty and containing only alphanumeric characters, underscores, and hyphens).
 func CheckEnvironmentName(name string) bool {
-	var validNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	var validNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	return validNamePattern.MatchString(name)
 }
 

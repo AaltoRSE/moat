@@ -44,7 +44,7 @@ The global flags `-c/--config` and `-d/--debug` are available on every command.
 
 ### Environment names
 
-Names must be non-empty and contain only **alphanumeric characters and underscores** (`^[a-zA-Z0-9_]+$`), e.g. `my_env`, `work`, `opencode`.
+Names must be non-empty and contain only **alphanumeric characters, underscores, and hyphens** (`^[a-zA-Z0-9_-]+$`), e.g. `my_env`, `my-env`, `work`, `opencode`.
 
 ### Fake home (`-H/--home`)
 

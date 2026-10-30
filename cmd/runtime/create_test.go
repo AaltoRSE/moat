@@ -144,7 +144,7 @@ func (suite *RuntimeTestSuite) TestCreateInvalidName() {
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
-	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "create", "--name", "bad-name", "--type", spec.Type, "--imageurl", spec.ImageUrl, "--cachedir", spec.CacheDir})
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "create", "--name", "bad.name", "--type", spec.Type, "--imageurl", spec.ImageUrl, "--cachedir", spec.CacheDir})
 	require.NoError(suite.T(), rootCmd.Execute())
 	_, err := capture.StopCapture()
 	require.NoError(suite.T(), err)
@@ -157,6 +157,34 @@ func (suite *RuntimeTestSuite) TestCreateInvalidName() {
 	contents, err := os.ReadFile(suite.ConfigFile)
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), suite.BaseOutput, string(contents))
+}
+
+// TestCreateHyphenatedName tests that runtime create accepts a name
+// containing hyphens and that the name round-trips through the YAML config
+// file.
+func (suite *RuntimeTestSuite) TestCreateHyphenatedName() {
+	spec := createRuntimeSpec()
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "create", "--name", "my-runtime", "--type", spec.Type, "--imageurl", spec.ImageUrl, "--cachedir", spec.CacheDir})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Runtime created successfully.")
+
+	// The hyphenated runtime name must be stored in the written config file
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	createdSpec, exists := config.GetUserRuntimes(cfg)["my-runtime"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), spec, createdSpec)
+
+	// The default runtimes must remain available alongside the new runtime
+	allRuntimes := config.GetRuntimes(cfg)
+	assert.Contains(suite.T(), allRuntimes, "apptainer")
+	assert.Contains(suite.T(), allRuntimes, "my-runtime")
 }
 
 // TestCreateOverwriteDefaultRuntime tests that runtime create with the

@@ -32,7 +32,7 @@ func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv, autoCre
 
 	// Validate the environment name
 	if !utils.CheckEnvironmentName(name) {
-		log.Error().Str("name", name).Msg("Invalid environment name. Environment name must be non-empty and contain only alphanumeric characters and underscores.")
+		log.Error().Str("name", name).Msg("Invalid environment name. Environment name must be non-empty and contain only alphanumeric characters, underscores, and hyphens.")
 		return nil
 	}
 

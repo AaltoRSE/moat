@@ -48,6 +48,43 @@ func (suite *EnvTestSuite) TestCreateHomeOnly() {
 	assert.Nil(suite.T(), createdEnv.Command)
 }
 
+// TestCreateHyphenatedName tests that env create accepts a name containing
+// hyphens and that the name round-trips through the YAML config file.
+func (suite *EnvTestSuite) TestCreateHyphenatedName() {
+	baseDir := filepath.Join(tests.MoatTestDir, "create_hyphenated_name")
+	home := filepath.Join(baseDir, "home")
+	// Start from a clean slate so the test verifies directory creation
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(baseDir)
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "my-env", "--home", home, "--yes"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	// The fake home directory must have been created
+	assert.DirExists(suite.T(), home)
+
+	// The hyphenated environment name must be stored in the written config
+	// file
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	// The new environment must exist alongside the base environment
+	assert.Contains(suite.T(), envs, "test")
+	createdEnv, exists := envs["my-env"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), home, createdEnv.Home)
+	assert.Empty(suite.T(), createdEnv.Mounts)
+	assert.Nil(suite.T(), createdEnv.Command)
+}
+
 // TestCreateWithMounts tests that env create registers a new environment with
 // a home directory and mount paths, and creates all of the referenced
 // directories.

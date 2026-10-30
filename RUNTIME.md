@@ -49,7 +49,7 @@ The global flags `-c/--config` and `-d/--debug` are available on every command.
 
 ### Runtime names
 
-Names must be non-empty and contain only **alphanumeric characters and underscores** (`^[a-zA-Z0-9_]+$`), e.g. `myrt`, `apptainer`, `moat_v2`. The same rules as for [environment names](ENV.md#environment-names) apply.
+Names must be non-empty and contain only **alphanumeric characters, underscores, and hyphens** (`^[a-zA-Z0-9_-]+$`), e.g. `myrt`, `my-rt`, `apptainer`, `moat_v2`. The same rules as for [environment names](ENV.md#environment-names) apply.
 
 ### Runtime specifications
 
