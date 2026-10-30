@@ -103,7 +103,7 @@ moat/
 │   ├── logging/
 │   │   └── logging.go          # InitLogging (zerolog setup)
 │   ├── version/
-│   │   └── version.go          # MoatVersion, set at build time via -ldflags
+│   │   └── version.go          # MoatVersion (set at build time via -ldflags) and ImageTag (default image tag)
 │   ├── runtime/                # Runtime management: internal functions for the `moat runtime` command group
 │   │   ├── create.go           # CreateRuntime
 │   │   └── set.go              # SetRuntime

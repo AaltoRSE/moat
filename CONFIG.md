@@ -356,7 +356,7 @@ moat config show-defaults
 Behavior:
 
 - No config file is read, so it works before `moat init` has been run and never shows user values.
-- The output reflects the running moat binary: the `imageurl` of the default runtimes (`apptainer` and `docker`) is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
+- The output reflects the running moat binary: the `imageurl` of the default runtimes (`apptainer` and `docker`) is tagged with the leading tag of the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.3.3` for version `v0.3.3-3-gcad91c9`), falling back to `latest` when the version is not a semantic version tag of the form `vX.Y.Z` (e.g. development builds without a version).
 - Environment variable overrides (see [Environment variable overrides](#environment-variable-overrides)) are reflected in the output.
 
 Example:
@@ -416,7 +416,7 @@ Behavior:
 - The target file is overwritten when it already exists; its parent directories are created when they do not exist.
 - If a configuration file has already been found and no `-o` is given, nothing is written; the path of the found file is reported instead.
 - If `-o` is the same as the path of the found configuration file, an error is reported and nothing is written.
-- The written file reflects the running moat binary: the `imageurl` of the default runtimes (`apptainer` and `docker`) is tagged with the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.1.0`), falling back to `latest` for development builds without a version.
+- The written file reflects the running moat binary: the `imageurl` of the default runtimes (`apptainer` and `docker`) is tagged with the leading tag of the binary's version (e.g. `ghcr.io/aaltorse/moat:v0.3.3` for version `v0.3.3-3-gcad91c9`), falling back to `latest` when the version is not a semantic version tag of the form `vX.Y.Z` (e.g. development builds without a version).
 
 On success, prints `Initialized configuration: <path>`; when nothing is written, it prints `Configuration already exists: <path>` instead.
 

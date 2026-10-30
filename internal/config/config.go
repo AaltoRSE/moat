@@ -95,13 +95,7 @@ func InitConfig(cfgFile string) (cfg *viper.Viper, err error) {
 // environment variable values, which in turn take precedence over the
 // built-in defaults.
 func CreateDefaultConfig() *viper.Viper {
-	var imageTag string
-
-	if version.MoatVersion != "" {
-		imageTag = strings.Split(version.MoatVersion, "-")[0]
-	} else {
-		imageTag = "latest"
-	}
+	imageTag := version.ImageTag()
 
 	// The built-in default configuration values.
 	defaults := map[string]any{

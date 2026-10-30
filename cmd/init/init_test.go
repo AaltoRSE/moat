@@ -80,11 +80,7 @@ func (suite *InitTestSuite) TestInitCreatesDefaultConfig() {
 	assert.Equal(suite.T(), "apptainer", cfg.GetString("defaults.runtime"))
 	assert.Equal(suite.T(), "apptainer", cfg.GetString("defaults.runtimes.apptainer.type"))
 	// The default image URL is derived from the build-time version.
-	imageTag := version.MoatVersion
-	if imageTag == "" {
-		imageTag = "latest"
-	}
-	assert.Equal(suite.T(), fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag), cfg.GetString("defaults.runtimes.apptainer.imageurl"))
+	assert.Equal(suite.T(), fmt.Sprintf("ghcr.io/aaltorse/moat:%s", version.ImageTag()), cfg.GetString("defaults.runtimes.apptainer.imageurl"))
 	assert.Equal(suite.T(), "$HOME/.cache/moat/images", cfg.GetString("defaults.runtimes.apptainer.cachedir"))
 	assert.True(suite.T(), cfg.GetBool("defaults.runtimes.apptainer.passenv"))
 	assert.Empty(suite.T(), cfg.GetStringMap("envs"))

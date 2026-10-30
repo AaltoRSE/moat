@@ -15,11 +15,7 @@ import (
 // expectedDefaultImageURL returns the default apptainer image URL derived
 // from the build-time version, mirroring CreateDefaultConfig.
 func expectedDefaultImageURL() string {
-	tag := version.MoatVersion
-	if tag == "" {
-		tag = "latest"
-	}
-	return fmt.Sprintf("ghcr.io/aaltorse/moat:%s", tag)
+	return fmt.Sprintf("ghcr.io/aaltorse/moat:%s", version.ImageTag())
 }
 
 // clearMoatDefaultEnvVars unsets all MOAT_DEFAULTS_* environment variables
