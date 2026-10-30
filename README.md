@@ -120,3 +120,5 @@ See [EXAMPLES.md](./EXAMPLES.md) for ready-to-use example configurations, such a
 ## AI usage in the project
 
 This project has been created using AI assistance, but all contributions by the AI have been reviewed by a human.
+
+All of the documentation (with the exception of the [motivation](#motivation)-section) has been written by AI based on human prompted design principles and has been reviewed by human.
