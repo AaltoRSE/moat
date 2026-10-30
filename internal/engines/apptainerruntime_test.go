@@ -126,8 +126,8 @@ func hasPwdArg(args []string, path string) bool {
 }
 
 // TestRunBaseArgs tests that the apptainer command line always starts with
-// run --no-home --no-mount cwd, binds the fake home directory, and ends
-// with the image path and the user command.
+// run --pid --no-home --no-mount cwd, binds the fake home directory, and
+// ends with the image path and the user command.
 func (suite *ApptainerRuntimeTestSuite) TestRunBaseArgs() {
 	home := filepath.Join(suite.HomeDir, "fake-home")
 	require.NoError(suite.T(), os.MkdirAll(home, 0o755))
@@ -137,6 +137,7 @@ func (suite *ApptainerRuntimeTestSuite) TestRunBaseArgs() {
 
 	// The base apptainer arguments must be present.
 	assert.Equal(suite.T(), "run", apptainerArgs[0])
+	assert.Contains(suite.T(), apptainerArgs, "--pid")
 	assert.Contains(suite.T(), apptainerArgs, "--no-home")
 	assert.Contains(suite.T(), apptainerArgs, "--no-mount")
 	// The fake home directory must be bound to the host home directory.

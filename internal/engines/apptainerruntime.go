@@ -226,7 +226,7 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	// - Use `run` to run the container
 	// - Do not mount home directory by default
 	// - Do not mount current working directory by default
-	apptainerArgs = []string{"run", "--no-home", "--no-mount", "cwd"}
+	apptainerArgs = []string{"run", "--pid", "--no-home", "--no-mount", "cwd"}
 
 	// Add home mounts to apptainer arguments
 	apptainerArgs = append(
