@@ -4,15 +4,35 @@ package tests
 
 import (
 	"os"
+	"testing"
 
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/env"
 	"github.com/AaltoRSE/moat/internal/logging"
 	types "github.com/AaltoRSE/moat/internal/types"
 	"github.com/AaltoRSE/moat/internal/utils"
+	"github.com/stretchr/testify/require"
 )
 
 var MoatTestDir string = "/tmp/moat_tests"
+
+// AnswerPrompt feeds the given answer (e.g. "y" or "n") to interactive
+// prompts by replacing os.Stdin with a pipe that provides it. It registers a
+// cleanup that restores the original standard input.
+func AnswerPrompt(t *testing.T, answer string) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	_, err = w.WriteString(answer)
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = oldStdin
+		require.NoError(t, r.Close())
+	})
+}
 
 // CreateTempConfig initializes a new temporary moat configuration, creates
 // the given environments and runtimes in it, and returns the path to the

@@ -64,7 +64,8 @@ moat/
 │   │   ├── init.go             # CreateInitCmd(); passes config.CmdConfig + --output/-o flag to internal/config.SetConfigPath(), then WriteConfig()
 │   │   └── init_test.go        # Shared init command test suite (InitTestSuite) + suite runner
 │   ├── run/                    # `moat run` command
-│   │   └── run.go              # CreateRunCmd(); resolves env + runtime, sanitizes args, calls runtime.Run()
+│   │   ├── run.go              # CreateRunCmd(); resolves env, pre-flight-checks env directories (fake home, mounts), resolves runtime, sanitizes args, calls runtime.Run()
+│   │   └── run_test.go         # Tests for the run subcommand (RunTestSuite)
 │   ├── runtime/                # `moat runtime` command group
 │   │   ├── runtime.go          # CreateRuntimeCmd(); assembles subcommands
 │   │   ├── create.go           # CreateRuntimeCreateCmd(); calls internal/runtime.CreateRuntime()
@@ -102,6 +103,9 @@ moat/
 │   │   └── remove.go           # RemoveEnvironment
 │   ├── logging/
 │   │   └── logging.go          # InitLogging (zerolog setup)
+│   ├── prompts/                # Pre-defined interactive prompts asked from users
+│   │   ├── mounts.go           # CheckAndCreateMounts (env directory check: fake home + mount sources, with creation prompts)
+│   │   └── utils.go            # confirm (generic yes/no confirmation prompt utility)
 │   ├── version/
 │   │   └── version.go          # MoatVersion (set at build time via -ldflags) and ImageTag (default image tag)
 │   ├── runtime/                # Runtime management: internal functions for the `moat runtime` command group
@@ -115,11 +119,11 @@ moat/
 │   │   └── dockerruntime_test.go  # DockerRuntime test suite (DockerRuntimeTestSuite, fake docker binary)
 │   ├── utils/
 │   │   ├── checks.go           # CheckFolderExists, CheckEnvironmentName, CheckMounts
-│   │   ├── dirops.go           # CreateMountDirs
+│   │   ├── dirops.go           # CreateDir
 │   │   ├── sanitize.go         # SanitizeFolderPath, SanitizeMountsPaths, SanitizeArgs
 │   │   └── run.go              # Run, RunCapture, RunArgs, OutputCapture
 │   └── tests/
-│       └── tests.go            # CreateTempConfig (shared test helper)
+│       └── tests.go            # CreateTempConfig, AnswerPrompt (shared test helpers)
 │
 ├── dockerfiles/
 │   └── ubuntu24.04/            # Container image used by the apptainer runtime
@@ -226,12 +230,19 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 
 - One file per operation: `create.go`, `copy.go`, `remove.go`. Add `list.go` if list logic is moved from `cmd/env/list.go`.
 - Functions accept `*viper.Viper` and `types.MoatEnv` (or related parameters) as arguments; they do not parse flags or read `os.Args`.
-- `CreateEnvironment(cfg, name, env, autoCreate)` creates a new environment. If `autoCreate` is true, missing directories (fake home and mount source paths) are created automatically. Otherwise, the user is prompted to create a missing fake home directory, and missing or invalid mount paths abort creation.
+- `CreateEnvironment(cfg, name, env, autoCreate)` creates a new environment. Directory checking and creation (the fake home directory and the mount source paths) is delegated to `prompts.CheckAndCreateMounts`: if `autoCreate` is true, missing directories are created automatically; otherwise the user is prompted. Answering no, or an invalid mount path, aborts the creation with an error.
 - `CopyEnvironment(cfg, sourceName, newName, home, mounts, roMounts, command, autoCreate)` copies an existing environment, optionally overriding home, mounts, read-only mounts, and command.
 - `RemoveEnvironment(cfg, name)` removes an environment from the configuration.
-- May use `promptkit` for interactive confirmation prompts (user-facing only; not in functions called programmatically).
 - Must call `internal/config.WriteConfig(cfg)` after any mutation to persist changes.
 - Path arguments must be resolved to absolute paths with `utils.SanitizeFolderPath` before storing.
+
+---
+
+### `internal/prompts` — pre-defined interactive prompts
+
+- Utility functions that contain pre-defined prompts asked from users by user-facing commands (e.g. `moat env create`, `moat run`); not for functions called programmatically.
+- `mounts.go` defines `CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error`, which checks that the directories referenced by the environment exist (the fake home directory and the source directories of the mounts and read-only mounts), creates missing ones automatically when `autoCreate` is true, and otherwise asks the user whether they should be created. It returns an error when the user declines, the creation fails, or a path is invalid (e.g. an empty mount source path or a source that exists but is not a directory).
+- Interactive prompts read from standard input; tests can feed answers with `tests.AnswerPrompt`.
 
 ---
 
@@ -263,7 +274,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 - Must not import other `internal/` packages (no circular risk, but avoids entanglement).
 - `run.go`: `RunArgs` struct (Command, Args, Env, PassEnv), `Run`, `RunCapture`, `OutputCapture` for subprocess execution and stdout capture.
 - `checks.go`: `CheckFolderExists`, `CheckEnvironmentName`, `CheckMounts`.
-- `dirops.go`: `CreateMountDirs` — creates missing mount source directories.
+- `dirops.go`: `CreateDir` — creates a missing directory, including any parent directories; no-op when it exists.
 - `sanitize.go`: `SanitizeFolderPath` (expands a leading `~` to the home directory, expands env vars, and resolves to an absolute path), `SanitizeMountsPaths` (sanitizes source and destination paths in `source:dest` mount strings), `SanitizeArgs` (parses a single-arg command with shellwords, or validates multi-arg commands for spaces).
 - New utilities must be genuinely reusable across multiple callers; one-off helpers belong in the package that uses them.
 
@@ -273,6 +284,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 
 - Holds reusable helpers for building isolated test fixtures; it is imported by `cmd/` test files (e.g. `cmd/env/env_test.go`).
 - `CreateTempConfig(envs, runtimes) (string, string, error)` creates a fresh temporary config file under `tests.MoatTestDir`, initializes it via `config.InitConfig`, creates the given environments via `env.CreateEnvironment` (with `autoCreate=true` so it never blocks on a prompt), sets the given runtimes under the top-level `runtimes` key (where they overwrite default runtimes with the same name), and returns the config file path, its contents, and any error.
+- `AnswerPrompt(t, answer)` feeds the given answer (e.g. `y` or `n`) to interactive prompts by replacing the standard input; it registers a cleanup that restores the original standard input.
 - Helpers must be self-contained and must not depend on test-suite state; the caller is responsible for cleaning up any temporary files they create.
 - If tests create temporary files or directories, these temporary files should be situated under `/tmp/moat_tests` specified in `tests.MoatTestDir`.
 
@@ -327,7 +339,7 @@ Do not use `log.Fatal` inside `internal/` packages — return errors and let `cm
 | `github.com/spf13/cobra` | All `cmd/` packages | CLI command tree, flag parsing |
 | `github.com/spf13/viper` | `internal/config`, `cmd/env/list.go` | YAML config loading and global state |
 | `github.com/go-playground/validator/v10` | `internal/config` only | Struct validation via tags |
-| `github.com/erikgeiser/promptkit` | `internal/env` only | Interactive confirmation prompts |
+| `github.com/erikgeiser/promptkit` | `internal/prompts` only | Interactive confirmation prompts |
 | `github.com/rs/zerolog` | All packages | Structured logging |
 | `go.yaml.in/yaml/v3` | `internal/config`, `cmd/env/show.go` | YAML marshal/unmarshal |
 | `github.com/mattn/go-shellwords` | `internal/utils` | Shell-style word splitting for command arguments |

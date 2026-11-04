@@ -6,6 +6,7 @@ package run
 import (
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/engines"
+	"github.com/AaltoRSE/moat/internal/prompts"
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -40,10 +41,25 @@ This command allows you to run a specific command within the moat environment.`,
 				return
 			}
 
+			// Get the yes flag for creating missing directories without prompting
+			yes, err := cmd.Flags().GetBool("yes")
+			if err != nil {
+				log.Error().Msgf("could not get yes flag: %v", err)
+				return
+			}
+
 			// Get the environment with Config.GetEnv
 			env, err := config.GetEnv(config.CmdConfig, envName, true)
 			if err != nil {
 				log.Error().Msgf("Error with the environment %q: %v", envName, err)
+				return
+			}
+
+			// Check that the fake home directory and the mount source
+			// directories of the environment exist, creating missing ones
+			// automatically or after asking the user
+			if err := prompts.CheckAndCreateMounts(env, yes); err != nil {
+				log.Error().Msgf("Error with the directories of the environment %q: %v", envName, err)
 				return
 			}
 
@@ -105,6 +121,7 @@ This command allows you to run a specific command within the moat environment.`,
 	}
 
 	runCmd.Flags().StringP("name", "n", "", "Name of the environment to run the command in")
+	runCmd.Flags().BoolP("yes", "y", false, "Create missing mount directories without prompting")
 
 	if err := runCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)

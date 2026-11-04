@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
-// CheckFolderExists checks if a folder exists at the given path.
+// CheckFolderExists checks if a folder exists at the given path. It
+// reports false when the path does not exist or cannot be stat'ed (e.g.
+// when a parent path component is a regular file).
 func CheckFolderExists(path string) bool {
 	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
+	if err != nil {
 		return false
 	}
 	return info.IsDir()

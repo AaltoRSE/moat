@@ -78,7 +78,9 @@ An optional command that is started by default when running the environment. Use
 
 ### Non-interactive mode (`-y/--yes`)
 
-Without `-y`, `create` (and `copy`) will **prompt** you to create a missing fake home directory, and will **abort** if a mount source path is missing or invalid. With `-y`, missing directories (fake home and mount source paths) are created automatically without prompting. Use `-y` for scripting.
+Without `-y`, `create` (and `copy`) will **prompt** you to create missing directories: first the fake home directory, then any missing mount source directories. Answering no to a prompt aborts the command. Mount sources that are invalid (e.g. they exist but are not directories) always abort the command. With `-y`, missing directories (fake home and mount source paths) are created automatically without prompting. Use `-y` for scripting.
+
+`moat run` checks the fake home directory and the environment's mount sources before starting the container and prompts for missing directories the same way; give `-y` to `moat run` to create them without prompting.
 
 ---
 
@@ -104,7 +106,7 @@ Behavior:
 
 - If an environment with the same name already exists, nothing is done (`Environment already exists.`).
 - If the fake home directory does not exist, you are prompted to create it (or it is created automatically with `-y`); answering no aborts creation.
-- If a mount source path is missing or invalid, creation is aborted (or the directory is created automatically with `-y`).
+- If a mount source path is missing, you are prompted to create it (or it is created automatically with `-y`); answering no aborts creation. Mount sources that are invalid (e.g. they exist but are not directories) abort creation.
 - With `--mountcwd` or `--mountcwd=true`, the environment is created with working-directory mounting enabled; with `--mountcwd=false`, it is explicitly disabled. Without the flag, the environment has no `mountcwd` of its own and falls back to the runtime's setting.
 
 Examples:

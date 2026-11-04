@@ -265,3 +265,75 @@ func (suite *EnvTestSuite) TestCreateWithRoMounts() {
 	assert.Empty(suite.T(), createdEnv.Mounts)
 	assert.Equal(suite.T(), []string{roMount1, roMount2}, createdEnv.ReadOnlyMounts)
 }
+
+// TestCreateMountsPromptAccept tests that env create prompts for a missing
+// mount source directory and creates it, storing the environment, when the
+// user accepts the prompt.
+func (suite *EnvTestSuite) TestCreateMountsPromptAccept() {
+	baseDir := filepath.Join(tests.MoatTestDir, "create_mounts_prompt_accept")
+	home := filepath.Join(baseDir, "home")
+	mountSource := filepath.Join(baseDir, "mount")
+	// Start from a clean slate so the test verifies directory creation
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(baseDir)
+	})
+	// Create the fake home directory beforehand so that only the mount
+	// prompt is asked
+	require.NoError(suite.T(), os.MkdirAll(home, 0755))
+	tests.AnswerPrompt(suite.T(), "y")
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--mount", mountSource})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	// The mount source directory must have been created after the prompt
+	assert.DirExists(suite.T(), mountSource)
+
+	// Unmarshal the created configuration and check the stored environment
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	createdEnv, exists := envs["newenv"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), []string{mountSource}, createdEnv.Mounts)
+}
+
+// TestCreateMountsPromptDecline tests that env create aborts without
+// creating the environment or the mount source directory when the user
+// declines the prompt.
+func (suite *EnvTestSuite) TestCreateMountsPromptDecline() {
+	baseDir := filepath.Join(tests.MoatTestDir, "create_mounts_prompt_decline")
+	home := filepath.Join(baseDir, "home")
+	mountSource := filepath.Join(baseDir, "mount")
+	// Start from a clean slate so the test verifies directory creation
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	suite.T().Cleanup(func() {
+		_ = os.RemoveAll(baseDir)
+	})
+	// Create the fake home directory beforehand so that only the mount
+	// prompt is asked
+	require.NoError(suite.T(), os.MkdirAll(home, 0755))
+	tests.AnswerPrompt(suite.T(), "n")
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home, "--mount", mountSource})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Aborting due to missing mount directories.")
+
+	// Neither the environment nor the mount source directory was created
+	assert.NoDirExists(suite.T(), mountSource)
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	assert.NotContains(suite.T(), envs, "newenv")
+}

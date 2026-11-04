@@ -107,6 +107,8 @@ You can run a program in the environment with
 moat run --name example-env my_program
 ```
 
+Before starting the container, `moat run` checks that the environment's fake home directory and mount source directories exist and asks whether missing ones should be created; use `--yes` to create missing directories without prompting.
+
 ## Runtimes
 
 moat ships with two runtimes: **Apptainer** (the default) and **Docker**. The runtime of an environment is selected in the configuration.
