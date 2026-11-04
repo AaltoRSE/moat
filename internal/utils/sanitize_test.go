@@ -95,12 +95,18 @@ func (suite *SanitizeTestSuite) TestSanitizeMountsPaths() {
 		"~/proj",
 		"~/proj:/workspace",
 		"$MOAT_SANITIZER_DIR/src:dest",
+		"$MOAT_SANITIZER_DIR:$MOAT_SANITIZER_DIR",
+		"src:$MOAT_SANITIZER_DIR:$MOAT_SANITIZER_DIR/nested",
+		"src:~/dest",
 		"plain",
 	}
 	want := []string{
 		filepath.Join(suite.HomeDir, "proj"),
 		filepath.Join(suite.HomeDir, "proj") + ":/workspace",
-		filepath.Join(varDir, "src") + ":dest",
+		filepath.Join(varDir, "src") + ":" + filepath.Join(suite.WorkDir, "dest"),
+		varDir + ":" + varDir,
+		filepath.Join(suite.WorkDir, "src") + ":" + varDir + ":" + varDir + "/nested",
+		filepath.Join(suite.WorkDir, "src") + ":" + filepath.Join(suite.HomeDir, "dest"),
 		filepath.Join(suite.WorkDir, "plain"),
 	}
 

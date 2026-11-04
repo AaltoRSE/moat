@@ -57,7 +57,7 @@ Mounts are given as `source` or `source:dest`:
 - `--mount /home/user/project` — mount the source directory at the same path inside the container.
 - `--mount /home/user/project:/workspace/project` — mount the source at a different destination path.
 
-Both flags can be specified multiple times. Only the **source** path is expanded and resolved; the destination is used as-is. Mount sources must be existing directories (see `-y/--yes` below).
+Both flags can be specified multiple times. Every path (source and destination) is expanded the same way: a leading `~` is expanded to the home directory, environment variables are expanded (e.g. `$MYDIR:$MYDIR` with `MYDIR=/tmp/baa` becomes `/tmp/baa:/tmp/baa`), and relative paths are resolved to absolute ones. Mount sources must be existing directories (see `-y/--yes` below).
 
 ### Working directory mounting (`mountcwd`)
 

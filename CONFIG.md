@@ -207,7 +207,7 @@ Unknown keys are rejected with an error such as `key "envs.vscode.bogus" not fou
 | `envs.{name}.passenv` | bool | Pass host environment variables (overrides the runtime default) |
 | `envs.{name}.command` | string | Default command run when `moat run -n {name}` gets no arguments |
 
-Mounts use the same syntax as the `moat env` flags: `source` mounts at the same path, `source:dest` mounts at a different destination. Paths may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded when used.
+Mounts use the same syntax as the `moat env` flags: `source` mounts at the same path, `source:dest` mounts at a different destination. Paths may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded when used. Source and destination paths are sanitized the same way: `~` and environment variables are expanded in both, and relative paths are resolved to absolute ones (see [ENV.md](ENV.md#mounts--m--mount--r--ro-mount)).
 
 ---
 

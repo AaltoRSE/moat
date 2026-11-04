@@ -264,7 +264,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 - `run.go`: `RunArgs` struct (Command, Args, Env, PassEnv), `Run`, `RunCapture`, `OutputCapture` for subprocess execution and stdout capture.
 - `checks.go`: `CheckFolderExists`, `CheckEnvironmentName`, `CheckMounts`.
 - `dirops.go`: `CreateMountDirs` — creates missing mount source directories.
-- `sanitize.go`: `SanitizeFolderPath` (expands a leading `~` to the home directory, expands env vars, and resolves to an absolute path), `SanitizeMountsPaths` (sanitizes source paths in `source:dest` mount strings), `SanitizeArgs` (parses a single-arg command with shellwords, or validates multi-arg commands for spaces).
+- `sanitize.go`: `SanitizeFolderPath` (expands a leading `~` to the home directory, expands env vars, and resolves to an absolute path), `SanitizeMountsPaths` (sanitizes source and destination paths in `source:dest` mount strings), `SanitizeArgs` (parses a single-arg command with shellwords, or validates multi-arg commands for spaces).
 - New utilities must be genuinely reusable across multiple callers; one-off helpers belong in the package that uses them.
 
 ---

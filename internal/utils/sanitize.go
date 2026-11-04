@@ -49,22 +49,27 @@ func expandTilde(path string) (string, error) {
 	}
 }
 
+// SanitizeMountsPaths sanitizes mount strings of the form `src`,
+// `src:dest`, or `src:dest1:dest2`. Every path (source and destinations)
+// is sanitized with [SanitizeFolderPath]: a leading `~` is expanded to the
+// home directory, environment variables are expanded, and the result is
+// resolved to an absolute path. It returns an error if any path cannot be
+// sanitized.
 func SanitizeMountsPaths(mounts []string) ([]string, error) {
 	sanitizedMounts := make([]string, len(mounts))
 	for i, mount := range mounts {
 		// Split the mount string by colon to handle multiple paths in a single mount string
 		paths := strings.Split(mount, ":")
-		// Sanitize first entry of paths (the source path)
-		sanitizedSource, err := SanitizeFolderPath(paths[0])
-		if err != nil {
-			return nil, err
+		// Sanitize every entry of paths (the source path and the destination paths)
+		for j, path := range paths {
+			sanitizedPath, err := SanitizeFolderPath(path)
+			if err != nil {
+				return nil, err
+			}
+			paths[j] = sanitizedPath
 		}
-		// Reconstruct the mount string with sanitized source path
-		if len(paths) > 1 {
-			sanitizedMounts[i] = sanitizedSource + ":" + strings.Join(paths[1:], ":")
-		} else {
-			sanitizedMounts[i] = sanitizedSource
-		}
+		// Reconstruct the mount string from the sanitized paths
+		sanitizedMounts[i] = strings.Join(paths, ":")
 	}
 	return sanitizedMounts, nil
 }
