@@ -15,8 +15,8 @@ import (
 )
 
 // MountsTestSuite tests CheckAndCreateMounts: the check of the fake home
-// directory and existing mount sources and the creation of missing ones,
-// both automatically and after asking the user.
+// directory and existing mount sources (directories and files) and the
+// creation of missing ones, both automatically and after asking the user.
 type MountsTestSuite struct {
 	suite.Suite
 }
@@ -180,8 +180,8 @@ func (suite *MountsTestSuite) TestInvalidEmptySource() {
 	assert.Contains(suite.T(), err.Error(), "invalid")
 }
 
-// TestFileSource tests that a mount source that exists but is not a
-// directory is reported as an error.
+// TestFileSource tests that a mount source that exists as a regular file
+// is accepted and is left untouched, regardless of autoCreate.
 func (suite *MountsTestSuite) TestFileSource() {
 	baseDir := filepath.Join(tests.MoatTestDir, "prompts_file_source")
 	require.NoError(suite.T(), os.RemoveAll(baseDir))
@@ -191,8 +191,37 @@ func (suite *MountsTestSuite) TestFileSource() {
 	require.NoError(suite.T(), os.WriteFile(filePath, []byte("content"), 0644))
 
 	env := suite.newTestEnv([]string{filePath + ":/projects/file"}, nil)
-	err := prompts.CheckAndCreateMounts(env, true)
-	require.Error(suite.T(), err)
+	require.NoError(suite.T(), prompts.CheckAndCreateMounts(env, true))
+	require.NoError(suite.T(), prompts.CheckAndCreateMounts(env, false))
+
+	assert.FileExists(suite.T(), filePath)
+	assert.NoDirExists(suite.T(), filePath)
+}
+
+// TestMixedFileAndDirectorySources tests that an existing file source and an
+// existing directory source are both accepted, while a missing source is
+// created as a directory.
+func (suite *MountsTestSuite) TestMixedFileAndDirectorySources() {
+	baseDir := filepath.Join(tests.MoatTestDir, "prompts_mixed_sources")
+	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	suite.T().Cleanup(func() { _ = os.RemoveAll(baseDir) })
+	require.NoError(suite.T(), os.MkdirAll(baseDir, 0755))
+	filePath := filepath.Join(baseDir, "file")
+	require.NoError(suite.T(), os.WriteFile(filePath, []byte("content"), 0644))
+	dirPath := filepath.Join(baseDir, "dir")
+	require.NoError(suite.T(), os.Mkdir(dirPath, 0755))
+	missingPath := filepath.Join(baseDir, "missing")
+
+	env := suite.newTestEnv(
+		[]string{filePath + ":/projects/file", missingPath},
+		[]string{dirPath},
+	)
+	require.NoError(suite.T(), prompts.CheckAndCreateMounts(env, true))
+
+	assert.FileExists(suite.T(), filePath)
+	assert.NoDirExists(suite.T(), filePath)
+	assert.DirExists(suite.T(), dirPath)
+	assert.DirExists(suite.T(), missingPath)
 }
 
 // In order for 'go test' to run this suite, we need to create

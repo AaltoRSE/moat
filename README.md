@@ -85,7 +85,7 @@ moat creates separate environments for your coding tools and only mounts relevan
 
 ### Creating an environment
 
-An environment has a fake home folder and optional mounts that mount directories when the environment is being run.
+An environment has a fake home folder and optional mounts that mount files or directories when the environment is being run.
 
 You can create an environment with:
 
@@ -107,7 +107,7 @@ You can run a program in the environment with
 moat run --name example-env my_program
 ```
 
-Before starting the container, `moat run` checks that the environment's fake home directory and mount source directories exist and asks whether missing ones should be created; use `--yes` to create missing directories without prompting.
+Before starting the container, `moat run` checks that the environment's fake home directory and mount sources exist and asks whether missing ones should be created; use `--yes` to create missing directories without prompting.
 
 ## Runtimes
 

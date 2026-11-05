@@ -442,7 +442,7 @@ moat init -o /home/user/backups/moat/moat-config.yaml
 
 ## Notes
 
-- `moat config` works at the raw key level. For creating, copying, or removing **environments**, prefer the [`moat env`](ENV.md) commands — they check environment names, verify that fake home and mount directories exist (and can create them with `-y`), and remove config entries cleanly. Use `config` on `envs.{name}.*` keys for fine-tuning an existing environment.
+- `moat config` works at the raw key level. For creating, copying, or removing **environments**, prefer the [`moat env`](ENV.md) commands — they check environment names, verify that the fake home and mount sources exist (and can create missing directories with `-y`), and remove config entries cleanly. Use `config` on `envs.{name}.*` keys for fine-tuning an existing environment.
 - A failed change never modifies the config file: the key, the value types, and the full resulting configuration are all checked first.
 - `config set` on a list key **replaces** the list; to grow a list without losing entries, use `append` or `prepend`.
 - `envs.{name}.mountcwd`, `envs.{name}.runtime`, and `envs.{name}.passenv` are overrides: when unset, the environment falls back to `defaults.runtime`, the runtime's `mountcwd` setting, and the runtime's own defaults.

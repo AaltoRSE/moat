@@ -13,14 +13,15 @@ import (
 	"github.com/AaltoRSE/moat/internal/utils"
 )
 
-// CheckAndCreateMounts checks that the directories referenced by the
-// environment exist: the fake home directory and the source directories of
-// the mounts and read-only mounts. Missing directories are created
-// automatically when autoCreate is true; otherwise the user is asked whether
-// they should be created. It returns an error when the user declines to
-// create the missing directories, when their creation fails, or when a path
-// is invalid (e.g. an empty mount source path or a source that exists but is
-// not a directory).
+// CheckAndCreateMounts checks that the paths referenced by the environment
+// exist: the fake home directory and the source paths of the mounts and
+// read-only mounts. Mount sources may be directories or files: existing
+// files are left untouched, while missing source paths are created as
+// directories. Missing paths are created automatically when autoCreate is
+// true; otherwise the user is asked whether they should be created. It
+// returns an error when the user declines to create the missing paths, when
+// their creation fails, or when a path is invalid (e.g. an empty mount
+// source path).
 func CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error {
 
 	// Check that the fake home directory exists
@@ -55,12 +56,12 @@ func CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error {
 		return nil
 	}
 
-	// Collect the missing source directories
+	// Collect the missing source paths
 	var missing []string
 	seen := make(map[string]bool)
 	for _, mount := range mounts {
 		source := strings.Split(mount, ":")[0]
-		if source == "" || seen[source] || utils.CheckFolderExists(source) {
+		if source == "" || seen[source] || utils.CheckPathExists(source) {
 			continue
 		}
 		seen[source] = true

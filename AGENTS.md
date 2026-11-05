@@ -118,7 +118,7 @@ moat/
 │   │   ├── dockerruntime.go       # DockerRuntime implementation
 │   │   └── dockerruntime_test.go  # DockerRuntime test suite (DockerRuntimeTestSuite, fake docker binary)
 │   ├── utils/
-│   │   ├── checks.go           # CheckFolderExists, CheckEnvironmentName, CheckMounts
+│   │   ├── checks.go           # CheckFolderExists, CheckFileExists, CheckPathExists, CheckEnvironmentName, CheckMounts
 │   │   ├── dirops.go           # CreateDir
 │   │   ├── sanitize.go         # SanitizeFolderPath, SanitizeMountsPaths, SanitizeArgs
 │   │   └── run.go              # Run, RunCapture, RunArgs, OutputCapture

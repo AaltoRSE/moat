@@ -54,10 +54,10 @@ The directory on the host that will be used as the fake `$HOME` inside the conta
 
 Mounts are given as `source` or `source:dest`:
 
-- `--mount /home/user/project` — mount the source directory at the same path inside the container.
+- `--mount /home/user/project` — mount the source path (a directory or a file) at the same path inside the container.
 - `--mount /home/user/project:/workspace/project` — mount the source at a different destination path.
 
-Both flags can be specified multiple times. Every path (source and destination) is expanded the same way: a leading `~` is expanded to the home directory, environment variables are expanded (e.g. `$MYDIR:$MYDIR` with `MYDIR=/tmp/baa` becomes `/tmp/baa:/tmp/baa`), and relative paths are resolved to absolute ones. Mount sources must be existing directories (see `-y/--yes` below).
+Both flags can be specified multiple times. Every path (source and destination) is expanded the same way: a leading `~` is expanded to the home directory, environment variables are expanded (e.g. `$MYDIR:$MYDIR` with `MYDIR=/tmp/baa` becomes `/tmp/baa:/tmp/baa`), and relative paths are resolved to absolute ones. Mount sources may be existing directories or files; missing source paths are created as directories (see `-y/--yes` below).
 
 ### Working directory mounting (`mountcwd`)
 
@@ -78,7 +78,7 @@ An optional command that is started by default when running the environment. Use
 
 ### Non-interactive mode (`-y/--yes`)
 
-Without `-y`, `create` (and `copy`) will **prompt** you to create missing directories: first the fake home directory, then any missing mount source directories. Answering no to a prompt aborts the command. Mount sources that are invalid (e.g. they exist but are not directories) always abort the command. With `-y`, missing directories (fake home and mount source paths) are created automatically without prompting. Use `-y` for scripting.
+Without `-y`, `create` (and `copy`) will **prompt** you to create missing directories: first the fake home directory, then any missing mount source directories. Answering no to a prompt aborts the command. Mount entries that are invalid (e.g. an empty source path) always abort the command. Existing files are accepted as mount sources and are never created or modified. With `-y`, missing directories (fake home and mount source paths) are created automatically without prompting. Use `-y` for scripting.
 
 `moat run` checks the fake home directory and the environment's mount sources before starting the container and prompts for missing directories the same way; give `-y` to `moat run` to create them without prompting.
 
@@ -96,8 +96,8 @@ moat env create -n NAME -H HOME [-m MOUNT]... [-r ROMOUNT]... [-C COMMAND] [--mo
 |---|---|---|
 | `-n, --name` | yes | Name of the environment |
 | `-H, --home` | yes | Fake home directory |
-| `-m, --mount` | no | Mounted directory, `source` or `source:dest` (repeatable) |
-| `-r, --ro-mount` | no | Read-only mounted directory, `source` or `source:dest` (repeatable) |
+| `-m, --mount` | no | Mounted path (directory or file), `source` or `source:dest` (repeatable) |
+| `-r, --ro-mount` | no | Read-only mounted path (directory or file), `source` or `source:dest` (repeatable) |
 | `-C, --command` | no | Default command to run in the environment (quote multi-word commands) |
 | `--mountcwd` | no | Bind-mount the directory you run `moat run` from into the container and use it as the working directory: `true` or `false`, an empty value means `true` (see [Working directory mounting](#working-directory-mounting-mountcwd)) |
 | `-y, --yes` | no | Create missing directories (fake home and mount paths) without prompting |
@@ -106,7 +106,7 @@ Behavior:
 
 - If an environment with the same name already exists, nothing is done (`Environment already exists.`).
 - If the fake home directory does not exist, you are prompted to create it (or it is created automatically with `-y`); answering no aborts creation.
-- If a mount source path is missing, you are prompted to create it (or it is created automatically with `-y`); answering no aborts creation. Mount sources that are invalid (e.g. they exist but are not directories) abort creation.
+- If a mount source path is missing, you are prompted to create it (or it is created automatically with `-y`); answering no aborts creation. Mount entries that are invalid (e.g. an empty source path) abort creation. Existing files are accepted as mount sources and are never created or modified.
 - With `--mountcwd` or `--mountcwd=true`, the environment is created with working-directory mounting enabled; with `--mountcwd=false`, it is explicitly disabled. Without the flag, the environment has no `mountcwd` of its own and falls back to the runtime's setting.
 
 Examples:

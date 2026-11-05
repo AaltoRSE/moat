@@ -26,19 +26,28 @@ func CheckFileExists(path string) bool {
 	return !info.IsDir()
 }
 
+// CheckPathExists reports whether a path exists at the given path, either
+// as a directory or as a regular file. It reports false when the path does
+// not exist or cannot be stat'ed.
+func CheckPathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 // CheckEnvironmentName checks if the environment name is valid (non-empty and containing only alphanumeric characters, underscores, and hyphens).
 func CheckEnvironmentName(name string) bool {
 	var validNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	return validNamePattern.MatchString(name)
 }
 
-// CheckMounts checks if the provided mounts are valid (non-empty and existing directories).
+// CheckMounts checks if the provided mounts are valid (non-empty source
+// paths that exist as either directories or files).
 func CheckMounts(mounts []string) bool {
 	for _, mount := range mounts {
 		// Split the mount string by colon to handle multiple paths in a single mount string
 		paths := strings.Split(mount, ":")
 		// Check if the first entry of paths (the source path) is valid
-		if len(paths) == 0 || paths[0] == "" || !CheckFolderExists(paths[0]) {
+		if len(paths) == 0 || paths[0] == "" || !CheckPathExists(paths[0]) {
 			return false
 		}
 	}
