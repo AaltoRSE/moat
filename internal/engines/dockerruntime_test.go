@@ -135,8 +135,7 @@ func (suite *DockerRuntimeTestSuite) SetupTest() {
 	require.NoError(suite.T(), os.Chdir(suite.WorkDir))
 	suite.T().Cleanup(func() { _ = os.Chdir(wd) })
 
-	// Use a dedicated scratch directory for the temporary passwd file. The
-	// Docker runtime does not create it, so it must exist beforehand.
+	// Use a dedicated scratch directory for the temporary passwd file.
 	suite.CacheDir = suite.T().TempDir()
 }
 
@@ -404,6 +403,25 @@ func (suite *DockerRuntimeTestSuite) TestRunAppendsCurrentUserToPasswdFile() {
 	expected := "root:x:0:0:root:/root:/bin/sh\n" +
 		fmt.Sprintf("%s:x:%d:%d::%s:/bin/bash\n", "moattest", os.Getuid(), os.Getgid(), suite.HomeDir)
 	assert.Equal(suite.T(), expected, string(contents))
+}
+
+// TestRunCreatesMissingCacheDir tests that Run creates the scratch
+// directory, including its parent directories, when it does not exist
+// yet.
+func (suite *DockerRuntimeTestSuite) TestRunCreatesMissingCacheDir() {
+	missing := filepath.Join(suite.T().TempDir(), "scratch", "nested")
+	runtime := NewDockerRuntimeFromSpec(&types.RuntimeSpec{
+		Type:     "docker",
+		ImageUrl: "test/example-image:1.0",
+		CacheDir: missing,
+		PassEnv:  false,
+	})
+	env := types.MoatEnv{Home: suite.HomeDir}
+
+	dockerArgs := suite.runAndCaptureArgs(runtime, env, "echo", "hello")
+
+	require.True(suite.T(), utils.CheckFolderExists(missing))
+	assert.NotEmpty(suite.T(), passwdMountArg(dockerArgs, missing))
 }
 
 // TestRunNoCommand tests that Run reports an error and does not invoke

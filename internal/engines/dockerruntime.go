@@ -34,8 +34,8 @@ func NewDockerRuntimeFromSpec(spec *types.RuntimeSpec) *DockerRuntime {
 // before every execution — Docker caches pulled images itself, so
 // CacheDir is not an image cache but the scratch directory for the
 // temporary passwd file that provides the container with the current
-// user's account information (see [DockerRuntime.Run]). CacheDir must
-// exist when the runtime is used.
+// user's account information (see [DockerRuntime.Run]). Run creates
+// CacheDir when it does not exist yet.
 type DockerRuntime struct {
 	// Executable is the command used to invoke docker.
 	Executable string
@@ -203,6 +203,12 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 	cacheDir, err := utils.SanitizePath(f.CacheDir)
 
 	if err != nil {
+		return 1, err
+	}
+
+	// Create the scratch directory when it does not exist, so that the
+	// temporary user-identification files can be written into it.
+	if err := utils.CreateDir(cacheDir); err != nil {
 		return 1, err
 	}
 
