@@ -106,6 +106,15 @@ numeric user ID (the exact rules are documented in
 D-Bus is the message bus of the Linux desktop, and graphical applications use it to talk to system services such as desktop notifications and accessibility support. The editors' graphical side needs to reach these services, so the host's D-Bus system socket is mounted into the container. The container's runtime directory is a dedicated directory rather than your real one, so the sockets of your desktop session (Wayland, sound, session D-Bus) stay out of the container.
 
 > [!NOTE]
+> On a Wayland session, the editor needs the session's Wayland socket to start, so add the Wayland socket to the `mounts` of each environment (not needed on X11):
+>
+> ```yaml
+>         mounts:
+>             - ...
+>             - /run/user/$UID/wayland-0
+> ```
+
+> [!NOTE]
 > The shared directories limit the containment a bit: every instance of an editor can see every project in its shared project directory, and the instances share `/tmp` (and, within each editor, the runtime directory) with each other.
 
 ### Default command
