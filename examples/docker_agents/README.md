@@ -51,11 +51,27 @@ install moat ~/.local/bin/moat
 
 Make sure `~/.local/bin` is in your `PATH`.
 
-### 3. Install the example configuration
+### 3. Set up the configuration
+
+Create the moat configuration file and open it in your editor:
 
 ```shell
-mkdir -p ~/.config/moat
-curl -fsSL -o ~/.config/moat/moat-config.yaml https://raw.githubusercontent.com/AaltoRSE/moat/main/examples/docker_agents/moat-config.yaml
+moat init
+moat config edit
+```
+
+`moat init` writes the default configuration to
+`~/.config/moat/moat-config.yaml`, and `moat config edit` opens that file in
+the editor given by the `$EDITOR` environment variable. Copy the example
+configuration below into the file, replacing its contents, and save it:
+
+```yaml
+envs:
+    agents:
+        command: bash
+        home: $HOME/moat/agents-home
+        mountcwd: true
+        runtime: docker
 ```
 
 > [!NOTE]
@@ -66,17 +82,7 @@ curl -fsSL -o ~/.config/moat/moat-config.yaml https://raw.githubusercontent.com/
 > moat config set defaults.runtimes.docker.executable podman
 > ```
 
-### 4. Create the fake home and the scratch directory
-
-```shell
-mkdir -p ~/moat/agents-home ~/.cache/moat
-```
-
-The second directory is the Docker runtime's scratch space for the temporary
-user-identification files it writes on every run; it must exist before
-`moat run`.
-
-### 5. Enter the container
+### 4. Enter the container
 
 From a project folder, `moat run` without a command runs the environment's
 default command, `bash`, so you get an interactive shell inside the
@@ -88,8 +94,10 @@ cd ~/projects/my-project
 moat run -n agents
 ```
 
-The project directory is mounted at the same path and is your working
-directory. From the shell you can run arbitrary commands: inspect the
+The first `moat run` asks whether to create the fake home directory,
+`~/moat/agents-home` — confirm with `y` (or start moat with `moat run -y` to
+create missing directories without asking). The project directory is mounted
+at the same path and is your working directory. From the shell you can run arbitrary commands: inspect the
 project or look at an agent's configuration in the fake home (e.g. `ls
 ~/.codex`). The container's root filesystem is read-only, so anything you
 want to keep must go into the fake home (e.g. `pip install --user ...`) or
@@ -100,7 +108,7 @@ the project directory. Exit the container with `exit`.
 > it takes a while. Later runs re-check the registry and start from Docker's
 > local image cache, which is quick.
 
-### 6. Run codex
+### 5. Run codex
 
 ```shell
 moat run -n agents "codex --no-daemon"
@@ -109,7 +117,7 @@ moat run -n agents "codex --no-daemon"
 `--no-daemon` is needed inside the container; see [Implementation
 details](#implementation-details).
 
-### 7. Run the other agents
+### 6. Run the other agents
 
 The general form is `moat run -n agents HARNESS_NAME`, where `HARNESS_NAME`
 is the name of the agent's binary in the container image:
@@ -125,16 +133,7 @@ moat run -n agents omp
 ## Implementation details
 
 This section explains the choices made in [moat-config.yaml](moat-config.yaml)
-and how the environment is used:
-
-```yaml
-envs:
-    agents:
-        command: bash
-        home: $HOME/moat/agents-home
-        mountcwd: true
-        runtime: docker
-```
+and how the environment is used.
 
 ### The Docker runtime
 
@@ -156,10 +155,10 @@ which talks to the Docker daemon. In practice:
   group ID (and a matching account entry, so tools can resolve your user
   name). Files the agents create in the project directory are owned by you,
   just like on the host.
-- **A scratch directory must exist.** The default Docker runtime uses
-  `~/.cache/moat/` as the scratch directory for the temporary
-  user-identification files of each run, and it must exist before `moat run`
-  — hence the `mkdir` in step 4.
+- **A scratch directory, created automatically.** The default Docker runtime
+  uses `~/.cache/moat/` as the scratch directory for the temporary
+  user-identification files of each run; moat creates it when it does not
+  exist yet.
 
 ### Fake home
 

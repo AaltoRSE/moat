@@ -1,15 +1,17 @@
 envs:
     vscode:
-        command: code --wait .
+        command: code --wait $PWD
         home: $HOME/moat/agents-home
         mounts:
             - $HOME/moat/vscode-projects
-            - /run/user
+            - /run/user/$UID/moat/vscode:/run/user/$UID
             - /run/dbus
+            - /tmp/moat:/tmp
     vscodium:
-        command: codium --wait .
+        command: codium --wait $PWD
         home: $HOME/moat/agents-home
         mounts:
             - $HOME/moat/vscodium-projects
-            - /run/user
+            - /run/user/$UID/moat/vscodium:/run/user/$UID
             - /run/dbus
+            - /tmp/moat:/tmp

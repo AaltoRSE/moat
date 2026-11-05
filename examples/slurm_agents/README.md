@@ -65,87 +65,19 @@ directory and export it for the session:
 export WRKDIR=/projects/my-project
 ```
 
-### 3. Create the directories
+### 3. Set up the configuration
+
+Create the moat configuration file and open it in your editor:
 
 ```shell
-mkdir -p $WRKDIR/issues/moat/images $WRKDIR/agents-home
+moat init
+moat config edit
 ```
 
-The image directory is created automatically by moat on first use; the fake
-home must exist before `moat run` can mount it.
-
-### 4. Install the example configuration
-
-```shell
-mkdir -p ~/.config/moat
-curl -fsSL -o ~/.config/moat/moat-config.yaml https://raw.githubusercontent.com/AaltoRSE/moat/main/examples/slurm_agents/moat-config.yaml
-```
-
-The configuration references `$WRKDIR`, which moat expands when it runs, so
-the same file works on any cluster as long as `$WRKDIR` points at the right
-place.
-
-> [!NOTE]
-> Clusters often provide Singularity rather than Apptainer. If the
-> `apptainer` command does not exist but `singularity` does, point the
-> apptainer runtime at it (see [CONFIG.md](../../CONFIG.md)):
->
-> ```shell
-> moat config set defaults.runtimes.apptainer.executable singularity
-> ```
-
-### 5. Enter the container and check Slurm
-
-From a project folder, `moat run` without a command runs the environment's
-default command, `bash`, so you get an interactive shell inside the
-container:
-
-```shell
-cd $WRKDIR/my-project
-moat run -n slurm_agents
-```
-
-The project directory is mounted at the same path and is your working
-directory. Check that the Slurm client works from inside the container:
-
-```shell
-squeue
-```
-
-If you see queue information, Slurm works in the container. You can then
-exit with `exit`.
-
-> [!NOTE]
-> The first `moat run` pulls the rockylinux9 image (several GB) into
-> `$WRKDIR/issues/moat/images`, so it takes a while. Later runs start from
-> the cached image.
-
-### 6. Run codex
-
-```shell
-moat run -n slurm_agents "codex --no-daemon"
-```
-
-`--no-daemon` is needed inside the container; see [Implementation
-details](#implementation-details).
-
-### 7. Run the other agents
-
-The general form is `moat run -n slurm_agents HARNESS_NAME`, where
-`HARNESS_NAME` is the name of the agent's binary in the container image:
-
-```shell
-moat run -n slurm_agents pi
-moat run -n slurm_agents opencode
-moat run -n slurm_agents cline
-moat run -n slurm_agents claude
-moat run -n slurm_agents omp
-```
-
-## Implementation details
-
-This section explains the choices made in
-[moat-config.yaml](moat-config.yaml):
+`moat init` writes the default configuration to
+`~/.config/moat/moat-config.yaml`, and `moat config edit` opens that file in
+the editor given by the `$EDITOR` environment variable. Copy the example
+configuration below into the file, replacing its contents, and save it:
 
 ```yaml
 defaults:
@@ -167,6 +99,78 @@ envs:
             - /etc/passwd
             - /etc/group
 ```
+
+The configuration references `$WRKDIR`, which moat expands when it runs, so
+the same file works on any cluster as long as `$WRKDIR` points at the right
+place.
+
+> [!NOTE]
+> Clusters often provide Singularity rather than Apptainer. If the
+> `apptainer` command does not exist but `singularity` does, point the
+> apptainer runtime at it (see [CONFIG.md](../../CONFIG.md)):
+>
+> ```shell
+> moat config set defaults.runtimes.apptainer.executable singularity
+> ```
+
+### 4. Enter the container and check Slurm
+
+From a project folder, `moat run` without a command runs the environment's
+default command, `bash`, so you get an interactive shell inside the
+container:
+
+```shell
+mkdir -p $WRKDIR/my-project
+cd $WRKDIR/my-project
+moat run -n slurm_agents
+```
+
+The first `moat run` asks whether to create the fake home directory,
+`$WRKDIR/agents-home` — confirm with `y` (or start moat with `moat run -y`
+to create missing directories without asking). The image directory under
+`$WRKDIR/issues/moat/images` is created automatically on first use.
+
+The project directory is mounted at the same path and is your working
+directory. Check that the Slurm client works from inside the container:
+
+```shell
+squeue
+```
+
+If you see queue information, Slurm works in the container. You can then
+exit with `exit`.
+
+> [!NOTE]
+> The first `moat run` pulls the rockylinux9 image (several GB) into
+> `$WRKDIR/issues/moat/images`, so it takes a while. Later runs start from
+> the cached image.
+
+### 5. Run codex
+
+```shell
+moat run -n slurm_agents "codex --no-daemon"
+```
+
+`--no-daemon` is needed inside the container; see [Implementation
+details](#implementation-details).
+
+### 6. Run the other agents
+
+The general form is `moat run -n slurm_agents HARNESS_NAME`, where
+`HARNESS_NAME` is the name of the agent's binary in the container image:
+
+```shell
+moat run -n slurm_agents pi
+moat run -n slurm_agents opencode
+moat run -n slurm_agents cline
+moat run -n slurm_agents claude
+moat run -n slurm_agents omp
+```
+
+## Implementation details
+
+This section explains the choices made in
+[moat-config.yaml](moat-config.yaml).
 
 ### RHEL 9 image
 
@@ -236,7 +240,7 @@ sees the project at the same absolute path it has on the host.
 
 `command: bash` means that `moat run -n slurm_agents` without arguments
 drops you into an interactive shell inside the container. That is the
-quickest way to do ad-hoc work, including the Slurm check from step 5.
+quickest way to do ad-hoc work, including the Slurm check from step 4.
 
 ### Running codex
 
