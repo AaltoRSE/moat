@@ -32,7 +32,7 @@ func GetEnv(cfg *viper.Viper, name string, sanitized bool) (types.MoatEnv, error
 	}
 	log.Debug().Interface("env", env).Msg("Environment configuration")
 	if sanitized {
-		env.Home, err = utils.SanitizeFolderPath(env.Home)
+		env.Home, err = utils.SanitizePath(env.Home)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to sanitize Home path")
 			return types.MoatEnv{}, err

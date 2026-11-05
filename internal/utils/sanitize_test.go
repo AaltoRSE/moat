@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,9 +11,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// SanitizeTestSuite tests SanitizeFolderPath and SanitizeMountsPaths:
-// tilde expansion, environment variable expansion, and resolution of
-// relative paths to absolute ones.
+// SanitizeTestSuite tests SanitizePath and SanitizeMountsPaths:
+// tilde expansion, environment variable expansion (including the UID
+// fallback), and resolution of relative paths to absolute ones.
 type SanitizeTestSuite struct {
 	suite.Suite
 	HomeDir string
@@ -48,7 +49,7 @@ func (suite *SanitizeTestSuite) TestTildeExpansion() {
 		{"sub/~/nested", filepath.Join(suite.WorkDir, "sub/~/nested")},
 	}
 	for _, tc := range cases {
-		got, err := SanitizeFolderPath(tc.path)
+		got, err := SanitizePath(tc.path)
 		require.NoError(suite.T(), err, tc.path)
 		assert.Equal(suite.T(), tc.want, got, tc.path)
 	}
@@ -58,15 +59,46 @@ func (suite *SanitizeTestSuite) TestEnvVarExpansion() {
 	varDir := suite.T().TempDir()
 	suite.T().Setenv("MOAT_SANITIZER_DIR", varDir)
 
-	got, err := SanitizeFolderPath("$MOAT_SANITIZER_DIR/sub")
+	got, err := SanitizePath("$MOAT_SANITIZER_DIR/sub")
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), filepath.Join(varDir, "sub"), got)
 
 	// An unset variable expands to the empty string, so the leading
 	// slash makes the result an absolute path.
-	got, err = SanitizeFolderPath("$MOAT_UNSET_VAR/sub")
+	got, err = SanitizePath("$MOAT_UNSET_VAR/sub")
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "/sub", got)
+}
+
+func (suite *SanitizeTestSuite) TestUIDExpansion() {
+	// Remove any UID from the environment (restoring the original value
+	// at cleanup) so that the fallback to the numeric user ID applies.
+	if orig, ok := os.LookupEnv("UID"); ok {
+		suite.T().Setenv("UID", orig)
+		require.NoError(suite.T(), os.Unsetenv("UID"))
+	}
+
+	// $UID expands to the numeric user ID, yielding a relative path
+	// resolved against the working directory.
+	got, err := SanitizePath("$UID/data")
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(),
+		filepath.Join(suite.WorkDir, fmt.Sprintf("%d/data", os.Getuid())), got)
+
+	// The braced form expands the same way.
+	got, err = SanitizePath("${UID}/data")
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(),
+		filepath.Join(suite.WorkDir, fmt.Sprintf("%d/data", os.Getuid())), got)
+}
+
+func (suite *SanitizeTestSuite) TestUIDFromEnvironment() {
+	// A UID set in the environment overrides the numeric user ID.
+	suite.T().Setenv("UID", "4242")
+
+	got, err := SanitizePath("$UID/data")
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), filepath.Join(suite.WorkDir, "4242/data"), got)
 }
 
 func (suite *SanitizeTestSuite) TestAbsoluteAndRelativePaths() {
@@ -81,7 +113,7 @@ func (suite *SanitizeTestSuite) TestAbsoluteAndRelativePaths() {
 		{"", suite.WorkDir},
 	}
 	for _, tc := range cases {
-		got, err := SanitizeFolderPath(tc.path)
+		got, err := SanitizePath(tc.path)
 		require.NoError(suite.T(), err, tc.path)
 		assert.Equal(suite.T(), tc.want, got, tc.path)
 	}

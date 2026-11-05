@@ -48,7 +48,7 @@ Names must be non-empty and contain only **alphanumeric characters, underscores,
 
 ### Fake home (`-H/--home`)
 
-The directory on the host that will be used as the fake `$HOME` inside the container. The path may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded, and relative paths are resolved to absolute ones.
+The directory on the host that will be used as the fake `$HOME` inside the container. The path may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded, and relative paths are resolved to absolute ones. `$UID` expands to your numeric user ID unless it is set in the environment.
 
 ### Mounts (`-m/--mount`, `-r/--ro-mount`)
 
@@ -57,7 +57,7 @@ Mounts are given as `source` or `source:dest`:
 - `--mount /home/user/project` — mount the source path (a directory or a file) at the same path inside the container.
 - `--mount /home/user/project:/workspace/project` — mount the source at a different destination path.
 
-Both flags can be specified multiple times. Every path (source and destination) is expanded the same way: a leading `~` is expanded to the home directory, environment variables are expanded (e.g. `$MYDIR:$MYDIR` with `MYDIR=/tmp/baa` becomes `/tmp/baa:/tmp/baa`), and relative paths are resolved to absolute ones. Mount sources may be existing directories or files; missing source paths are created as directories (see `-y/--yes` below).
+Both flags can be specified multiple times. Every path (source and destination) is expanded the same way: a leading `~` is expanded to the home directory, environment variables are expanded (e.g. `$MYDIR:$MYDIR` with `MYDIR=/path/to/dir` becomes `/path/to/dir:/path/to/dir`; `$UID` expands to your numeric user ID unless it is set in the environment), and relative paths are resolved to absolute ones. Mount sources may be existing directories or files; missing source paths are created as directories (see `-y/--yes` below).
 
 ### Working directory mounting (`mountcwd`)
 

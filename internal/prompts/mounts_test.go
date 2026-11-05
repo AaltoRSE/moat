@@ -55,7 +55,7 @@ func (suite *MountsTestSuite) newMissingHomeEnv() types.MoatEnv {
 // without prompting when autoCreate is true.
 func (suite *MountsTestSuite) TestHomeAutoCreate() {
 	env := suite.newMissingHomeEnv()
-	absHome, err := utils.SanitizeFolderPath(env.Home)
+	absHome, err := utils.SanitizePath(env.Home)
 	require.NoError(suite.T(), err)
 
 	require.NoError(suite.T(), prompts.CheckAndCreateMounts(env, true))
@@ -67,7 +67,7 @@ func (suite *MountsTestSuite) TestHomeAutoCreate() {
 // when the user accepts the prompt.
 func (suite *MountsTestSuite) TestHomePromptAccept() {
 	env := suite.newMissingHomeEnv()
-	absHome, err := utils.SanitizeFolderPath(env.Home)
+	absHome, err := utils.SanitizePath(env.Home)
 	require.NoError(suite.T(), err)
 	tests.AnswerPrompt(suite.T(), "y")
 
@@ -80,7 +80,7 @@ func (suite *MountsTestSuite) TestHomePromptAccept() {
 // error is returned when the user declines the prompt.
 func (suite *MountsTestSuite) TestHomePromptDecline() {
 	env := suite.newMissingHomeEnv()
-	absHome, err := utils.SanitizeFolderPath(env.Home)
+	absHome, err := utils.SanitizePath(env.Home)
 	require.NoError(suite.T(), err)
 	tests.AnswerPrompt(suite.T(), "n")
 
@@ -97,7 +97,7 @@ func (suite *MountsTestSuite) TestHomeAndMountsAutoCreate() {
 	mount, mountSource := suite.newMissingMount()
 	env := suite.newMissingHomeEnv()
 	env.Mounts = []string{mount}
-	absHome, err := utils.SanitizeFolderPath(env.Home)
+	absHome, err := utils.SanitizePath(env.Home)
 	require.NoError(suite.T(), err)
 
 	require.NoError(suite.T(), prompts.CheckAndCreateMounts(env, true))

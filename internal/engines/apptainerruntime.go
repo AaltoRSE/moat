@@ -57,7 +57,7 @@ type ApptainerImage struct {
 // if the cache directory is invalid or cannot be created.
 func (f *ApptainerRuntime) GetImage() (ApptainerImage, error) {
 
-	cacheDir, err := utils.SanitizeFolderPath(f.CacheDir)
+	cacheDir, err := utils.SanitizePath(f.CacheDir)
 	if err != nil {
 		log.Error().Str("cacheDir", cacheDir).Msg("Invalid cache directory")
 		return ApptainerImage{}, err
@@ -124,7 +124,7 @@ func (f *ApptainerRuntime) Pull(passEnv bool) (string, error) {
 // error if the cache directory is invalid or cannot be read.
 func (f *ApptainerRuntime) CacheList() ([]string, error) {
 
-	cacheDir, err := utils.SanitizeFolderPath(f.CacheDir)
+	cacheDir, err := utils.SanitizePath(f.CacheDir)
 	if err != nil {
 		log.Error().Str("cacheDir", cacheDir).Msg("Invalid cache directory")
 		return nil, err

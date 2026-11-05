@@ -25,7 +25,7 @@ import (
 func CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error {
 
 	// Check that the fake home directory exists
-	absFakeHome, err := utils.SanitizeFolderPath(env.Home)
+	absFakeHome, err := utils.SanitizePath(env.Home)
 	if err != nil {
 		return err
 	}

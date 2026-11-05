@@ -120,7 +120,7 @@ moat/
 │   ├── utils/
 │   │   ├── checks.go           # CheckFolderExists, CheckFileExists, CheckPathExists, CheckEnvironmentName, CheckMounts
 │   │   ├── dirops.go           # CreateDir
-│   │   ├── sanitize.go         # SanitizeFolderPath, SanitizeMountsPaths, SanitizeArgs
+│   │   ├── sanitize.go         # SanitizePath, SanitizeMountsPaths, SanitizeArgs
 │   │   └── run.go              # Run, RunCapture, RunArgs, OutputCapture
 │   └── tests/
 │       └── tests.go            # CreateTempConfig, AnswerPrompt (shared test helpers)
@@ -217,7 +217,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 - `SetConfigPath(cfg, outputPath)` switches the configuration file path of `cfg` (via `viper.SetConfigFile`) to the global config file ($HOME/.config/moat/moat-config.yaml) — or to `outputPath` when it is non-empty — and validates the configuration. It does not write to disk. If a configuration file has already been found and no output path is given, the configuration is left as it is and `changed=false` is reported; it returns an error if `outputPath` is the same as the path of the found configuration. It reports whether the path was set (`changed`); callers that need to persist the configuration must call `WriteConfig` separately.
 - `SetConfig`, `AppendConfig`, and `PrependConfig` all follow the same pattern: mutate the viper value and re-validate the full `types.Config`. They do not write to disk; callers that need to persist the change must call `WriteConfig` separately.
 - Validation uses `go-playground/validator` and operates on `types.Config`.
-- `GetEnv(cfg, name, sanitized)` returns `types.MoatEnv`; when `sanitized` is true, paths are resolved via `utils.SanitizeFolderPath` / `utils.SanitizeMountsPaths`. It must not return raw `map[string]interface{}` to callers.
+- `GetEnv(cfg, name, sanitized)` returns `types.MoatEnv`; when `sanitized` is true, paths are resolved via `utils.SanitizePath` / `utils.SanitizeMountsPaths`. It must not return raw `map[string]interface{}` to callers.
 - `GetEnvs(cfg)` returns `map[string]types.MoatEnv` for all configured environments.
 - `GetRuntimeSpec(cfg, name)` looks up a runtime spec from `runtimes.{name}`, falling back to `defaults.runtimes.{name}` when the runtime is not user-specified, and returns `types.RuntimeSpec`.
 - `GetRuntimes(cfg)` returns `map[string]types.RuntimeSpec` for all available runtimes: the default runtimes from `defaults.runtimes` merged with the user-specified runtimes from `runtimes`, where a user-specified runtime with the same name overwrites the default runtime.
@@ -234,7 +234,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 - `CopyEnvironment(cfg, sourceName, newName, home, mounts, roMounts, command, autoCreate)` copies an existing environment, optionally overriding home, mounts, read-only mounts, and command.
 - `RemoveEnvironment(cfg, name)` removes an environment from the configuration.
 - Must call `internal/config.WriteConfig(cfg)` after any mutation to persist changes.
-- Path arguments must be resolved to absolute paths with `utils.SanitizeFolderPath` before storing.
+- Path arguments must be resolved to absolute paths with `utils.SanitizePath` before storing.
 
 ---
 
@@ -275,7 +275,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 - `run.go`: `RunArgs` struct (Command, Args, Env, PassEnv), `Run`, `RunCapture`, `OutputCapture` for subprocess execution and stdout capture.
 - `checks.go`: `CheckFolderExists`, `CheckEnvironmentName`, `CheckMounts`.
 - `dirops.go`: `CreateDir` — creates a missing directory, including any parent directories; no-op when it exists.
-- `sanitize.go`: `SanitizeFolderPath` (expands a leading `~` to the home directory, expands env vars, and resolves to an absolute path), `SanitizeMountsPaths` (sanitizes source and destination paths in `source:dest` mount strings), `SanitizeArgs` (parses a single-arg command with shellwords, or validates multi-arg commands for spaces).
+- `sanitize.go`: `SanitizePath` (expands a leading `~` to the home directory, expands env vars, and resolves to an absolute path), `SanitizeMountsPaths` (sanitizes source and destination paths in `source:dest` mount strings), `SanitizeArgs` (parses a single-arg command with shellwords, or validates multi-arg commands for spaces).
 - New utilities must be genuinely reusable across multiple callers; one-off helpers belong in the package that uses them.
 
 ---

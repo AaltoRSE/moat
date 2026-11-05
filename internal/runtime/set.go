@@ -52,7 +52,7 @@ func SetRuntime(cfg *viper.Viper, name string, updates []types.RuntimeUpdate) er
 	// default specification; resolve the seeded cache directory to an
 	// absolute path, as CreateRuntime does for user runtimes
 	if !isUser && spec.CacheDir != "" {
-		absCacheDir, err := utils.SanitizeFolderPath(spec.CacheDir)
+		absCacheDir, err := utils.SanitizePath(spec.CacheDir)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting absolute path for cache directory")
 			return err
@@ -136,7 +136,7 @@ func applyRuntimeUpdate(spec *types.RuntimeSpec, name string, update types.Runti
 		if err != nil {
 			return "", err
 		}
-		absValue, err := utils.SanitizeFolderPath(value)
+		absValue, err := utils.SanitizePath(value)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting absolute path for cache directory")
 			return "", err

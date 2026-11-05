@@ -200,7 +200,7 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 	// Run as the current user
 	userArgs := f.getUserArgs()
 
-	cacheDir, err := utils.SanitizeFolderPath(f.CacheDir)
+	cacheDir, err := utils.SanitizePath(f.CacheDir)
 
 	if err != nil {
 		return 1, err

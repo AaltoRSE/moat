@@ -54,7 +54,7 @@ func CreateRuntime(cfg *viper.Viper, name string, spec types.RuntimeSpec) error 
 
 	// Resolve the cache directory to an absolute path before storing
 	if spec.CacheDir != "" {
-		absCacheDir, err := utils.SanitizeFolderPath(spec.CacheDir)
+		absCacheDir, err := utils.SanitizePath(spec.CacheDir)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting absolute path for cache directory")
 			return err
