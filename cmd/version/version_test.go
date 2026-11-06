@@ -37,18 +37,59 @@ func (suite *VersionTestSuite) runVersion(args ...string) string {
 	return output
 }
 
+// setVersionMetadata sets the build-time version metadata to the given
+// known values and restores the originals when the test finishes.
+func (suite *VersionTestSuite) setVersionMetadata(v, os, arch string) {
+	originalVersion, originalOS, originalArch := version.MoatVersion, version.MoatOS, version.MoatArch
+	suite.T().Cleanup(func() {
+		version.MoatVersion, version.MoatOS, version.MoatArch = originalVersion, originalOS, originalArch
+	})
+	version.MoatVersion, version.MoatOS, version.MoatArch = v, os, arch
+}
+
 // TestVersionPrintsMoatVersion tests that the version command prints the
 // value of version.MoatVersion.
 func (suite *VersionTestSuite) TestVersionPrintsMoatVersion() {
 	// The version is normally set at build time via the linker flag
 	// -X; set a known value for the duration of the test.
-	originalVersion := version.MoatVersion
-	version.MoatVersion = "v1.2.3-test"
-	defer func() { version.MoatVersion = originalVersion }()
+	suite.setVersionMetadata("v1.2.3-test", "", "")
 
 	output := suite.runVersion()
 
 	assert.Contains(suite.T(), output, "v1.2.3-test")
+}
+
+// TestVersionAllShortFlag tests that the version command prints the full
+// version with the operating system and architecture when the -a flag is
+// given.
+func (suite *VersionTestSuite) TestVersionAllShortFlag() {
+	suite.setVersionMetadata("v1.2.3-test", "linux", "amd64")
+
+	output := suite.runVersion("-a")
+
+	assert.Contains(suite.T(), output, "v1.2.3-test-Linux_x86_64")
+}
+
+// TestVersionAllLongFlag tests that the version command prints the full
+// version with the operating system and architecture when the --all flag
+// is given.
+func (suite *VersionTestSuite) TestVersionAllLongFlag() {
+	suite.setVersionMetadata("v1.2.3-test", "darwin", "arm64")
+
+	output := suite.runVersion("--all")
+
+	assert.Contains(suite.T(), output, "v1.2.3-test-Darwin_arm64")
+}
+
+// TestVersionAllFlagOmitsEmptyMetadata tests that the version command
+// with the -a flag omits the operating system and architecture when the
+// binary was built without them.
+func (suite *VersionTestSuite) TestVersionAllFlagOmitsEmptyMetadata() {
+	suite.setVersionMetadata("v1.2.3-test", "", "")
+
+	output := suite.runVersion("-a")
+
+	assert.Equal(suite.T(), "v1.2.3-test\n", output)
 }
 
 // TestVersionInRootHelp tests that the version command is registered on

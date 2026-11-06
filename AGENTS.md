@@ -4,7 +4,7 @@ moat is a CLI tool that runs AI coding agents inside isolated [Apptainer](https:
 
 - **Module**: `github.com/AaltoRSE/moat`
 - **Go version**: 1.26.4
-- **Build**: `$(command -v go) build -o moat -ldflags "-X github.com/AaltoRSE/moat/internal/version.MoatVersion=$(git describe --tags)"`
+- **Build**: `$(command -v go) build -o moat -ldflags "-X github.com/AaltoRSE/moat/internal/version.MoatVersion=$(git describe --tags) -X github.com/AaltoRSE/moat/internal/version.MoatOS=$(go env GOOS) -X github.com/AaltoRSE/moat/internal/version.MoatArch=$(go env GOARCH)"`
 - **Status**: Under active development — some command implementations are stubs.
 
 
@@ -81,7 +81,7 @@ moat/
 │   │   ├── set_test.go         # Tests for the runtime set subcommand
 │   │   └── list_test.go        # Tests for the runtime list subcommand
 │   └── version/                # `moat version` command
-│       ├── version.go          # CreateVersionCmd(); prints internal/version.MoatVersion
+│       ├── version.go          # CreateVersionCmd(); prints internal/version.MoatVersion, or FullVersion() with -a/--all
 │       └── version_test.go     # Shared version command test suite (VersionTestSuite) + suite runner
 │
 ├── internal/                   # Business logic; never imported by cmd/ in reverse
@@ -107,7 +107,7 @@ moat/
 │   │   ├── mounts.go           # CheckAndCreateMounts (env directory check: fake home + mount sources, with creation prompts)
 │   │   └── utils.go            # confirm (generic yes/no confirmation prompt utility)
 │   ├── version/
-│   │   └── version.go          # MoatVersion (set at build time via -ldflags) and ImageTag (default image tag)
+│   │   └── version.go          # MoatVersion/MoatOS/MoatArch (set at build time via -ldflags), FullVersion (version with OS and arch), and ImageTag (default image tag)
 │   ├── runtime/                # Runtime management: internal functions for the `moat runtime` command group
 │   │   ├── create.go           # CreateRuntime
 │   │   └── set.go              # SetRuntime
@@ -173,7 +173,7 @@ Commands are built via **constructor functions**, not `init()` side effects. Eac
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
 - `cmd/runtime/runtime.go` — `CreateRuntimeCmd()` builds the `runtime` command and attaches `create`, `list`, and `set`, plus the nested `cache` command group built by `cache.CreateCacheCmd()`.
 - `cmd/init/init.go` — `CreateInitCmd()` builds the `init` command (no subcommands).
-- `cmd/version/version.go` — `CreateVersionCmd()` builds the `version` command (no subcommands), which prints `internal/version.MoatVersion`.
+- `cmd/version/version.go` — `CreateVersionCmd()` builds the `version` command (no subcommands), which prints `internal/version.MoatVersion`, or `internal/version.FullVersion()` when the `-a/--all` flag is given.
 
 Subcommands of subcommands (nested command groups) follow the same pattern one level deeper: a nested group `{group} {sub}` is its own package in `cmd/{group}/{sub}/`, with a `{sub}.go` file defining the group's `Create{Sub}Cmd()` constructor and one file per nested subcommand defining `Create{Sub}{SubSub}Cmd()`. The parent group's constructor attaches the nested group via `"github.com/AaltoRSE/moat/cmd/{group}/{sub}"` (e.g. `cmd/runtime/cache/list.go` defines `CreateCacheListCmd()` for `moat runtime cache list`, and `cmd/runtime/runtime.go` attaches it with `cache.CreateCacheCmd()`). Tests for nested subcommands live in the nested group's directory, with the shared suite type, `SetupTest`/`TearDownTest`, and the suite runner in `{sub}_test.go` (e.g. `CacheTestSuite` in `cmd/runtime/cache/cache_test.go`).
 

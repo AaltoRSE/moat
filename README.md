@@ -62,10 +62,10 @@ Alternatively, you can build the project yourself with `go`:
 ```shell
 git clone https://github.com/AaltoRSE/moat.git
 cd moat
-go build -o moat -ldflags "-X github.com/AaltoRSE/moat/internal/version.MoatVersion=$(git describe --tags)"
+go build -o moat -ldflags "-X github.com/AaltoRSE/moat/internal/version.MoatVersion=$(git describe --tags) -X github.com/AaltoRSE/moat/internal/version.MoatOS=$(go env GOOS) -X github.com/AaltoRSE/moat/internal/version.MoatArch=$(go env GOARCH)"
 ```
 
-The `-ldflags` flag stamps the binary with the version reported by `git describe --tags`. moat uses the stamped version to pick the default container image tag: the leading tag of the version when it is a semantic version tag (e.g. `v0.3.3` for `v0.3.3-3-gcad91c9`), or `latest` otherwise (e.g. when the binary is built without a version).
+The `-ldflags` flag stamps the binary with the version reported by `git describe --tags`. moat uses the stamped version to pick the default container image tag: the leading tag of the version when it is a semantic version tag (e.g. `v0.3.3` for `v0.3.3-3-gcad91c9`), or `latest` otherwise (e.g. when the binary is built without a version). `moat version` prints the stamped version, and `moat version -a` appends the operating system and architecture the binary was built for, e.g. `v0.3.3-Linux_x86_64`.
 
 ## Configuring moat
 

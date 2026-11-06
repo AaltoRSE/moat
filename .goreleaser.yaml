@@ -24,7 +24,10 @@ builds:
       - arm64
       - amd64
     ldflags:
-      - -s -w -X "github.com/AaltoRSE/moat/internal/version.MoatVersion={{ .Env.MOAT_VERSION }}"
+      - -s -w
+      - -X "github.com/AaltoRSE/moat/internal/version.MoatVersion={{ .Env.MOAT_VERSION }}"
+      - -X "github.com/AaltoRSE/moat/internal/version.MoatOS={{ .Os }}"
+      - -X "github.com/AaltoRSE/moat/internal/version.MoatArch={{ .Arch }}"
 
 archives:
   - formats: [tar.gz]
