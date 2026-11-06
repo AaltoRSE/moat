@@ -14,9 +14,13 @@ ARG SLURM_VERSION=26.05.4
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Upgrade existing packages
-RUN dnf update -y && \
-  dnf upgrade -y && \
+# Upgrade existing packages. glibc-minimal-langpack is removed first because
+# it requires glibc-common of the exact installed version, which makes
+# `dnf update` fail with conflicting glibc-common candidates when the BaseOS
+# repositories roll out a new glibc release; the full glibc-langpack-en is
+# installed later in this build.
+RUN dnf remove -y glibc-minimal-langpack && \
+  dnf update -y && \
   dnf clean all
 
 # Install build tools
