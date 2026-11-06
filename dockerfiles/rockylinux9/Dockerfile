@@ -70,7 +70,6 @@ RUN case "${TARGETARCH:-$(uname -m)}" in \
 # Add locales
 RUN dnf update -y && \
   dnf install -y gnome-keyring glibc-langpack-en glibc-langpack-fi && \
-  localectl set-locale LANG=C.UTF-8 && \
   dnf clean all
 
 # Add Google Chrome for logging into Github Copilot
