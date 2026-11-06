@@ -1,10 +1,10 @@
 package runtime_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/AaltoRSE/moat/internal/tests"
+	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -29,7 +29,7 @@ func (suite *RuntimeTestSuite) SetupTest() {
 
 func (suite *RuntimeTestSuite) TearDownTest() {
 	// Remove the temporary config file
-	suite.Require().NoError(os.Remove(suite.ConfigFile))
+	suite.Require().NoError(utils.CleanupFiles([]string{suite.ConfigFile}))
 }
 
 // In order for 'go test' to run this suite, we need to create

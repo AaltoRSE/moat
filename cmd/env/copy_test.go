@@ -1,7 +1,6 @@
 package env_test
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/AaltoRSE/moat/cmd/root"
@@ -112,13 +111,14 @@ func (suite *EnvTestSuite) TestCopyInheritsOtherFields() {
 // TestCopyWithRoMounts tests that env copy overrides the source environment's
 // read-only mounts when the --ro-mount flag is provided.
 func (suite *EnvTestSuite) TestCopyWithRoMounts() {
-	baseDir := filepath.Join(tests.MoatTestDir, "copy_ro_mounts")
-	home := filepath.Join(baseDir, "home")
-	roMount := filepath.Join(baseDir, "romount")
+	home := filepath.Join(tests.MoatTestDir, "copy_ro_mounts_home")
+	roMount := filepath.Join(tests.MoatTestDir, "copy_ro_mounts_romount")
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	require.NoError(suite.T(), utils.CleanupDir(roMount))
 	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
+		require.NoError(suite.T(), utils.CleanupDir(home))
+		require.NoError(suite.T(), utils.CleanupDir(roMount))
 	})
 
 	capture := utils.OutputCapture{}

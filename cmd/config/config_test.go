@@ -8,6 +8,7 @@ import (
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/tests"
 	types "github.com/AaltoRSE/moat/internal/types"
+	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -30,7 +31,7 @@ func (suite *ConfigTestSuite) SetupTest() {
 
 func (suite *ConfigTestSuite) TearDownTest() {
 	// Remove the temporary config file
-	require.NoError(suite.T(), os.Remove(suite.ConfigFile))
+	require.NoError(suite.T(), utils.CleanupFiles([]string{suite.ConfigFile}))
 }
 
 // TestGetConfigFile tests that GetConfigFile returns the active
@@ -40,7 +41,7 @@ func TestGetConfigFile(t *testing.T) {
 	cfgFile, err := os.CreateTemp("", "moat-config.*.yaml")
 	assert.NoError(t, err)
 	defer func() {
-		assert.NoError(t, os.Remove(cfgFile.Name()))
+		assert.NoError(t, utils.CleanupFiles([]string{cfgFile.Name()}))
 	}()
 	err = cfgFile.Close()
 	assert.NoError(t, err)

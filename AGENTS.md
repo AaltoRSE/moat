@@ -80,6 +80,9 @@ moat/
 │   │   ├── create_test.go      # Tests for the runtime create subcommand
 │   │   ├── set_test.go         # Tests for the runtime set subcommand
 │   │   └── list_test.go        # Tests for the runtime list subcommand
+│   ├── update/                # `moat update` command
+│   │   ├── update.go          # CreateUpdateCmd(); calls internal/update.Update()
+│   │   └── update_test.go     # Tests for the update subcommand (UpdateCmdTestSuite)
 │   └── version/                # `moat version` command
 │       ├── version.go          # CreateVersionCmd(); prints internal/version.MoatVersion, or FullVersion() with -a/--all
 │       └── version_test.go     # Shared version command test suite (VersionTestSuite) + suite runner
@@ -88,6 +91,7 @@ moat/
 │   ├── types/                  # Canonical location for ALL shared types (see rules below)
 │   │   ├── config.go           # Config, Defaults
 │   │   ├── runtimespec.go      # RuntimeSpec (runtime config fields), RuntimeUpdate (field/value pair used by runtime set)
+│   │   ├── semversion.go       # SemVersion (parsed semantic version: raw string, major/minor/patch numbers, commit hash)
 │   │   └── moatenv.go          # MoatEnv
 │   ├── config/
 │   │   ├── config.go           # CmdConfig, InitConfig, WriteConfig, SetConfigPath, ValidateConfig, GetConfigAsString, CreateDefaultConfig, GetConfigFile, GetVariableType
@@ -105,12 +109,21 @@ moat/
 │   │   └── logging.go          # InitLogging (zerolog setup)
 │   ├── prompts/                # Pre-defined interactive prompts asked from users
 │   │   ├── mounts.go           # CheckAndCreateMounts (env directory check: fake home + mount sources, with creation prompts)
+│   │   ├── update.go          # ConfirmUpdate, ConfirmBackup (moat update prompts)
 │   │   └── utils.go            # confirm (generic yes/no confirmation prompt utility)
 │   ├── version/
-│   │   └── version.go          # MoatVersion/MoatOS/MoatArch (set at build time via -ldflags), FullVersion (version with OS and arch), and ImageTag (default image tag)
+│   │   ├── version.go          # MoatVersion/MoatOS/MoatArch (set at build time via -ldflags), MoatSource (source repository of moat, e.g. github.com/AaltoRSE/moat), FullVersion (version with platform identifier from PlatformName), PlatformName (release asset platform name: build-time values, falling back to the runtime values), and ImageTag (default image tag)
+│   │   └── semversion.go       # CreateSemVersion, CompareSemVersion (parsing and comparison of semantic versions into types.SemVersion)
 │   ├── runtime/                # Runtime management: internal functions for the `moat runtime` command group
 │   │   ├── create.go           # CreateRuntime
 │   │   └── set.go              # SetRuntime
+│   ├── update/                # Self-update of the moat binary
+│   │   ├── update.go          # Update (release check, version comparison, prompts, install flow)
+│   │   ├── github.go           # getAPIUrl (GitHub API endpoint derived from MoatSource), GitHub API access, and release asset downloads
+│   │   ├── checksums.go        # SHA-256 checksum verification of the downloaded archive
+│   │   ├── archive.go          # Extraction of the moat binary from the release archive
+│   │   ├── install.go          # Replacement of the running binary (with optional backup)
+│   │   └── update_test.go     # Update test suite (UpdateTestSuite, fake release server)
 │   ├── engines/                # Runtime engines that execute commands inside container environments
 │   │   ├── runtime.go             # Runtime interface + GetRuntime factory
 │   │   ├── apptainerruntime.go    # ApptainerRuntime implementation
@@ -119,7 +132,7 @@ moat/
 │   │   └── dockerruntime_test.go  # DockerRuntime test suite (DockerRuntimeTestSuite, fake docker binary)
 │   ├── utils/
 │   │   ├── checks.go           # CheckFolderExists, CheckFileExists, CheckPathExists, CheckEnvironmentName, CheckMounts
-│   │   ├── dirops.go           # CreateDir
+│   │   ├── dirops.go           # CreateDir, CleanupFiles, CleanupDir
 │   │   ├── sanitize.go         # SanitizePath, SanitizeMountsPaths, SanitizeArgs
 │   │   └── run.go              # Run, RunCapture, RunArgs, OutputCapture
 │   └── tests/
@@ -158,7 +171,7 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 | Layer | Packages | Responsibility |
 |---|---|---|
-| **CLI** | `cmd/root/`, `cmd/config/`, `cmd/env/`, `cmd/init/`, `cmd/run/`, `cmd/runtime/`, `cmd/version/` | Cobra command construction, flag parsing, argument normalization, user-facing output. Delegates all logic to `internal/`. |
+| **CLI** | `cmd/root/`, `cmd/config/`, `cmd/env/`, `cmd/init/`, `cmd/run/`, `cmd/runtime/`, `cmd/update/`, `cmd/version/` | Cobra command construction, flag parsing, argument normalization, user-facing output. Delegates all logic to `internal/`. |
 | **Logic** | `internal/...` | All business logic, I/O, config management, runtime execution. Must not import from `cmd/`. |
 
 ---
@@ -167,13 +180,14 @@ The codebase is split into two strict layers. **Never reverse the dependency dir
 
 Commands are built via **constructor functions**, not `init()` side effects. Each command group exposes a `Create{Group}Cmd()` function that returns a fully assembled `*cobra.Command` with all subcommands attached. Each subcommand has its own `Create{Group}{Sub}Cmd()` function in its own file.
 
-- `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the six top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`, `CreateInitCmd()`, `CreateRuntimeCmd()`, `CreateVersionCmd()`.
+- `cmd/root/root.go` — `CreateRootCmd()` builds the root command, registers persistent flags (`--config`, `--debug`), and attaches the seven top-level subcommands via `CreateRunCmd()`, `CreateEnvCmd()`, `CreateConfigCmd()`, `CreateInitCmd()`, `CreateRuntimeCmd()`, `CreateUpdateCmd()`, `CreateVersionCmd()`.
 - `cmd/config/config.go` — `CreateConfigCmd()` builds the `config` command and attaches `set`, `append`, `prepend`, `show`, `show-defaults`, `edit`.
 - `cmd/env/env.go` — `CreateEnvCmd()` builds the `env` command and attaches `create`, `copy`, `list`, `show`, `set`, `remove`.
 - `cmd/run/run.go` — `CreateRunCmd()` builds the `run` command (no subcommands).
 - `cmd/runtime/runtime.go` — `CreateRuntimeCmd()` builds the `runtime` command and attaches `create`, `list`, and `set`, plus the nested `cache` command group built by `cache.CreateCacheCmd()`.
 - `cmd/init/init.go` — `CreateInitCmd()` builds the `init` command (no subcommands).
 - `cmd/version/version.go` — `CreateVersionCmd()` builds the `version` command (no subcommands), which prints `internal/version.MoatVersion`, or `internal/version.FullVersion()` when the `-a/--all` flag is given.
+- `cmd/update/update.go` — `CreateUpdateCmd()` builds the `update` command (no subcommands), which updates the moat binary to the latest release via `internal/update.Update()`.
 
 Subcommands of subcommands (nested command groups) follow the same pattern one level deeper: a nested group `{group} {sub}` is its own package in `cmd/{group}/{sub}/`, with a `{sub}.go` file defining the group's `Create{Sub}Cmd()` constructor and one file per nested subcommand defining `Create{Sub}{SubSub}Cmd()`. The parent group's constructor attaches the nested group via `"github.com/AaltoRSE/moat/cmd/{group}/{sub}"` (e.g. `cmd/runtime/cache/list.go` defines `CreateCacheListCmd()` for `moat runtime cache list`, and `cmd/runtime/runtime.go` attaches it with `cache.CreateCacheCmd()`). Tests for nested subcommands live in the nested group's directory, with the shared suite type, `SetupTest`/`TearDownTest`, and the suite runner in `{sub}_test.go` (e.g. `CacheTestSuite` in `cmd/runtime/cache/cache_test.go`).
 
@@ -200,6 +214,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 | `RuntimeSpec` | `runtimespec.go` | Config fields for any runtime (type, executable, imageurl, cachedir, passenv, mountcwd) |
 | `RuntimeUpdate` | `runtimespec.go` | A single field/value pair used by `moat runtime set` to change one runtime field |
 | `MoatEnv` | `moatenv.go` | An individual named environment (home, mounts, readonlymounts, mountcwd, runtime, passenv, command) |
+| `SemVersion` | `version.go` | A parsed semantic version: the raw version string, the major/minor/patch version numbers, and the commit hash of a git-describe suffix |
 
 **Rule:** If you define a struct in `internal/engines`, `internal/env`, or any other package, and it is later referenced by a second package, move it to `internal/types`.
 
@@ -242,6 +257,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 
 - Utility functions that contain pre-defined prompts asked from users by user-facing commands (e.g. `moat env create`, `moat run`); not for functions called programmatically.
 - `mounts.go` defines `CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error`, which checks that the directories referenced by the environment exist (the fake home directory and the source directories of the mounts and read-only mounts), creates missing ones automatically when `autoCreate` is true, and otherwise asks the user whether they should be created. It returns an error when the user declines, the creation fails, or a path is invalid (e.g. an empty mount source path or a source that exists but is not a directory).
+- `update.go` defines `ConfirmUpdate(latest string) (bool, error)` and `ConfirmBackup(backupName string) (bool, error)`, which ask the user whether the moat binary should be updated to the given version and whether the current binary should be backed up under the given file name. They are used by `moat update`.
 - Interactive prompts read from standard input; tests can feed answers with `tests.AnswerPrompt`.
 
 ---
@@ -252,6 +268,15 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 - One file per operation: `create.go`, `set.go`.
 - `create.go` defines `CreateRuntime(cfg *viper.Viper, name string, spec types.RuntimeSpec) error`, which creates a new user-specified runtime in the top-level `runtimes` key of the configuration. It validates the name and the spec (`config.ValidateRuntimeSpec`), resolves the spec's `CacheDir` to an absolute path, skips creation when a user-specified runtime with the same name already exists, and writes the configuration to disk via `config.WriteConfig` only after `config.ValidateConfig` passes.
 - `set.go` defines `SetRuntime(cfg *viper.Viper, name string, updates []types.RuntimeUpdate) error`, which changes the given fields of an existing runtime (user-specified or default) and writes the configuration to disk via `config.WriteConfig` only after `config.ValidateConfig` passes. Only the given fields are changed; all other fields keep their current values. When the named runtime is a default runtime, a user-specified runtime with the same name is created from the default runtime's specification with the given changes applied, so that it overwrites the default runtime in lookups; the default runtimes are never modified. The cache directory is resolved to an absolute path before storing.
+
+---
+
+### `internal/update` — self-update of the moat binary
+
+- Internal functions for the `moat update` command (`cmd/update/`); they do not access the configuration.
+- `update.go` defines `Update() error`, the full update flow: it fetches the latest release from the GitHub API, compares it with the build-time version (`internal/version.MoatVersion`; a git-describe suffix is ignored, and an unstamped version cannot be compared and is reported as unknown), asks the user whether to update (via `internal/prompts`) and whether to back up the current binary as `moat-<current version>` with the leading `v` kept (e.g. `moat-v0.3.3`; `moat-unknown` when the version is unknown), downloads the release archive for the current platform (asset names are built with `internal/version.PlatformName`), verifies the archive's SHA-256 checksum against the release checksums file, extracts the `moat` binary, and replaces the running binary. The new binary and the optional backup are placed in the directory of the running binary (symlinks resolved); the previous binary is moved away first so that a currently executing binary can be replaced. It returns no error when the binary is up to date or the user declines the update.
+- `github.go` holds the GitHub API types (`Release`, `Asset`), `fetchLatestRelease`, `downloadReleaseAssets`, and `downloadFile`; `checksums.go` the sha256sum-format checksum verification; `archive.go` the extraction of the binary from the gzipped tar archive; `install.go` the replacement of the running binary.
+- The executable path lookup and the prompt functions are package-level variables so that tests can replace them, as is the source repository (`version.MoatSource`, mapped to the GitHub API endpoint by `getAPIUrl`); the tests use a local fake release server instead of the network.
 
 ---
 
@@ -274,9 +299,10 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 - Must not import other `internal/` packages (no circular risk, but avoids entanglement).
 - `run.go`: `RunArgs` struct (Command, Args, Env, PassEnv), `Run`, `RunCapture`, `OutputCapture` for subprocess execution and stdout capture.
 - `checks.go`: `CheckFolderExists`, `CheckEnvironmentName`, `CheckMounts`.
-- `dirops.go`: `CreateDir` — creates a missing directory, including any parent directories; no-op when it exists.
+- `dirops.go`: `CreateDir` (creates a missing directory, including any parent directories; no-op when it exists), `CleanupFiles` (removes a list of known files one by one, skipping missing paths), and `CleanupDir` (removes an empty directory; returns an error when the directory still contains entries).
 - `sanitize.go`: `SanitizePath` (expands a leading `~` to the home directory, expands env vars, and resolves to an absolute path), `SanitizeMountsPaths` (sanitizes source and destination paths in `source:dest` mount strings), `SanitizeArgs` (parses a single-arg command with shellwords, or validates multi-arg commands for spaces).
 - New utilities must be genuinely reusable across multiple callers; one-off helpers belong in the package that uses them.
+- **Cleanup of files and directories must never use `os.RemoveAll`.** Clean up by removing only the known products of the operation with `utils.CleanupFiles` and then removing the temporary directory itself with `utils.CleanupDir`, which fails when the directory still contains entries. The program must never delete a file it does not know about; track the paths of files created during an operation (or a test) and pass them to `utils.CleanupFiles`.
 
 ---
 
@@ -451,7 +477,7 @@ Before committing, re-run the documented examples and compare the printed output
 - When testing command line commands with flags, create individual tests for each flag combination.
 - One test can contain multiple assert-statements.
 - When testing commands that change configuration values, use `config.InitConfig` to get a `*viper.Viper` object and test that object for changes.
-- Use `suite.T().Cleanup(...)` to remove any temporary directories created during a test.
+- Use `suite.T().Cleanup(...)` to remove any temporary files and directories created during a test. Do this with `utils.CleanupFiles` (for the files the test knows it created) followed by `utils.CleanupDir` (for each directory, innermost first); `os.RemoveAll` must not be used. A `CleanupDir` failure at the start of a test points at leftovers of an earlier crashed run — remove them manually instead of making the cleanup recursive.
 
 ## Verifying additions
 

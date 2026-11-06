@@ -1,7 +1,6 @@
 package run_test
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -42,7 +41,7 @@ func (suite *RunTestSuite) SetupTest() {
 
 func (suite *RunTestSuite) TearDownTest() {
 	// Remove the temporary config file
-	suite.Require().NoError(os.Remove(suite.ConfigFile))
+	suite.Require().NoError(utils.CleanupFiles([]string{suite.ConfigFile}))
 }
 
 // run executes moat run for the test environment.
@@ -62,7 +61,7 @@ func (suite *RunTestSuite) run(extraArgs ...string) string {
 // mount source directories of the environment without prompting when --yes
 // is given. Without a command, run stops after the pre-flight check.
 func (suite *RunTestSuite) TestRunCreatesMissingMountsWithYes() {
-	require.NoError(suite.T(), os.RemoveAll(suite.MountSource))
+	require.NoError(suite.T(), utils.CleanupDir(suite.MountSource))
 
 	suite.run("--yes")
 
@@ -73,7 +72,7 @@ func (suite *RunTestSuite) TestRunCreatesMissingMountsWithYes() {
 // missing mount source directory should be created and creates it when the
 // user accepts.
 func (suite *RunTestSuite) TestRunCreatesMissingMountsOnPromptAccept() {
-	require.NoError(suite.T(), os.RemoveAll(suite.MountSource))
+	require.NoError(suite.T(), utils.CleanupDir(suite.MountSource))
 	tests.AnswerPrompt(suite.T(), "y")
 
 	suite.run()
@@ -84,7 +83,7 @@ func (suite *RunTestSuite) TestRunCreatesMissingMountsOnPromptAccept() {
 // TestRunAbortsOnPromptDecline tests that run does not create a missing
 // mount source directory and aborts when the user declines the prompt.
 func (suite *RunTestSuite) TestRunAbortsOnPromptDecline() {
-	require.NoError(suite.T(), os.RemoveAll(suite.MountSource))
+	require.NoError(suite.T(), utils.CleanupDir(suite.MountSource))
 	tests.AnswerPrompt(suite.T(), "n")
 
 	capturedOutput := suite.run()
@@ -100,10 +99,13 @@ func (suite *RunTestSuite) TestRunCreatesMissingHomeWithYes() {
 	env := types.MoatEnv{Home: home}
 	configFile, _, err := tests.CreateTempConfig(map[string]types.MoatEnv{"homeenv": env}, nil)
 	require.NoError(suite.T(), err)
-	suite.T().Cleanup(func() { _ = os.Remove(configFile) })
+	suite.T().Cleanup(func() {
+		require.NoError(suite.T(), utils.CleanupFiles([]string{configFile}))
+		require.NoError(suite.T(), utils.CleanupDir(home))
+	})
 	// CreateTempConfig creates the fake home directory; remove it so the
 	// test verifies its creation during the run
-	require.NoError(suite.T(), os.RemoveAll(home))
+	require.NoError(suite.T(), utils.CleanupDir(home))
 
 	args := []string{"--config", configFile, "run", "--name", "homeenv", "--yes"}
 	capture := utils.OutputCapture{}

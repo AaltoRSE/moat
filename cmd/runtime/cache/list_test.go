@@ -24,15 +24,22 @@ func cachedRuntimeSpec(cacheDir string) types.RuntimeSpec {
 }
 
 // createCacheDir creates a cache directory under tests.MoatTestDir
-// containing the given image file names, and returns its path. The
-// directory is removed when the test finishes.
+// containing the given image file names, and returns its path. The image
+// files are removed with CleanupFiles and the directory is then removed
+// with CleanupDir when the test finishes.
 func (suite *CacheTestSuite) createCacheDir(images ...string) string {
 	cacheDir := filepath.Join(tests.MoatTestDir, "cachelist_test_cache")
 	require.NoError(suite.T(), os.MkdirAll(cacheDir, 0o755))
-	suite.T().Cleanup(func() { assert.NoError(suite.T(), os.RemoveAll(cacheDir)) })
+	imagePaths := make([]string, 0, len(images))
 	for _, image := range images {
-		require.NoError(suite.T(), os.WriteFile(filepath.Join(cacheDir, image), nil, 0o644))
+		imagePath := filepath.Join(cacheDir, image)
+		require.NoError(suite.T(), os.WriteFile(imagePath, nil, 0o644))
+		imagePaths = append(imagePaths, imagePath)
 	}
+	suite.T().Cleanup(func() {
+		require.NoError(suite.T(), utils.CleanupFiles(imagePaths))
+		require.NoError(suite.T(), utils.CleanupDir(cacheDir))
+	})
 	return cacheDir
 }
 
@@ -55,7 +62,7 @@ func (suite *CacheTestSuite) TestCacheList() {
 	cacheDir := suite.createCacheDir("second.sif", "first.sif")
 	configFile, _, err := tests.CreateTempConfig(nil, map[string]types.RuntimeSpec{"custom": cachedRuntimeSpec(cacheDir)})
 	require.NoError(suite.T(), err)
-	suite.T().Cleanup(func() { assert.NoError(suite.T(), os.Remove(configFile)) })
+	suite.T().Cleanup(func() { assert.NoError(suite.T(), utils.CleanupFiles([]string{configFile})) })
 
 	output := suite.runCacheList(configFile, "--name", "custom")
 
@@ -70,7 +77,7 @@ func (suite *CacheTestSuite) TestCacheListEmpty() {
 	cacheDir := suite.createCacheDir()
 	configFile, _, err := tests.CreateTempConfig(nil, map[string]types.RuntimeSpec{"custom": cachedRuntimeSpec(cacheDir)})
 	require.NoError(suite.T(), err)
-	suite.T().Cleanup(func() { assert.NoError(suite.T(), os.Remove(configFile)) })
+	suite.T().Cleanup(func() { assert.NoError(suite.T(), utils.CleanupFiles([]string{configFile})) })
 
 	output := suite.runCacheList(configFile, "--name", "custom")
 
@@ -82,9 +89,22 @@ func (suite *CacheTestSuite) TestCacheListEmpty() {
 func (suite *CacheTestSuite) TestCacheListDefaultRuntime() {
 	home := filepath.Join(tests.MoatTestDir, "cachelist_test_home")
 	cacheDir := filepath.Join(home, ".cache", "moat", "images")
+	cachedImage := filepath.Join(cacheDir, "cached.sif")
 	require.NoError(suite.T(), os.MkdirAll(cacheDir, 0o755))
-	suite.T().Cleanup(func() { assert.NoError(suite.T(), os.RemoveAll(home)) })
-	require.NoError(suite.T(), os.WriteFile(filepath.Join(cacheDir, "cached.sif"), nil, 0o644))
+	require.NoError(suite.T(), os.WriteFile(cachedImage, nil, 0o644))
+	suite.T().Cleanup(func() {
+		require.NoError(suite.T(), utils.CleanupFiles([]string{cachedImage}))
+		// The directories are removed innermost first, so that
+		// CleanupDir is only called on empty directories
+		for _, dir := range []string{
+			cacheDir,
+			filepath.Join(home, ".cache", "moat"),
+			filepath.Join(home, ".cache"),
+			home,
+		} {
+			require.NoError(suite.T(), utils.CleanupDir(dir))
+		}
+	})
 	suite.T().Setenv("HOME", home)
 
 	output := suite.runCacheList(suite.ConfigFile)

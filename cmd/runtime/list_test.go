@@ -1,8 +1,6 @@
 package runtime_test
 
 import (
-	"os"
-
 	"github.com/AaltoRSE/moat/cmd/root"
 	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/tests"
@@ -71,7 +69,7 @@ func (suite *RuntimeTestSuite) TestListWithUserRuntime() {
 
 	configFile, _, err := tests.CreateTempConfig(nil, map[string]types.RuntimeSpec{"custom": customRuntimeSpec()})
 	require.NoError(suite.T(), err)
-	suite.T().Cleanup(func() { assert.NoError(suite.T(), os.Remove(configFile)) })
+	suite.T().Cleanup(func() { assert.NoError(suite.T(), utils.CleanupFiles([]string{configFile})) })
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
@@ -91,7 +89,7 @@ func (suite *RuntimeTestSuite) TestListWithOverwrittenDefaultRuntime() {
 	spec := customRuntimeSpec()
 	configFile, _, err := tests.CreateTempConfig(nil, map[string]types.RuntimeSpec{"apptainer": spec})
 	require.NoError(suite.T(), err)
-	suite.T().Cleanup(func() { assert.NoError(suite.T(), os.Remove(configFile)) })
+	suite.T().Cleanup(func() { assert.NoError(suite.T(), utils.CleanupFiles([]string{configFile})) })
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()

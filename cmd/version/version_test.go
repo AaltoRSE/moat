@@ -81,15 +81,16 @@ func (suite *VersionTestSuite) TestVersionAllLongFlag() {
 	assert.Contains(suite.T(), output, "v1.2.3-test-Darwin_arm64")
 }
 
-// TestVersionAllFlagOmitsEmptyMetadata tests that the version command
-// with the -a flag omits the operating system and architecture when the
-// binary was built without them.
-func (suite *VersionTestSuite) TestVersionAllFlagOmitsEmptyMetadata() {
+// TestVersionAllFlagFallsBackToRuntimePlatform tests that the version
+// command with the -a flag appends the platform of the system moat is
+// running on when the binary was built without operating system and
+// architecture information.
+func (suite *VersionTestSuite) TestVersionAllFlagFallsBackToRuntimePlatform() {
 	suite.setVersionMetadata("v1.2.3-test", "", "")
 
 	output := suite.runVersion("-a")
 
-	assert.Equal(suite.T(), "v1.2.3-test\n", output)
+	assert.Equal(suite.T(), "v1.2.3-test-"+version.PlatformName()+"\n", output)
 }
 
 // TestVersionInRootHelp tests that the version command is registered on

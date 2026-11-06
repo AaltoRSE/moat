@@ -11,6 +11,7 @@ moat is a small command line client that makes it easy to execute AI tools in co
 
 - [Motivation](#motivation)
 - [Installation](#installation)
+- [Updating moat](#updating-moat)
 - [Configuring moat](#configuring-moat)
 - [Environments](#environments)
   - [Creating an environment](#creating-an-environment)
@@ -65,7 +66,20 @@ cd moat
 go build -o moat -ldflags "-X github.com/AaltoRSE/moat/internal/version.MoatVersion=$(git describe --tags) -X github.com/AaltoRSE/moat/internal/version.MoatOS=$(go env GOOS) -X github.com/AaltoRSE/moat/internal/version.MoatArch=$(go env GOARCH)"
 ```
 
-The `-ldflags` flag stamps the binary with the version reported by `git describe --tags`. moat uses the stamped version to pick the default container image tag: the leading tag of the version when it is a semantic version tag (e.g. `v0.3.3` for `v0.3.3-3-gcad91c9`), or `latest` otherwise (e.g. when the binary is built without a version). `moat version` prints the stamped version, and `moat version -a` appends the operating system and architecture the binary was built for, e.g. `v0.3.3-Linux_x86_64`.
+The `-ldflags` flag stamps the binary with the version reported by `git describe --tags`. moat uses the stamped version to pick the default container image tag: the leading tag of the version when it is a semantic version tag (e.g. `v0.3.3` for `v0.3.3-3-gcad91c9`), or `latest` otherwise (e.g. when the binary is built without a version). `moat version` prints the stamped version, and `moat version -a` appends the operating system and architecture the binary was built for, e.g. `v0.3.3-Linux_x86_64`; when the binary was built without them, the operating system and architecture of the system moat is running on are reported instead.
+
+## Updating moat
+
+moat can update its own binary to the latest release:
+
+```shell
+moat update
+```
+
+The command checks the [latest release](https://github.com/AaltoRSE/moat/releases/latest) of the upstream repository and compares it with the version of the running binary. When a newer release is available, it asks whether the binary should be updated and whether the current binary should first be backed up as `moat-vX.Y.Z` (where `X.Y.Z` is the current version) next to it. The release archive for the operating system and architecture of the running binary is downloaded, its SHA-256 checksum is verified against the release checksums, and the extracted binary replaces the running one.
+
+> [!NOTE]
+> `moat update` needs write access to the directory of the `moat` binary. Binaries built without a stamped version (for example with plain `go build`) can also be updated; their version is reported as `unknown`.
 
 ## Configuring moat
 

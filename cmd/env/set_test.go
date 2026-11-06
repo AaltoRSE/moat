@@ -97,8 +97,8 @@ func (suite *EnvTestSuite) TestSetMounts() {
 	require.NoError(suite.T(), os.MkdirAll(mount1, 0755))
 	require.NoError(suite.T(), os.MkdirAll(mount2, 0755))
 	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(mount1)
-		_ = os.RemoveAll(mount2)
+		require.NoError(suite.T(), utils.CleanupDir(mount1))
+		require.NoError(suite.T(), utils.CleanupDir(mount2))
 	})
 
 	capture := utils.OutputCapture{}
@@ -129,8 +129,8 @@ func (suite *EnvTestSuite) TestSetRoMounts() {
 	require.NoError(suite.T(), os.MkdirAll(roMount1, 0755))
 	require.NoError(suite.T(), os.MkdirAll(roMount2, 0755))
 	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(roMount1)
-		_ = os.RemoveAll(roMount2)
+		require.NoError(suite.T(), utils.CleanupDir(roMount1))
+		require.NoError(suite.T(), utils.CleanupDir(roMount2))
 	})
 
 	capture := utils.OutputCapture{}
@@ -158,9 +158,7 @@ func (suite *EnvTestSuite) TestSetHome() {
 	newHome := filepath.Join(tests.MoatTestDir, "set_home")
 	// The new home directory must exist for the configuration to be valid
 	require.NoError(suite.T(), os.MkdirAll(newHome, 0755))
-	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(newHome)
-	})
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(newHome)) })
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
@@ -187,9 +185,7 @@ func (suite *EnvTestSuite) TestSetMultipleFlags() {
 	newHome := filepath.Join(tests.MoatTestDir, "set_multiple_home")
 	// The new home directory must exist for the configuration to be valid
 	require.NoError(suite.T(), os.MkdirAll(newHome, 0755))
-	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(newHome)
-	})
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(newHome)) })
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
@@ -220,10 +216,8 @@ func (suite *EnvTestSuite) TestSetMultipleFlags() {
 func (suite *EnvTestSuite) TestSetLeavesOtherEnvsUnchanged() {
 	otherHome := filepath.Join(tests.MoatTestDir, "set_other_home")
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(otherHome))
-	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(otherHome)
-	})
+	require.NoError(suite.T(), utils.CleanupDir(otherHome))
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(otherHome)) })
 
 	// Create a second environment to verify it stays untouched
 	capture := utils.OutputCapture{}

@@ -3,6 +3,7 @@ package version
 
 import (
 	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -21,50 +22,73 @@ var MoatOS string
 // and is empty when the binary is built without the flag.
 var MoatArch string
 
+// MoatSource is the source repository of moat, for example
+// github.com/AaltoRSE/moat. The moat update command checks this
+// repository for a newer release. It is a variable so that tests can
+// point it at a test server.
+var MoatSource = "github.com/AaltoRSE/moat"
+
 // imageTagPattern matches semantic version tags of the form vX.Y.Z.
 var imageTagPattern = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
 
-// archNames maps the Go architecture names stored in [MoatArch] to the
-// uname-style architecture names used in the full version string. The
-// mapping mirrors the naming of the release archives; architectures that
-// are not listed are reported as is.
-var archNames = map[string]string{
-	"amd64": "x86_64",
-	"386":   "i386",
+// FullVersion returns the full version string of the moat binary: the
+// version ([MoatVersion]) followed by the platform identifier
+// ([PlatformName]), for example v0.3.3-Linux_x86_64. The platform
+// identifier is derived from the operating system and architecture the
+// binary was built for ([MoatOS] and [MoatArch]) when they have been
+// set, and from the platform moat is running on otherwise. When the
+// binary was built without a version, FullVersion returns only the
+// platform identifier.
+func FullVersion() string {
+	if MoatVersion == "" {
+		return PlatformName()
+	}
+	return MoatVersion + "-" + PlatformName()
 }
 
-// FullVersion returns the full version string of the moat binary: the
-// version ([MoatVersion]) followed by the operating system and architecture
-// the binary was built for ([MoatOS] and [MoatArch]), for example
-// v0.3.3-Linux_x86_64. The operating system is title-cased and the
-// architecture is reported with its uname-style name (for example, amd64 as
-// x86_64). Parts that are empty are omitted, so FullVersion returns
-// [MoatVersion] as is when the binary was built without the operating
-// system and architecture information.
-func FullVersion() string {
-	platform := ""
-	if MoatOS != "" {
-		platform = strings.ToUpper(MoatOS[:1]) + MoatOS[1:]
+// PlatformName returns the platform identifier of the platform moat runs
+// on: the title-cased operating system name followed by the uname-style
+// architecture name, joined by an underscore, for example Linux_x86_64
+// for linux and amd64. The build-time values [MoatOS] and [MoatArch] are
+// used when they have been set; the operating system and architecture of
+// the system moat is running on ([runtime.GOOS] and [runtime.GOARCH]) are
+// used for the values that are not set. The identifier matches the
+// platform part of the release archive names (for example,
+// moat_Linux_x86_64.tar.gz). Architectures that are not in the mapping
+// are reported as is.
+func PlatformName() string {
+	// titleOSName returns the operating system name with its first
+	// letter upper-cased, for example Linux for linux.
+	titleOSName := func(name string) string {
+		return strings.ToUpper(name[:1]) + name[1:]
 	}
-	if MoatArch != "" {
-		arch := MoatArch
+	// archNames maps the Go architecture names stored in [MoatArch] to
+	// the uname-style architecture names used in the full version string
+	// and the release archive names. The mapping mirrors the naming of
+	// the release archives; architectures that are not listed are
+	// reported as is.
+	archNames := map[string]string{
+		"amd64": "x86_64",
+		"386":   "i386",
+	}
+	// assetArchName returns the uname-style architecture name used in
+	// the release archive names for the given Go architecture name;
+	// architectures that are not in [archNames] are returned as is.
+	assetArchName := func(arch string) string {
 		if mapped, ok := archNames[arch]; ok {
-			arch = mapped
+			return mapped
 		}
-		if platform != "" {
-			platform += "_"
-		}
-		platform += arch
+		return arch
 	}
 
-	full := MoatVersion
-	if platform != "" {
-		if full != "" {
-			full += "-"
-		}
-		full += platform
+	osName, archName := runtime.GOOS, runtime.GOARCH
+	if MoatOS != "" {
+		osName = MoatOS
 	}
-	return full
+	if MoatArch != "" {
+		archName = MoatArch
+	}
+	return titleOSName(osName) + "_" + assetArchName(archName)
 }
 
 // ImageTag returns the container image tag derived from [MoatVersion]:

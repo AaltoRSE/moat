@@ -15,13 +15,10 @@ import (
 // TestCreateHomeOnly tests that env create registers a new environment with
 // only a home directory (no mounts) and creates the fake home directory.
 func (suite *EnvTestSuite) TestCreateHomeOnly() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_home_only")
-	home := filepath.Join(baseDir, "home")
+	home := filepath.Join(tests.MoatTestDir, "create_home_only_home")
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
-	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
-	})
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(home)) })
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
@@ -51,13 +48,10 @@ func (suite *EnvTestSuite) TestCreateHomeOnly() {
 // TestCreateHyphenatedName tests that env create accepts a name containing
 // hyphens and that the name round-trips through the YAML config file.
 func (suite *EnvTestSuite) TestCreateHyphenatedName() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_hyphenated_name")
-	home := filepath.Join(baseDir, "home")
+	home := filepath.Join(tests.MoatTestDir, "create_hyphenated_name_home")
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
-	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
-	})
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(home)) })
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
@@ -89,14 +83,17 @@ func (suite *EnvTestSuite) TestCreateHyphenatedName() {
 // a home directory and mount paths, and creates all of the referenced
 // directories.
 func (suite *EnvTestSuite) TestCreateWithMounts() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_mounts")
-	home := filepath.Join(baseDir, "home")
-	mount1 := filepath.Join(baseDir, "mount1")
-	mount2 := filepath.Join(baseDir, "mount2")
+	home := filepath.Join(tests.MoatTestDir, "create_mounts_home")
+	mount1 := filepath.Join(tests.MoatTestDir, "create_mounts_mount1")
+	mount2 := filepath.Join(tests.MoatTestDir, "create_mounts_mount2")
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	require.NoError(suite.T(), utils.CleanupDir(mount1))
+	require.NoError(suite.T(), utils.CleanupDir(mount2))
 	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
+		require.NoError(suite.T(), utils.CleanupDir(home))
+		require.NoError(suite.T(), utils.CleanupDir(mount1))
+		require.NoError(suite.T(), utils.CleanupDir(mount2))
 	})
 
 	capture := utils.OutputCapture{}
@@ -130,13 +127,10 @@ func (suite *EnvTestSuite) TestCreateWithMounts() {
 // with working-directory mounting enabled when the --mountcwd flag is given
 // with an empty value (empty means true).
 func (suite *EnvTestSuite) TestCreateWithMountCWD() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_mountcwd")
-	home := filepath.Join(baseDir, "home")
+	home := filepath.Join(tests.MoatTestDir, "create_mountcwd_home")
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
-	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
-	})
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(home)) })
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
@@ -164,13 +158,10 @@ func (suite *EnvTestSuite) TestCreateWithMountCWD() {
 // TestCreateWithMountCWDFalse tests that env create stores an explicit
 // mountcwd: false when the --mountcwd flag is given the value false.
 func (suite *EnvTestSuite) TestCreateWithMountCWDFalse() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_mountcwd_false")
-	home := filepath.Join(baseDir, "home")
+	home := filepath.Join(tests.MoatTestDir, "create_mountcwd_false_home")
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
-	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
-	})
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(home)) })
 
 	capture := utils.OutputCapture{}
 	capture.StartCapture()
@@ -195,14 +186,15 @@ func (suite *EnvTestSuite) TestCreateWithMountCWDFalse() {
 // in the "source:destination" form: only the source directory is created and
 // the mount is stored with the absolute source path.
 func (suite *EnvTestSuite) TestCreateWithMountDestinations() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_mount_dests")
-	home := filepath.Join(baseDir, "home")
-	mountSource := filepath.Join(baseDir, "src")
+	home := filepath.Join(tests.MoatTestDir, "create_mount_dests_home")
+	mountSource := filepath.Join(tests.MoatTestDir, "create_mount_dests_src")
 	mount := mountSource + ":/projects/src"
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	require.NoError(suite.T(), utils.CleanupDir(mountSource))
 	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
+		require.NoError(suite.T(), utils.CleanupDir(home))
+		require.NoError(suite.T(), utils.CleanupDir(mountSource))
 	})
 
 	capture := utils.OutputCapture{}
@@ -231,14 +223,17 @@ func (suite *EnvTestSuite) TestCreateWithMountDestinations() {
 // TestCreateWithRoMounts tests that env create registers a new environment
 // with read-only mount paths and creates all of the referenced directories.
 func (suite *EnvTestSuite) TestCreateWithRoMounts() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_ro_mounts")
-	home := filepath.Join(baseDir, "home")
-	roMount1 := filepath.Join(baseDir, "romount1")
-	roMount2 := filepath.Join(baseDir, "romount2")
+	home := filepath.Join(tests.MoatTestDir, "create_ro_mounts_home")
+	roMount1 := filepath.Join(tests.MoatTestDir, "create_ro_mounts_romount1")
+	roMount2 := filepath.Join(tests.MoatTestDir, "create_ro_mounts_romount2")
 	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	require.NoError(suite.T(), utils.CleanupDir(roMount1))
+	require.NoError(suite.T(), utils.CleanupDir(roMount2))
 	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
+		require.NoError(suite.T(), utils.CleanupDir(home))
+		require.NoError(suite.T(), utils.CleanupDir(roMount1))
+		require.NoError(suite.T(), utils.CleanupDir(roMount2))
 	})
 
 	capture := utils.OutputCapture{}
@@ -270,13 +265,11 @@ func (suite *EnvTestSuite) TestCreateWithRoMounts() {
 // mount source directory and creates it, storing the environment, when the
 // user accepts the prompt.
 func (suite *EnvTestSuite) TestCreateMountsPromptAccept() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_mounts_prompt_accept")
-	home := filepath.Join(baseDir, "home")
-	mountSource := filepath.Join(baseDir, "mount")
-	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	home := filepath.Join(tests.MoatTestDir, "create_mounts_prompt_accept_home")
+	mountSource := filepath.Join(tests.MoatTestDir, "create_mounts_prompt_accept_mount")
 	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
+		require.NoError(suite.T(), utils.CleanupDir(home))
+		require.NoError(suite.T(), utils.CleanupDir(mountSource))
 	})
 	// Create the fake home directory beforehand so that only the mount
 	// prompt is asked
@@ -308,13 +301,11 @@ func (suite *EnvTestSuite) TestCreateMountsPromptAccept() {
 // creating the environment or the mount source directory when the user
 // declines the prompt.
 func (suite *EnvTestSuite) TestCreateMountsPromptDecline() {
-	baseDir := filepath.Join(tests.MoatTestDir, "create_mounts_prompt_decline")
-	home := filepath.Join(baseDir, "home")
-	mountSource := filepath.Join(baseDir, "mount")
-	// Start from a clean slate so the test verifies directory creation
-	require.NoError(suite.T(), os.RemoveAll(baseDir))
+	home := filepath.Join(tests.MoatTestDir, "create_mounts_prompt_decline_home")
+	mountSource := filepath.Join(tests.MoatTestDir, "create_mounts_prompt_decline_mount")
 	suite.T().Cleanup(func() {
-		_ = os.RemoveAll(baseDir)
+		require.NoError(suite.T(), utils.CleanupDir(home))
+		require.NoError(suite.T(), utils.CleanupDir(mountSource))
 	})
 	// Create the fake home directory beforehand so that only the mount
 	// prompt is asked

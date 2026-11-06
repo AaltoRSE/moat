@@ -59,7 +59,7 @@ func (suite *InitTestSuite) newTempOutputFile() string {
 	f, err := os.CreateTemp(tests.MoatTestDir, "moat-init.*.yaml")
 	require.NoError(suite.T(), err)
 	require.NoError(suite.T(), f.Close())
-	suite.T().Cleanup(func() { assert.NoError(suite.T(), os.Remove(f.Name())) })
+	suite.T().Cleanup(func() { assert.NoError(suite.T(), utils.CleanupFiles([]string{f.Name()})) })
 	return f.Name()
 }
 
@@ -94,7 +94,7 @@ func (suite *InitTestSuite) TestInitExistingConfig() {
 	configFile, baseOutput, err := tests.CreateTempConfig(map[string]types.MoatEnv{"test": env}, nil)
 	require.NoError(suite.T(), err)
 	defer func() {
-		assert.NoError(suite.T(), os.Remove(configFile))
+		assert.NoError(suite.T(), utils.CleanupFiles([]string{configFile}))
 	}()
 
 	require.NoError(suite.T(), os.MkdirAll(filepath.Dir(suite.ConfigPath), 0o755))
@@ -122,13 +122,13 @@ func (suite *InitTestSuite) TestInitExistingLocalConfig() {
 	configFile, localOutput, err := tests.CreateTempConfig(map[string]types.MoatEnv{"test": env}, nil)
 	require.NoError(suite.T(), err)
 	defer func() {
-		assert.NoError(suite.T(), os.Remove(configFile))
+		assert.NoError(suite.T(), utils.CleanupFiles([]string{configFile}))
 	}()
 
 	localConfig := filepath.Join(suite.WorkDir, "moat-config.yaml")
 	require.NoError(suite.T(), os.WriteFile(localConfig, []byte(localOutput), 0o644))
 	defer func() {
-		assert.NoError(suite.T(), os.Remove(localConfig))
+		assert.NoError(suite.T(), utils.CleanupFiles([]string{localConfig}))
 	}()
 
 	output := suite.runInit()
@@ -148,7 +148,7 @@ func (suite *InitTestSuite) TestInitExistingConfigFlag() {
 	configFile, _, err := tests.CreateTempConfig(map[string]types.MoatEnv{"test": env}, nil)
 	require.NoError(suite.T(), err)
 	defer func() {
-		assert.NoError(suite.T(), os.Remove(configFile))
+		assert.NoError(suite.T(), utils.CleanupFiles([]string{configFile}))
 	}()
 
 	output := suite.runInit("--config", configFile)
@@ -192,13 +192,13 @@ func (suite *InitTestSuite) TestInitOutputFlagWithFoundConfig() {
 	configFile, localOutput, err := tests.CreateTempConfig(map[string]types.MoatEnv{"test": env}, nil)
 	require.NoError(suite.T(), err)
 	defer func() {
-		assert.NoError(suite.T(), os.Remove(configFile))
+		assert.NoError(suite.T(), utils.CleanupFiles([]string{configFile}))
 	}()
 
 	localConfig := filepath.Join(suite.WorkDir, "moat-config.yaml")
 	require.NoError(suite.T(), os.WriteFile(localConfig, []byte(localOutput), 0o644))
 	defer func() {
-		assert.NoError(suite.T(), os.Remove(localConfig))
+		assert.NoError(suite.T(), utils.CleanupFiles([]string{localConfig}))
 	}()
 
 	outputPath := suite.newTempOutputFile()

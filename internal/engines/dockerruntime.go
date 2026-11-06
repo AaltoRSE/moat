@@ -221,7 +221,7 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 		return 1, err
 	}
 	defer func() {
-		if err := os.Remove(passWdTemp.Name()); err != nil {
+		if err := utils.CleanupFiles([]string{passWdTemp.Name()}); err != nil {
 			log.Error().Err(err).Msg("Error removing temporary passwd file")
 		}
 	}()
@@ -266,7 +266,7 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 		return 1, err
 	}
 	defer func() {
-		if err := os.Remove(groupsTemp.Name()); err != nil {
+		if err := utils.CleanupFiles([]string{groupsTemp.Name()}); err != nil {
 			log.Error().Err(err).Msg("Error removing temporary groups file")
 		}
 	}()
