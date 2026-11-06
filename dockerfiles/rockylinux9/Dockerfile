@@ -99,7 +99,7 @@ RUN case "${TARGETARCH:-$(uname -m)}" in \
 
 # Install basic command line tools
 RUN dnf update -y && \
-  dnf install -y git vim neovim emacs nano bash zsh jq ripgrep ddgr && \
+  dnf install -y git vim neovim emacs nano bash zsh jq ripgrep ddgr file && \
   dnf clean all
 
 # Install codex (release assets use the rust target triple: x86_64 / aarch64)
