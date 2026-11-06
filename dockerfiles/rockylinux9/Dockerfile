@@ -14,13 +14,7 @@ ARG SLURM_VERSION=26.05.4
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Upgrade existing packages. glibc-minimal-langpack is removed first because
-# it requires glibc-common of the exact installed version, which makes
-# `dnf update` fail with conflicting glibc-common candidates when the BaseOS
-# repositories roll out a new glibc release; the full glibc-langpack-en is
-# installed later in this build.
-RUN dnf remove -y glibc-minimal-langpack && \
-  dnf update -y && \
+RUN dnf update -y && \
   dnf clean all
 
 # Install build tools
@@ -75,18 +69,9 @@ RUN case "${TARGETARCH:-$(uname -m)}" in \
 
 # Add locales
 RUN dnf update -y && \
-  dnf install -y gnome-keyring glibc-langpack-en && \
+  dnf install -y gnome-keyring glibc-langpack-en glibc-langpack-fi && \
+  localectl set-locale LANG=C.UTF-8 && \
   dnf clean all
-
-RUN dnf update -y && \
-  dnf install -y glibc-locale-source && \
-  dnf clean all
-
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8 && \
-  localedef -i en_GB -f UTF-8 en_GB.UTF-8 && \
-  localedef -i fi_FI -f UTF-8 fi_FI.UTF-8 && \
-  localedef -i fi_FI -f ISO-8859-1 fi_FI.ISO-8859-1 && \
-  export LANG=en_US.UTF-8
 
 # Add Google Chrome for logging into Github Copilot
 RUN case "${TARGETARCH:-$(uname -m)}" in \
