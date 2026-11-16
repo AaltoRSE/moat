@@ -72,6 +72,12 @@ RUN apt-get update && \
   apt-get install -y git vim neovim emacs nano bash zsh jq ripgrep ddgr && \
   rm -rf /var/lib/apt/lists/*
 
+# Install fuse-overlayfs for writable overlay mounts inside the container
+# (used by moat's internal overlay owner via apptainer's --fusemount)
+RUN apt-get update && \
+  apt-get install -y fuse-overlayfs mount util-linux && \
+  rm -rf /var/lib/apt/lists/*
+
 # Install codex
 RUN wget -q https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-x86_64-unknown-linux-musl.tar.gz && \
   tar -xzf codex-x86_64-unknown-linux-musl.tar.gz -C /usr/local/bin && \
