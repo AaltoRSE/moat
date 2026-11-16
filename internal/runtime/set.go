@@ -24,8 +24,8 @@ import (
 // with the same name is created from the default runtime's specification
 // with the given changes applied, so that it overwrites the default
 // runtime in runtime lookups; the default runtimes themselves are never
-// modified. The cache directory is resolved to an absolute path before
-// storing.
+// modified. The cache and overlay directories are resolved to absolute
+// paths before storing.
 //
 // It prints "Set {name}.{field} = {value}" for every applied field and a
 // final success message. It returns an error if the runtime does not
@@ -102,9 +102,10 @@ func SetRuntime(cfg *viper.Viper, name string, updates []types.RuntimeUpdate) er
 
 // applyRuntimeUpdate applies a single RuntimeUpdate to the runtime spec
 // and returns the "Set {name}.{field} = {value}" message for the applied
-// change. The value printed for the cachedir field is the resolved
-// absolute path. It returns an error if the update names an unknown
-// field, has the wrong number of values, or holds an invalid value.
+// change. The value printed for the cachedir and overlaydir fields is the
+// resolved absolute path. It returns an error if the update names an
+// unknown field, has the wrong number of values, or holds an invalid
+// value.
 func applyRuntimeUpdate(spec *types.RuntimeSpec, name string, update types.RuntimeUpdate) (string, error) {
 
 	var applied string
@@ -165,6 +166,32 @@ func applyRuntimeUpdate(spec *types.RuntimeSpec, name string, update types.Runti
 		}
 		spec.MountCWD = parsed
 		applied = value
+	case "overlayowner":
+		value, err := singleRuntimeUpdateValue(update)
+		if err != nil {
+			return "", err
+		}
+		spec.OverlayOwner = value
+		applied = value
+	case "overlaydriver":
+		value, err := singleRuntimeUpdateValue(update)
+		if err != nil {
+			return "", err
+		}
+		spec.OverlayDriver = value
+		applied = value
+	case "overlaydir":
+		value, err := singleRuntimeUpdateValue(update)
+		if err != nil {
+			return "", err
+		}
+		absValue, err := utils.SanitizePath(value)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting absolute path for overlay directory")
+			return "", err
+		}
+		spec.OverlayDir = absValue
+		applied = absValue
 	default:
 		return "", fmt.Errorf("unknown runtime field %q", update.Field)
 	}

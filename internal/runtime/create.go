@@ -29,9 +29,9 @@ import (
 // new runtime then overwrites the default runtime in runtime lookups.
 //
 // It returns an error if the name is invalid, the spec fails validation,
-// the cache directory cannot be resolved to an absolute path, the
-// configuration fails validation after the change, or the configuration
-// cannot be written.
+// the cache or overlay directory cannot be resolved to an absolute path,
+// the configuration fails validation after the change, or the
+// configuration cannot be written.
 func CreateRuntime(cfg *viper.Viper, name string, spec types.RuntimeSpec) error {
 
 	// Validate the runtime name
@@ -60,6 +60,16 @@ func CreateRuntime(cfg *viper.Viper, name string, spec types.RuntimeSpec) error 
 			return err
 		}
 		spec.CacheDir = absCacheDir
+	}
+
+	// Resolve the overlay directory the same way
+	if spec.OverlayDir != "" {
+		absOverlayDir, err := utils.SanitizePath(spec.OverlayDir)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting absolute path for overlay directory")
+			return err
+		}
+		spec.OverlayDir = absOverlayDir
 	}
 
 	// Create the runtime configuration

@@ -62,14 +62,32 @@ Examples:
 				log.Error().Msgf("could not get mountcwd flag: %v", err)
 				return
 			}
+			overlayOwner, err := cmd.Flags().GetString("overlayowner")
+			if err != nil {
+				log.Error().Msgf("could not get overlayowner flag: %v", err)
+				return
+			}
+			overlayDriver, err := cmd.Flags().GetString("overlaydriver")
+			if err != nil {
+				log.Error().Msgf("could not get overlaydriver flag: %v", err)
+				return
+			}
+			overlayDir, err := cmd.Flags().GetString("overlaydir")
+			if err != nil {
+				log.Error().Msgf("could not get overlaydir flag: %v", err)
+				return
+			}
 
 			spec := types.RuntimeSpec{
-				Type:       runtimeType,
-				Executable: executable,
-				ImageUrl:   imageUrl,
-				CacheDir:   cacheDir,
-				PassEnv:    passEnv,
-				MountCWD:   mountCWD,
+				Type:          runtimeType,
+				Executable:    executable,
+				ImageUrl:      imageUrl,
+				CacheDir:      cacheDir,
+				PassEnv:       passEnv,
+				MountCWD:      mountCWD,
+				OverlayOwner:  overlayOwner,
+				OverlayDriver: overlayDriver,
+				OverlayDir:    overlayDir,
 			}
 
 			if err := runtime.CreateRuntime(config.CmdConfig, name, spec); err != nil {
@@ -85,6 +103,9 @@ Examples:
 	createCmd.Flags().String("cachedir", "", "Directory for caching container images (required for the apptainer type)")
 	createCmd.Flags().Bool("passenv", true, "Pass the environment variables to the container")
 	createCmd.Flags().Bool("mountcwd", false, "Bind-mount the caller's current working directory into the container")
+	createCmd.Flags().String("overlayowner", "", "Who provides the overlay mounts of the environments: internal (the container engine creates them at run time) or external (moat pre-creates them on the host) — apptainer only")
+	createCmd.Flags().String("overlaydriver", "", "Overlay filesystem driver: fuse-overlayfs, kernel-overlayfs or btrfs (default: fuse-overlayfs; internal owner only supports fuse-overlayfs) — apptainer only")
+	createCmd.Flags().String("overlaydir", "", "Managed directory for externally owned overlays (default: $HOME/.cache/moat/overlays) — apptainer only")
 
 	if err := createCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)

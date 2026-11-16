@@ -35,7 +35,8 @@ overwrites the default runtime in all lookups.
 Examples:
   moat runtime set -n myrt --imageurl ghcr.io/aaltorse/moat:latest
   moat runtime set -n apptainer --mountcwd
-  moat runtime set -n myrt --cachedir $HOME/.cache/moat/images --passenv`,
+  moat runtime set -n myrt --cachedir $HOME/.cache/moat/images --passenv
+  moat runtime set -n apptainer --overlayowner external --overlaydriver kernel-overlayfs`,
 		Args: cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 
@@ -96,9 +97,33 @@ Examples:
 				}
 				updates = append(updates, types.RuntimeUpdate{Field: "mountcwd", Value: []string{strconv.FormatBool(value)}})
 			}
+			if cmd.Flags().Changed("overlayowner") {
+				value, err := cmd.Flags().GetString("overlayowner")
+				if err != nil {
+					log.Error().Msgf("could not get overlayowner flag: %v", err)
+					return
+				}
+				updates = append(updates, types.RuntimeUpdate{Field: "overlayowner", Value: []string{value}})
+			}
+			if cmd.Flags().Changed("overlaydriver") {
+				value, err := cmd.Flags().GetString("overlaydriver")
+				if err != nil {
+					log.Error().Msgf("could not get overlaydriver flag: %v", err)
+					return
+				}
+				updates = append(updates, types.RuntimeUpdate{Field: "overlaydriver", Value: []string{value}})
+			}
+			if cmd.Flags().Changed("overlaydir") {
+				value, err := cmd.Flags().GetString("overlaydir")
+				if err != nil {
+					log.Error().Msgf("could not get overlaydir flag: %v", err)
+					return
+				}
+				updates = append(updates, types.RuntimeUpdate{Field: "overlaydir", Value: []string{value}})
+			}
 
 			if len(updates) == 0 {
-				log.Error().Msgf("no variables to set: give at least one of --type, --executable, --imageurl, --cachedir, --passenv or --mountcwd")
+				log.Error().Msgf("no variables to set: give at least one of --type, --executable, --imageurl, --cachedir, --passenv, --mountcwd, --overlayowner, --overlaydriver or --overlaydir")
 				return
 			}
 
@@ -115,6 +140,9 @@ Examples:
 	setCmd.Flags().String("cachedir", "", "Directory for caching container images (required for the apptainer type)")
 	setCmd.Flags().Bool("passenv", true, "Pass the environment variables to the container")
 	setCmd.Flags().Bool("mountcwd", false, "Bind-mount the caller's current working directory into the container")
+	setCmd.Flags().String("overlayowner", "", "Who provides the overlay mounts of the environments: internal or external — apptainer only")
+	setCmd.Flags().String("overlaydriver", "", "Overlay filesystem driver: fuse-overlayfs, kernel-overlayfs or btrfs — apptainer only")
+	setCmd.Flags().String("overlaydir", "", "Managed directory for externally owned overlays — apptainer only")
 
 	if err := setCmd.MarkFlagRequired("name"); err != nil {
 		panic(err)
