@@ -143,3 +143,39 @@ func (suite *EnvTestSuite) TestCopyWithRoMounts() {
 	assert.Equal(suite.T(), home, createdEnv.Home)
 	assert.Equal(suite.T(), []string{roMount}, createdEnv.ReadOnlyMounts)
 }
+
+// TestCopyWithOverlayMounts tests that env copy stores the overlay mounts
+// given with --overlay-mount in the copy and leaves the source
+// environment's overlay mounts untouched.
+func (suite *EnvTestSuite) TestCopyWithOverlayMounts() {
+	// Give the source environment an overlay mount
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test",
+		"--overlay-mount", "/opt/conda"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	_, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+
+	// Copy the environment, overriding the overlay mounts
+	capture = utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd = root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "copy", "--source", "test", "--name", "newenv",
+		"--overlay-mount", "/usr/local", "--yes"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	createdEnv, exists := envs["newenv"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), []string{"/usr/local"}, createdEnv.OverlayMounts)
+	sourceEnv, exists := envs["test"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), []string{"/opt/conda"}, sourceEnv.OverlayMounts)
+}

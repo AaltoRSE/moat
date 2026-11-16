@@ -328,3 +328,83 @@ func (suite *EnvTestSuite) TestCreateMountsPromptDecline() {
 	envs := config.GetEnvs(cfg)
 	assert.NotContains(suite.T(), envs, "newenv")
 }
+
+// TestCreateWithOverlayMounts tests that env create registers overlay
+// mounts, sanitizes the host-side source paths, and creates a missing
+// host-side source directory.
+func (suite *EnvTestSuite) TestCreateWithOverlayMounts() {
+	home := filepath.Join(tests.MoatTestDir, "create_overlay_home")
+	src := filepath.Join(tests.MoatTestDir, "create_overlay_src")
+	// Start from a clean slate so the test verifies directory creation
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	require.NoError(suite.T(), utils.CleanupDir(src))
+	suite.T().Cleanup(func() {
+		require.NoError(suite.T(), utils.CleanupDir(home))
+		require.NoError(suite.T(), utils.CleanupDir(src))
+	})
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home,
+		"--overlay-mount", "/opt/conda", "--overlay-mount", src + ":/data", "--yes"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	// The host-side overlay source directory must have been created
+	assert.DirExists(suite.T(), src)
+
+	// The overlay mounts must be stored sanitized, and the environment
+	// name must not be persisted
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	createdEnv, exists := envs["newenv"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), []string{"/opt/conda", src + ":/data"}, createdEnv.OverlayMounts)
+	contents, err := os.ReadFile(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	assert.NotContains(suite.T(), string(contents), "name:")
+}
+
+// TestCreateDuplicateOverlayMount tests that env create rejects duplicate
+// overlay mount destinations and leaves the configuration untouched.
+func (suite *EnvTestSuite) TestCreateDuplicateOverlayMount() {
+	home := filepath.Join(tests.MoatTestDir, "create_dup_overlay_home")
+	require.NoError(suite.T(), utils.CleanupDir(home))
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(home)) })
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "newenv", "--home", home,
+		"--overlay-mount", "/opt/conda", "--overlay-mount", "/data:/opt/conda", "--yes"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.NotContains(suite.T(), capturedOutput, "Environment created successfully.")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	assert.NotContains(suite.T(), envs, "newenv")
+}
+
+// TestCreateRejectsMalformedOverlayPaths verifies that create does not
+// turn malformed overlay paths into valid paths relative to the caller.
+func (suite *EnvTestSuite) TestCreateRejectsMalformedOverlayPaths() {
+	for _, invalid := range []string{":/data", "relative", "/opt/../data"} {
+		home := filepath.Join(suite.T().TempDir(), "home")
+		cmd := root.CreateRootCmd()
+		cmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "overlay-invalid",
+			"--home", home, "--overlay-mount", invalid, "--yes"})
+		require.NoError(suite.T(), cmd.Execute())
+
+		cfg, err := config.InitConfig(suite.ConfigFile)
+		require.NoError(suite.T(), err)
+		assert.NotContains(suite.T(), config.GetEnvs(cfg), "overlay-invalid", invalid)
+		assert.NoDirExists(suite.T(), home)
+	}
+}

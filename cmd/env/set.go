@@ -36,6 +36,7 @@ Examples:
   moat env set -n test --command "code --wait ."
   moat env set -n test --home /home/user/project
   moat env set -n test --mount /path/to/project --ro-mount /run/dbus
+  moat env set -n test --overlay-mount /opt/conda
   moat env set -n test --mountcwd=true`,
 		Args: cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -74,6 +75,13 @@ Examples:
 				}
 				updates = append(updates, update{"readonlymounts", roMounts})
 			}
+			if cmd.Flags().Changed("overlay-mount") {
+				overlayMounts, err := cmd.Flags().GetStringArray("overlay-mount")
+				if err != nil {
+					log.Fatal().Msgf("could not get overlay-mount flag: %v", err)
+				}
+				updates = append(updates, update{"overlaymounts", overlayMounts})
+			}
 			mountCWDPtr, err := getMountCWDValue(cmd)
 			if err != nil {
 				log.Fatal().Msgf("%v", err)
@@ -90,7 +98,7 @@ Examples:
 			}
 
 			if len(updates) == 0 {
-				log.Fatal().Msgf("no variables to set: give at least one of --home, --mount, --ro-mount, --command or --mountcwd")
+				log.Fatal().Msgf("no variables to set: give at least one of --home, --mount, --ro-mount, --overlay-mount, --command or --mountcwd")
 			}
 
 			for _, u := range updates {

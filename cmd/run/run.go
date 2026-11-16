@@ -55,6 +55,15 @@ This command allows you to run a specific command within the moat environment.`,
 				return
 			}
 
+			spec, err := config.ResolveEnvOverlayRuntime(config.CmdConfig, env)
+			if err == nil {
+				err = prompts.CheckAndCreateOverlaySources(env.OverlayMounts, spec.OverlayDriver, yes)
+			}
+			if err != nil {
+				log.Error().Err(err).Msgf("Error with overlay storage for environment %q", envName)
+				return
+			}
+
 			// Check that the fake home directory and the mount source
 			// directories of the environment exist, creating missing ones
 			// automatically or after asking the user

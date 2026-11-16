@@ -17,13 +17,15 @@ func newEnvNameFlagSet() *pflag.FlagSet {
 }
 
 // newEnvVarFlagSet returns a new flag group containing the -H/--home,
-// -m/--mount, -r/--ro-mount, -C/--command and --mountcwd flags, shared by
-// the subcommands that set the variables of an environment.
+// -m/--mount, -r/--ro-mount, -O/--overlay-mount, -C/--command and
+// --mountcwd flags, shared by the subcommands that set the variables of an
+// environment.
 func newEnvVarFlagSet() *pflag.FlagSet {
 	fs := pflag.NewFlagSet("env-vars", pflag.ContinueOnError)
 	fs.StringP("home", "H", "", "Home directory for the environment")
 	fs.StringArrayP("mount", "m", nil, "Mounted directory (can be specified multiple times)")
 	fs.StringArrayP("ro-mount", "r", nil, "Read-only mounted directory (can be specified multiple times)")
+	fs.StringArrayP("overlay-mount", "O", nil, "Overlay-mounted container path, [source:]dest (can be specified multiple times)")
 	fs.StringP("command", "C", "", "Command to run in the environment (use quotes for multi-word commands)")
 	fs.String("mountcwd", "", "Bind-mount the caller's current working directory into the container (true or false, empty means true)")
 	return fs

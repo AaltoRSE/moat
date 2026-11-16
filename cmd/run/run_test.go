@@ -1,10 +1,12 @@
 package run_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/AaltoRSE/moat/cmd/root"
+	"github.com/AaltoRSE/moat/internal/config"
 	"github.com/AaltoRSE/moat/internal/tests"
 	"github.com/AaltoRSE/moat/internal/utils"
 	"github.com/stretchr/testify/assert"
@@ -123,4 +125,55 @@ func (suite *RunTestSuite) TestRunCreatesMissingHomeWithYes() {
 // a normal test function and pass our suite to suite.Run
 func TestRunTestSuite(t *testing.T) {
 	suite.Run(t, new(RunTestSuite))
+}
+
+// TestRunCreatesMissingOverlaySourceWithYes tests that run creates the
+// missing host-side source of an overlay mount (source:dest) during the
+// pre-flight check when --yes is given.
+func (suite *RunTestSuite) TestRunCreatesMissingOverlaySourceWithYes() {
+	overlaySource := filepath.Join(tests.MoatTestDir, "run_missing_overlay_source")
+	require.NoError(suite.T(), utils.CleanupDir(overlaySource))
+	suite.T().Cleanup(func() { require.NoError(suite.T(), utils.CleanupDir(overlaySource)) })
+
+	// Add the overlay mount to the test environment
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test",
+		"--overlay-mount", overlaySource + ":/data"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	_, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+
+	suite.run("--yes")
+
+	assert.DirExists(suite.T(), overlaySource)
+}
+
+// TestRunCreatesBtrfsOverlaySource verifies that preflight uses a subvolume
+// for explicit storage when the environment selects the btrfs driver.
+func (suite *RunTestSuite) TestRunCreatesBtrfsOverlaySource() {
+	dir := suite.T().TempDir()
+	fake := `#!/bin/sh
+if [ "$1" = subvolume ] && [ "$2" = create ]; then
+	mkdir "$3"
+	touch "$3/.subvolume"
+else
+	test -f "$5/.subvolume" && printf 'ro=false\n'
+fi
+`
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(dir, "btrfs"), []byte(fake), 0o755))
+	suite.T().Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	source := filepath.Join(dir, "source")
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	cfg.Set("defaults.runtimes.apptainer.overlayowner", "external")
+	cfg.Set("defaults.runtimes.apptainer.overlaydriver", "btrfs")
+	cfg.Set("envs.test.overlaymounts", []string{source + ":/data"})
+	require.NoError(suite.T(), config.WriteConfig(cfg))
+
+	suite.run("--yes")
+
+	assert.FileExists(suite.T(), filepath.Join(source, ".subvolume"))
 }

@@ -48,6 +48,11 @@ without prompting.`,
 				log.Error().Msgf("could not get ro-mount flag: %v", err)
 				return
 			}
+			overlayMounts, err := cmd.Flags().GetStringArray("overlay-mount")
+			if err != nil {
+				log.Error().Msgf("could not get overlay-mount flag: %v", err)
+				return
+			}
 			command, err := cmd.Flags().GetString("command")
 			if err != nil {
 				log.Error().Msgf("could not get command flag: %v", err)
@@ -68,7 +73,7 @@ without prompting.`,
 				return
 			}
 
-			if err := env.CopyEnvironment(config.CmdConfig, source, name, home, mounts, roMounts, mountCWDPtr, commandPtr, yes); err != nil {
+			if err := env.CopyEnvironment(config.CmdConfig, source, name, home, mounts, roMounts, overlayMounts, mountCWDPtr, commandPtr, yes); err != nil {
 				log.Error().Msgf("could not copy environment: %v", err)
 			}
 		},

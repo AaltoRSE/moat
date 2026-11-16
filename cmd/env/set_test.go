@@ -250,3 +250,41 @@ func (suite *EnvTestSuite) TestSetLeavesOtherEnvsUnchanged() {
 	assert.Equal(suite.T(), otherHome, otherEnv.Home)
 	assert.Nil(suite.T(), otherEnv.Command)
 }
+
+// TestSetOverlayMounts tests that env set stores the overlay mounts given
+// with --overlay-mount, replacing the previous list entirely.
+func (suite *EnvTestSuite) TestSetOverlayMounts() {
+	src := filepath.Join(tests.MoatTestDir, "set_overlay_src")
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test",
+		"--overlay-mount", "/opt/conda", "--overlay-mount", src + ":/data"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Set test.overlaymounts = [/opt/conda "+src+":/data]")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs := config.GetEnvs(cfg)
+	updatedEnv, exists := envs["test"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), []string{"/opt/conda", src + ":/data"}, updatedEnv.OverlayMounts)
+
+	// Setting the flag again replaces the previous list entirely
+	capture = utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd = root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "set", "--name", "test",
+		"--overlay-mount", "/usr/local"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	_, err = capture.StopCapture()
+	require.NoError(suite.T(), err)
+
+	cfg, err = config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	envs = config.GetEnvs(cfg)
+	assert.Equal(suite.T(), []string{"/usr/local"}, envs["test"].OverlayMounts)
+}
