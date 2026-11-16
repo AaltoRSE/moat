@@ -99,20 +99,23 @@ func CreateDefaultConfig() *viper.Viper {
 
 	// The built-in default configuration values.
 	defaults := map[string]any{
-		"defaults.runtimes.apptainer.type":       "apptainer",
-		"defaults.runtimes.apptainer.executable": "apptainer",
-		"defaults.runtimes.apptainer.imageurl":   fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag),
-		"defaults.runtimes.apptainer.cachedir":   "$HOME/.cache/moat/images",
-		"defaults.runtimes.apptainer.passenv":    true,
-		"defaults.runtimes.apptainer.mountcwd":   false,
-		"defaults.runtimes.docker.type":          "docker",
-		"defaults.runtimes.docker.executable":    "docker",
-		"defaults.runtimes.docker.imageurl":      fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag),
-		"defaults.runtimes.docker.cachedir":      "$HOME/.cache/moat/",
-		"defaults.runtimes.docker.passenv":       true,
-		"defaults.runtimes.docker.mountcwd":      false,
-		"defaults.runtime":                       "apptainer",
-		"envs":                                   map[string]types.MoatEnv{},
+		"defaults.runtimes.apptainer.type":          "apptainer",
+		"defaults.runtimes.apptainer.executable":    "apptainer",
+		"defaults.runtimes.apptainer.imageurl":      fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag),
+		"defaults.runtimes.apptainer.cachedir":      "$HOME/.cache/moat/images",
+		"defaults.runtimes.apptainer.passenv":       true,
+		"defaults.runtimes.apptainer.mountcwd":      false,
+		"defaults.runtimes.apptainer.overlayowner":  "internal",
+		"defaults.runtimes.apptainer.overlaydriver": "fuse-overlayfs",
+		"defaults.runtimes.apptainer.overlaydir":    "$HOME/.cache/moat/overlays",
+		"defaults.runtimes.docker.type":             "docker",
+		"defaults.runtimes.docker.executable":       "docker",
+		"defaults.runtimes.docker.imageurl":         fmt.Sprintf("ghcr.io/aaltorse/moat:%s", imageTag),
+		"defaults.runtimes.docker.cachedir":         "$HOME/.cache/moat/",
+		"defaults.runtimes.docker.passenv":          true,
+		"defaults.runtimes.docker.mountcwd":         false,
+		"defaults.runtime":                          "apptainer",
+		"envs":                                      map[string]types.MoatEnv{},
 	}
 
 	// Resolve the default values against the environment variables on a
@@ -223,8 +226,12 @@ func SetConfigPath(cfg *viper.Viper, outputPath string) (changed bool, err error
 // ValidateConfig validates the configuration held in cfg. It unmarshals
 // the viper instance into a types.Config and validates the result using
 // the go-playground/validator tags. On validation failure it logs each
-// validation error in detail. It returns an error if the configuration
-// cannot be unmarshaled or fails validation.
+// validation error in detail. Afterwards it applies the cross-field
+// validation rules that cannot be expressed with validator tags: the
+// overlay settings of every runtime (see validateRuntimeSpecRules) and the
+// overlay mounts of every environment (see validateEnvOverlays). It
+// returns an error if the configuration cannot be unmarshaled or fails
+// validation.
 func ValidateConfig(cfg *viper.Viper) error {
 	var config types.Config
 	if err := cfg.Unmarshal(&config); err != nil {
@@ -253,6 +260,26 @@ func ValidateConfig(cfg *viper.Viper) error {
 			}
 		}
 		return err
+	}
+
+	// Cross-field validation rules that validator tags cannot express:
+	// the overlay owner/driver consistency of every runtime, the
+	// apptainer-only rule for user-specified runtimes, and the overlay
+	// mounts of every environment.
+	for name, spec := range GetRuntimes(cfg) {
+		if err := validateOverlayOwnerDriver(spec); err != nil {
+			return fmt.Errorf("invalid runtime %q: %v", name, err)
+		}
+	}
+	for name, spec := range GetUserRuntimes(cfg) {
+		if err := validateRuntimeSpecRules(spec); err != nil {
+			return fmt.Errorf("invalid user runtime %q: %v", name, err)
+		}
+	}
+	for name, env := range GetEnvs(cfg) {
+		if err := validateEnvOverlays(cfg, name, env); err != nil {
+			return err
+		}
 	}
 	return nil
 }

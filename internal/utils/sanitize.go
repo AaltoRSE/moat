@@ -21,16 +21,27 @@ import (
 // resolved.
 func SanitizePath(path string) (string, error) {
 	log.Debug().Msgf("Sanitizing path: %s", path)
-	expanded, err := expandTilde(path)
+	expanded, err := ExpandPath(path)
 	if err != nil {
 		return "", err
 	}
-	absPath, err := filepath.Abs(os.ExpandEnv(expandUID(expanded)))
+	absPath, err := filepath.Abs(expanded)
 	if err != nil {
 		return "", err
 	}
 	log.Debug().Msgf("Sanitized path: %s", absPath)
 	return absPath, nil
+}
+
+// ExpandPath expands a leading tilde and environment variables in path
+// using the same rules as [SanitizePath]. It leaves relative paths and path
+// elements intact and returns an error if the home directory is unavailable.
+func ExpandPath(path string) (string, error) {
+	expanded, err := expandTilde(path)
+	if err != nil {
+		return "", err
+	}
+	return os.ExpandEnv(expandUID(expanded)), nil
 }
 
 // expandTilde replaces a leading `~` or `~/` in path with the current
