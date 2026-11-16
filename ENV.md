@@ -4,7 +4,8 @@ An **environment** is a named, self-contained container setup. It consists of:
 
 - a **fake home** directory (used as `$HOME` inside the container),
 - a list of **mounts** (read-write directories mounted into the container),
-- a list of **read-only mounts**, and
+- a list of **read-only mounts**,
+- a list of **overlay mounts** (container paths that get a writable overlay), and
 - an optional **command** that is run by default when using the environment.
 
 The `moat env` command group lets you create, inspect, copy, modify, and remove environments. All changes are persisted to your config file (`$HOME/.config/moat/moat-config.yaml`, or `moat-config.yaml` in the current directory).
@@ -16,6 +17,7 @@ The `moat env` command group lets you create, inspect, copy, modify, and remove 
   - [Environment names](#environment-names)
   - [Fake home (`-H/--home`)](#fake-home--h--home)
   - [Mounts (`-m/--mount`, `-r/--ro-mount`)](#mounts--m--mount--r--ro-mount)
+  - [Overlay mounts (`-O/--overlay-mount`)](#overlay-mounts--o--overlay-mount)
   - [Working directory mounting (`mountcwd`)](#working-directory-mounting-mountcwd)
   - [Command (`-C/--command`)](#command--c--command)
   - [Non-interactive mode (`-y/--yes`)](#non-interactive-mode--y--yes)
@@ -59,6 +61,21 @@ Mounts are given as `source` or `source:dest`:
 
 Both flags can be specified multiple times. Every path (source and destination) is expanded the same way: a leading `~` is expanded to the home directory, environment variables are expanded (e.g. `$MYDIR:$MYDIR` with `MYDIR=/path/to/dir` becomes `/path/to/dir:/path/to/dir`; `$UID` expands to your numeric user ID unless it is set in the environment), and relative paths are resolved to absolute ones. Mount sources may be existing directories or files; missing source paths are created as directories (see `-y/--yes` below).
 
+### Overlay mounts (`-O/--overlay-mount`)
+
+Overlay mounts make a path **inside the container** writable without modifying the container image: moat mounts a writable overlay filesystem on top of it. This is useful for image directories that tools want to write to, such as `/opt/conda` or `/usr/local`.
+
+Overlay mounts are given as `dest` or `source:dest`, where `dest` is an absolute path inside the container:
+
+- `--overlay-mount /opt/conda` — overlay the container path `/opt/conda`.
+- `--overlay-mount /home/user/myoverlay:/data` — overlay the container path `/data`, storing the writable layer in the host directory `/home/user/myoverlay` (its `upper/` and `work/` subdirectories are created when missing).
+
+Repeat the flag to overlay several directories. Each destination must name an existing directory in the image. Use clean absolute paths with distinct, non-nested destinations. Destination names cannot contain whitespace, commas, colons, or backslashes. Host sources must also be absolute. Both paths support a leading `~` and environment variables.
+
+The [runtime's overlay settings](RUNTIME.md#overlay-mounts) determine where writes are stored. With the default `internal` owner, writes to a plain destination are discarded after the run. With the `external` owner, writes persist in the managed overlay directory. An explicit source keeps writes in that host directory with either owner. Moat creates missing explicit sources with confirmation, or automatically with `-y`. The btrfs driver creates a subvolume for the source.
+
+Set overlay mounts with the `-O/--overlay-mount` flag of `moat env create`, `moat env copy`, or `moat env set`, or with `moat config set envs.{name}.overlaymounts ...` / `moat config append envs.{name}.overlaymounts ...` (see [CONFIG.md](CONFIG.md#moat-config-set)). Inspect them with `moat env show`.
+
 ### Working directory mounting (`mountcwd`)
 
 The optional `mountcwd` field controls whether the directory you run `moat run` from is bind-mounted into the container (at the same path) and used as the working directory inside it. This is handy when you start `moat run` from a project directory that the environment does not list as a mount: the project is available inside the container without adding it to the config, and the container starts right in it.
@@ -78,9 +95,9 @@ An optional command that is started by default when running the environment. Use
 
 ### Non-interactive mode (`-y/--yes`)
 
-Without `-y`, `create` (and `copy`) will **prompt** you to create missing directories: first the fake home directory, then any missing mount source directories. Answering no to a prompt aborts the command. Mount entries that are invalid (e.g. an empty source path) always abort the command. Existing files are accepted as mount sources and are never created or modified. With `-y`, missing directories (fake home and mount source paths) are created automatically without prompting. Use `-y` for scripting.
+Without `-y`, `create` and `copy` prompt before creating a missing explicit overlay source, fake home, or bind mount source. Declining aborts the command. Existing files are accepted as bind mount sources. Overlay sources must be directories. With `-y`, missing paths are created automatically.
 
-`moat run` checks the fake home directory and the environment's mount sources before starting the container and prompts for missing directories the same way; give `-y` to `moat run` to create them without prompting.
+`moat run` checks the fake home directory and the environment's mount and overlay-mount sources before starting the container and prompts for missing directories the same way; give `-y` to `moat run` to create them without prompting.
 
 ---
 
@@ -89,7 +106,7 @@ Without `-y`, `create` (and `copy`) will **prompt** you to create missing direct
 Create a new environment and write it to the config file.
 
 ```
-moat env create -n NAME -H HOME [-m MOUNT]... [-r ROMOUNT]... [-C COMMAND] [--mountcwd[=true|false]] [-y]
+moat env create -n NAME -H HOME [-m MOUNT]... [-r ROMOUNT]... [-O OVERLAY]... [-C COMMAND] [--mountcwd[=true|false]] [-y]
 ```
 
 | Flag | Required | Description |
@@ -98,16 +115,18 @@ moat env create -n NAME -H HOME [-m MOUNT]... [-r ROMOUNT]... [-C COMMAND] [--mo
 | `-H, --home` | yes | Fake home directory |
 | `-m, --mount` | no | Mounted path (directory or file), `source` or `source:dest` (repeatable) |
 | `-r, --ro-mount` | no | Read-only mounted path (directory or file), `source` or `source:dest` (repeatable) |
+| `-O, --overlay-mount` | no | Overlay-mounted container path, `dest` or `source:dest` (repeatable; see [Overlay mounts](#overlay-mounts--o--overlay-mount)) |
 | `-C, --command` | no | Default command to run in the environment (quote multi-word commands) |
 | `--mountcwd` | no | Bind-mount the directory you run `moat run` from into the container and use it as the working directory: `true` or `false`, an empty value means `true` (see [Working directory mounting](#working-directory-mounting-mountcwd)) |
-| `-y, --yes` | no | Create missing directories (fake home and mount paths) without prompting |
+| `-y, --yes` | no | Create missing directories (fake home, mount paths and overlay-mount sources) without prompting |
 
 Behavior:
 
 - If an environment with the same name already exists, nothing is done (`Environment already exists.`).
 - If the fake home directory does not exist, you are prompted to create it (or it is created automatically with `-y`); answering no aborts creation.
-- If a mount source path is missing, you are prompted to create it (or it is created automatically with `-y`); answering no aborts creation. Mount entries that are invalid (e.g. an empty source path) abort creation. Existing files are accepted as mount sources and are never created or modified.
+- If a mount source path or the host-side source of an overlay mount (`source:dest`) is missing, you are prompted to create it (or it is created automatically with `-y`); answering no aborts creation. Mount and overlay-mount entries that are invalid (e.g. an empty source path, a relative or duplicate overlay destination) abort creation. Existing files are accepted as bind mount sources. Overlay sources must be directories.
 - With `--mountcwd` or `--mountcwd=true`, the environment is created with working-directory mounting enabled; with `--mountcwd=false`, it is explicitly disabled. Without the flag, the environment has no `mountcwd` of its own and falls back to the runtime's setting.
+- Overlay mounts are validated before they are stored and are only allowed when the environment's runtime is `apptainer` (see [Overlay mounts](#overlay-mounts--o--overlay-mount)).
 
 Examples:
 
@@ -121,6 +140,12 @@ moat env create -n myenv -H ~/moat-home \
     -r /run/dbus \
     -C "code --wait ."
 
+# Environment with a writable overlay on /opt/conda inside the container
+moat env create -n myenv -H ~/moat-home -O /opt/conda -y
+
+# Overlay with a host directory storing the writable layer
+moat env create -n myenv -H ~/moat-home -O ~/moat-overlays/data:/data -y
+
 # Non-interactive: create missing directories automatically
 moat env create -n myenv -H ~/moat-home -m ~/projects/newproj -y
 
@@ -133,7 +158,7 @@ moat env create -n myenv -H ~/moat-home --mountcwd=true
 Create a new environment as a copy of an existing one. The copy inherits all settings from the source environment; any flags you give override the corresponding field of the source.
 
 ```
-moat env copy -s SOURCE -n NAME [-H HOME] [-m MOUNT]... [-r ROMOUNT]... [-C COMMAND] [--mountcwd[=true|false]] [-y]
+moat env copy -s SOURCE -n NAME [-H HOME] [-m MOUNT]... [-r ROMOUNT]... [-O OVERLAY]... [-C COMMAND] [--mountcwd[=true|false]] [-y]
 ```
 
 | Flag | Required | Description |
@@ -143,16 +168,18 @@ moat env copy -s SOURCE -n NAME [-H HOME] [-m MOUNT]... [-r ROMOUNT]... [-C COMM
 | `-H, --home` | no | Override the fake home directory |
 | `-m, --mount` | no | Override the mounts (repeatable) |
 | `-r, --ro-mount` | no | Override the read-only mounts (repeatable) |
+| `-O, --overlay-mount` | no | Override the overlay mounts (repeatable; see [Overlay mounts](#overlay-mounts--o--overlay-mount)) |
 | `-C, --command` | no | Override the default command |
 | `--mountcwd` | no | Set working-directory mounting in the copy: `true` or `false`, an empty value means `true`, overriding the source's setting (see [Working directory mounting](#working-directory-mounting-mountcwd)) |
-| `-y, --yes` | no | Create missing directories (fake home and mount paths) without prompting |
+| `-y, --yes` | no | Create missing directories (fake home, mount paths and overlay-mount sources) without prompting |
 
 Behavior:
 
 - The source environment must exist.
-- Given mount flags **replace** the source's mount lists entirely (they are not appended).
+- Given mount flags **replace** the source's mount lists entirely (they are not appended); the same applies to `-O`/`--overlay-mount` and the source's overlay mounts.
 - Without `--mountcwd`, the copy inherits the source's `mountcwd` setting; with it, the copy's setting is the given value (`true`, `false`, or empty for `true`) regardless of the source's setting.
-- Directory creation/prompting behaves exactly as with `create` (useful when overriding `-H` or `-m` with new paths).
+- Without `-O`, the copy inherits the source's overlay mounts.
+- Directory creation/prompting behaves exactly as with `create` (useful when overriding `-H`, `-m`, or `-O` with new paths).
 - If an environment with the target name already exists, nothing is done.
 
 Examples:
@@ -163,6 +190,9 @@ moat env copy -s myenv -n myenv-copy
 
 # Copy but point at a different project
 moat env copy -s myenv -n myenv2 -m ~/projects/otherproj
+
+# Copy with different overlay mounts
+moat env copy -s myenv -n myenv2b -O /usr/local
 
 # Copy with a new fake home, created automatically if missing
 moat env copy -s myenv -n myenv3 -H ~/moat-home-3 -y
@@ -194,7 +224,7 @@ moat env list -n myenv
 
 ## `moat env show`
 
-Show the full configuration of a single environment as YAML (fake home, mounts, read-only mounts, and all other fields such as `mountcwd`, `runtime`, `passenv`, `command`).
+Show the full configuration of a single environment as YAML (fake home, mounts, read-only mounts, overlay mounts, and all other fields such as `mountcwd`, `runtime`, `passenv`, `command`).
 
 ```
 moat env show -n NAME
@@ -215,7 +245,7 @@ moat env show -n vscode
 Change one or more variables of an **existing** environment. Only the flags you give are modified; every other variable of the environment (and all other environments) keeps its current value. The change is written to the config file.
 
 ```
-moat env set -n NAME ( [-H HOME] | [-m MOUNT]... | [-r ROMOUNT]... | [-C COMMAND] | [--mountcwd[=true|false]] )...
+moat env set -n NAME ( [-H HOME] | [-m MOUNT]... | [-r ROMOUNT]... | [-O OVERLAY]... | [-C COMMAND] | [--mountcwd[=true|false]] )...
 ```
 
 | Flag | Required | Description |
@@ -224,10 +254,11 @@ moat env set -n NAME ( [-H HOME] | [-m MOUNT]... | [-r ROMOUNT]... | [-C COMMAND
 | `-H, --home` | see note | New fake home directory |
 | `-m, --mount` | see note | New mounts, replacing the existing list (repeatable) |
 | `-r, --ro-mount` | see note | New read-only mounts, replacing the existing list (repeatable) |
+| `-O, --overlay-mount` | see note | New overlay mounts, replacing the existing list (repeatable; see [Overlay mounts](#overlay-mounts--o--overlay-mount)) |
 | `-C, --command` | see note | New default command |
 | `--mountcwd` | see note | Set working-directory mounting: `true` or `false`, an empty value means `true` (see [Working directory mounting](#working-directory-mounting-mountcwd)) |
 
-At least one of `-H`, `-m`, `-r`, `-C`, or `--mountcwd` must be given. The environment must already exist. For `-m`/`-r`, the given list replaces the previous list entirely.
+At least one of `-H`, `-m`, `-r`, `-O`, `-C`, or `--mountcwd` must be given. The environment must already exist. For `-m`/`-r`/`-O`, the given list replaces the previous list entirely.
 
 Examples:
 
@@ -235,6 +266,7 @@ Examples:
 moat env set -n myenv -C "code --wait ."
 moat env set -n myenv -H ~/moat-home-new
 moat env set -n myenv -m ~/projects/myproject --ro-mount /run/dbus
+moat env set -n myenv -O /opt/conda
 moat env set -n myenv --mountcwd=true
 moat env set -n myenv --mountcwd=false
 ```

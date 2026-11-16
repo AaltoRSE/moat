@@ -8,8 +8,9 @@ A runtime specification consists of:
 - `executable` — the command that runs the container (optional; `apptainer` for the `apptainer` type and `docker` for the `docker` type by default),
 - `imageurl` — the container image that is pulled (required for `apptainer`),
 - `cachedir` — the directory where pulled images are cached (required for `apptainer`; used as a scratch directory by `docker`),
-- `passenv` — whether the host environment variables are passed into the container, and
-- `mountcwd` — whether the directory you run `moat` from is bind-mounted into the container and used as the working directory.
+- `passenv` — whether the host environment variables are passed into the container,
+- `mountcwd` — whether the directory you run `moat` from is bind-mounted into the container and used as the working directory, and
+- `overlayowner`, `overlaydriver`, `overlaydir` — how the [overlay mounts](ENV.md#overlay-mounts--o--overlay-mount) of the environments that use this runtime are provided (apptainer only).
 
 There are two sources of runtimes:
 
@@ -25,6 +26,7 @@ The `moat runtime` command group lets you create, inspect and modify runtimes. A
   - [Runtime names](#runtime-names)
   - [Runtime specifications](#runtime-specifications)
   - [Runtime types](#runtime-types)
+  - [Overlay mounts](#overlay-mounts)
   - [Default and user runtimes](#default-and-user-runtimes)
   - [Using runtimes](#using-runtimes)
 - [`moat runtime create`](#moat-runtime-create)
@@ -61,6 +63,9 @@ Names must be non-empty and contain only **alphanumeric characters, underscores,
 | `cachedir` | Directory where pulled images are cached. Required for the `apptainer` type. The directory is created automatically on first use if it does not exist. The path may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded, and relative paths are resolved to absolute ones before the runtime is stored. For the `docker` type the directory is not an image cache (Docker keeps its own); it is the scratch directory for the temporary user-identification file written for every run, and it is also created automatically on first use if it does not exist. |
 | `passenv` | Pass the host environment variables into the container (default: `true`). |
 | `mountcwd` | Bind-mount the directory you run `moat run` from, and use it as the working directory (default: `false`). |
+| `overlayowner` | Who provides the overlay mounts of the environments using this runtime: `internal` (the container engine creates the overlays at run time) or `external` (moat pre-creates them on the host). Apptainer only. Default: `internal`. With `internal`, only the `fuse-overlayfs` driver is allowed. |
+| `overlaydriver` | Overlay filesystem driver: `fuse-overlayfs`, `kernel-overlayfs`, or `btrfs`. Apptainer only. Default: `fuse-overlayfs`. |
+| `overlaydir` | Managed root directory for externally owned overlays: per-environment overlay directories are created under `<overlaydir>/<env name>/`. Apptainer only. Default: `$HOME/.cache/moat/overlays`. The path may start with `~` or contain environment variables, and is resolved to an absolute path before the runtime is stored. |
 
 ### Runtime types
 
@@ -70,6 +75,18 @@ The runtime type decides which container technology `moat run` uses:
 - **`docker`** — requires a working `docker` CLI (or another compatible executable, see `executable`) and daemon, and permission to run containers as your user (e.g. membership in the `docker` group). The image is pulled with `docker pull` before every run; Docker's own image cache makes repeated runs cheap. Every run creates a fresh container named `moat-xxxx` (`xxxx` is random) that is removed afterwards and whose root filesystem is read-only. The container runs as the invoking user: its `/etc/passwd` is taken from the image, augmented with your user's account line, and mounted back in so that tools inside the container can resolve your user. For that, `cachedir` is used as the scratch directory; it is created automatically when it does not exist.
 
 Both types mount the environment's fake home directory at your home directory path and apply the environment's mounts and read-only mounts (see [ENV.md](ENV.md)).
+
+### Overlay mounts
+
+Each [overlay entry](ENV.md#overlay-mounts--o--overlay-mount) makes one image directory writable. Normal file permissions still apply.
+
+- **`overlayowner: internal`** (default) uses temporary storage for a plain destination and removes it after the run. An explicit host source persists across runs. This mode uses `fuse-overlayfs`.
+- **`overlayowner: external`** keeps writes across runs. A plain destination uses `<overlaydir>/<env name>/<SHA-256 of destination>`. An explicit source uses the named host directory.
+- **`overlaydriver: fuse-overlayfs`** (default) runs the libfuse3-based driver inside the container with Apptainer's `--fusemount`. Moat mounts a read-only view of the SIF image at a separate path for the lower layer and binds in the writable storage. This needs `/dev/fuse` on the host and `stat` inside the image. The published Moat images include both the driver and `stat`.
+- **`overlaydriver: kernel-overlayfs`** mounts each overlay in a private mount namespace before running the command. It needs kernel support for unprivileged OverlayFS and user namespaces, plus `unshare` with `--map-current-user` and `--keep-caps`, `mount`, and `setpriv` in the container. The namespace maps the caller’s user and primary group IDs.
+- **`overlaydriver: btrfs`** uses the same kernel mounts with a btrfs subvolume for each writable layer. Moat creates missing subvolumes and adds the `upper/` and `work/` directories. This driver additionally needs the `btrfs` tools on the host and a btrfs filesystem for storage.
+
+Overlay sources are exclusive during a run. Use separate sources for simultaneous runs that need writable copies of the same destination. Overlay settings are available for Apptainer runtimes.
 
 ### Default and user runtimes
 
@@ -95,7 +112,7 @@ At run time, the image is pulled (for `apptainer` into `cachedir`, reusing a cac
 Create a new runtime and write it to the config file.
 
 ```
-moat runtime create -n NAME --type TYPE [--executable EXEC] [--imageurl URL] [--cachedir DIR] [--passenv] [--mountcwd]
+moat runtime create -n NAME --type TYPE [--executable EXEC] [--imageurl URL] [--cachedir DIR] [--passenv] [--mountcwd] [--overlayowner OWNER] [--overlaydriver DRIVER] [--overlaydir DIR]
 ```
 
 | Flag | Required | Description |
@@ -107,13 +124,16 @@ moat runtime create -n NAME --type TYPE [--executable EXEC] [--imageurl URL] [--
 | `--cachedir` | see note | Directory for caching container images (required for the `apptainer` type) |
 | `--passenv` | no | Pass the environment variables to the container (default: `true`) |
 | `--mountcwd` | no | Bind-mount the caller's current working directory into the container (default: `false`) |
+| `--overlayowner` | no | Who provides the overlay mounts of the environments using this runtime: `internal` or `external` (apptainer only; default: `internal`; see [Overlay mounts](#overlay-mounts)) |
+| `--overlaydriver` | no | Overlay filesystem driver: `fuse-overlayfs`, `kernel-overlayfs`, or `btrfs` (apptainer only; default: `fuse-overlayfs`; `internal` owner only supports `fuse-overlayfs`) |
+| `--overlaydir` | no | Managed root directory for externally owned overlays (apptainer only; default: `$HOME/.cache/moat/overlays`) |
 
 Behavior:
 
-- The runtime specification is **validated before it is written to disk**: `type` must be given, and for the `apptainer` type so must `--imageurl` and `--cachedir`. For the `docker` type they are optional, but a runtime without `--imageurl` cannot pull an image at run time. The full resulting configuration is re-validated as well. On failure the config file is left untouched.
+- The runtime specification is **validated before it is written to disk**: `type` must be given, and for the `apptainer` type so must `--imageurl` and `--cachedir`. For the `docker` type they are optional, but a runtime without `--imageurl` cannot pull an image at run time. The overlay flags are only allowed for the `apptainer` type, `internal` only supports the `fuse-overlayfs` driver, and the full resulting configuration is re-validated as well. On failure the config file is left untouched.
 - If a user runtime with the same name already exists, nothing is done (`Runtime already exists.`).
 - Creating a runtime with the name of a **default** runtime is allowed and overwrites that default in all lookups (see [Default and user runtimes](#default-and-user-runtimes)).
-- The `--cachedir` path is expanded and resolved to an absolute path before it is stored.
+- The `--cachedir` and `--overlaydir` paths are expanded and resolved to absolute paths before they are stored.
 - When `--executable` is not given, the runtime is stored without an `executable` value and the type's default executable (`apptainer` or `docker`) is used at run time.
 - The configuration currently requires `passenv` to be `true`; creating a runtime with `--passenv=false` is rejected by validation.
 - On success, prints `Creating runtime 'NAME'` and `Runtime created successfully.`
@@ -131,6 +151,12 @@ moat runtime create -n myrt --type apptainer \
     --imageurl ghcr.io/aaltorse/moat:latest \
     --cachedir $HOME/.cache/moat/images \
     --mountcwd
+
+# A runtime with persistent, externally owned overlays
+moat runtime create -n myrt --type apptainer \
+    --imageurl ghcr.io/aaltorse/moat:latest \
+    --cachedir $HOME/.cache/moat/images \
+    --overlayowner external --overlaydriver kernel-overlayfs
 
 # A Docker-based runtime
 moat runtime create -n docker-lab --type docker \
@@ -154,7 +180,7 @@ moat runtime create -n custom-exe --type apptainer \
 Change one or more variables of an **existing** runtime. Only the flags you give are modified; every other variable of the runtime (and all other runtimes) keeps its current value. The change is written to the config file.
 
 ```
-moat runtime set -n NAME ( [--type TYPE] | [--executable EXEC] | [--imageurl URL] | [--cachedir DIR] | [--passenv VAL] | [--mountcwd VAL] )...
+moat runtime set -n NAME ( [--type TYPE] | [--executable EXEC] | [--imageurl URL] | [--cachedir DIR] | [--passenv VAL] | [--mountcwd VAL] | [--overlayowner OWNER] | [--overlaydriver DRIVER] | [--overlaydir DIR] )...
 ```
 
 | Flag | Required | Description |
@@ -166,14 +192,17 @@ moat runtime set -n NAME ( [--type TYPE] | [--executable EXEC] | [--imageurl URL
 | `--cachedir` | see note | New directory for caching container images |
 | `--passenv` | see note | Pass the host environment variables into the container (default: `true`) |
 | `--mountcwd` | see note | Bind-mount the caller's current working directory into the container (default: `false`) |
+| `--overlayowner` | see note | Who provides the overlay mounts of the environments using this runtime: `internal` or `external` (apptainer only) |
+| `--overlaydriver` | see note | New overlay filesystem driver: `fuse-overlayfs`, `kernel-overlayfs`, or `btrfs` (apptainer only) |
+| `--overlaydir` | see note | New managed root directory for externally owned overlays (apptainer only) |
 
-At least one of `--type`, `--executable`, `--imageurl`, `--cachedir`, `--passenv`, or `--mountcwd` must be given. For the boolean flags, `VAL` is `true` or `false` (the bare flag means `true`). The runtime must already exist, either as a user runtime or as a default runtime.
+At least one of `--type`, `--executable`, `--imageurl`, `--cachedir`, `--passenv`, `--mountcwd`, `--overlayowner`, `--overlaydriver`, or `--overlaydir` must be given. For the boolean flags, `VAL` is `true` or `false` (the bare flag means `true`). The runtime must already exist, either as a user runtime or as a default runtime.
 
 Behavior:
 
 - When the given runtime is a **default** runtime (e.g. `apptainer`), a **user** runtime with the same name is created from the default runtime's settings with the given changes applied, so that it overwrites the default runtime in all lookups (see [Default and user runtimes](#default-and-user-runtimes)). Nothing under `defaults.runtimes` is modified.
-- The updated specification is **validated before it is written to disk** (e.g. the `apptainer` type requires `imageurl` and `cachedir`), and the full resulting configuration is re-validated as well. On failure the config file is left untouched.
-- The `--cachedir` path is expanded and resolved to an absolute path before it is stored.
+- The updated specification is **validated before it is written to disk** (e.g. the `apptainer` type requires `imageurl` and `cachedir`; the overlay flags are only allowed for `apptainer`, and `internal` only supports `fuse-overlayfs`), and the full resulting configuration is re-validated as well. On failure the config file is left untouched.
+- The `--cachedir` and `--overlaydir` paths are expanded and resolved to absolute paths before they are stored.
 - The configuration currently requires `passenv` to be `true`; setting `--passenv=false` is rejected by validation.
 - On success, prints `Set NAME.field = [value]` for every changed variable and `Runtime updated successfully.`
 
@@ -185,6 +214,12 @@ moat runtime set -n myrt --imageurl ghcr.io/aaltorse/moat:v0.1.0
 
 # Mount the working directory in the default apptainer runtime
 moat runtime set -n apptainer --mountcwd
+
+# Switch the default apptainer runtime to persistent, externally owned overlays
+moat runtime set -n apptainer --overlayowner external --overlaydriver kernel-overlayfs
+
+# Use btrfs subvolumes for the overlays, stored in a custom directory
+moat runtime set -n apptainer --overlayowner external --overlaydriver btrfs --overlaydir $HOME/.cache/my-overlays
 
 # Change several variables at once
 moat runtime set -n myrt --imageurl ghcr.io/aaltorse/moat:latest --cachedir $HOME/.cache/moat/images --mountcwd
@@ -260,6 +295,7 @@ moat runtime cache list -n moat-v0-1-0
 - To fine-tune an individual field of an existing runtime, use [`moat runtime set`](#moat-runtime-set). To modify a field under `defaults.runtimes.{name}.*` directly (which `moat runtime set` never touches), use [`moat config set`](CONFIG.md#moat-config-set) on `defaults.runtimes.{name}.*` keys, or open the file with [`moat config edit`](CONFIG.md#moat-config-edit).
 - There is no `runtime remove` yet: to get rid of a user runtime, delete its `runtimes.{name}` entry from the config file (or reset it with `moat config edit`).
 - `mountcwd` set here is the runtime-level default; an environment's own `mountcwd` field takes precedence when set (see [ENV.md](ENV.md)).
+- The overlay settings (`overlayowner`, `overlaydriver`, `overlaydir`) are runtime-level: environments declare **which** container paths to overlay via `envs.{name}.overlaymounts` (see [ENV.md](ENV.md#overlay-mounts--o--overlay-mount)); the runtime decides **how** the overlays are provided (see [Overlay mounts](#overlay-mounts)). With `overlayowner: external`, the persistent overlay directories live under `overlaydir` in per-environment subdirectories; delete them manually if you want to reset an environment's overlays.
 - To free the disk space used by an `apptainer` runtime's cache, delete the `.sif` files listed by [`moat runtime cache list`](#moat-runtime-cache-list); the image is pulled again on the next run. The `docker` type needs no manual cache management — Docker prunes its own images.
 
 ## Typical workflow
