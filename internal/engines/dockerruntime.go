@@ -180,6 +180,12 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 		envArgs           []string
 	)
 
+	// Overlay mounts are only supported by the apptainer runtime (config
+	// validation normally rejects this combination already)
+	if len(env.OverlayMounts) > 0 {
+		return 1, fmt.Errorf("the environment has overlay mounts, but the docker runtime does not support them (only the apptainer runtime does)")
+	}
+
 	// Check if PassEnv is set in the environment
 	if env.PassEnv == nil {
 		passEnv = f.PassEnv

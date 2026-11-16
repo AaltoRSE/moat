@@ -612,3 +612,16 @@ func (suite *DockerRuntimeTestSuite) TestCacheListEmptyImageUrl() {
 func TestDockerRuntimeTestSuite(t *testing.T) {
 	suite.Run(t, new(DockerRuntimeTestSuite))
 }
+
+// TestRunRejectsOverlayMounts tests that the docker runtime fails with an
+// error when the environment has overlay mounts, because overlay mounts
+// are only supported by the apptainer runtime.
+func (suite *DockerRuntimeTestSuite) TestRunRejectsOverlayMounts() {
+	runtime := suite.newRuntime(false)
+	env := types.MoatEnv{Home: suite.HomeDir, Name: "testenv", OverlayMounts: []string{"/opt/conda"}}
+
+	code, err := runtime.Run(env, []string{"echo", "hello"}, nil)
+	require.Error(suite.T(), err)
+	assert.Equal(suite.T(), 1, code)
+	assert.Contains(suite.T(), err.Error(), "only the apptainer runtime does")
+}

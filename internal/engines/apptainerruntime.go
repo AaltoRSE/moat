@@ -23,11 +23,14 @@ func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 		executable = "apptainer"
 	}
 	return &ApptainerRuntime{
-		Executable: executable,
-		ImageUrl:   spec.ImageUrl,
-		CacheDir:   spec.CacheDir,
-		PassEnv:    spec.PassEnv,
-		MountCWD:   spec.MountCWD,
+		Executable:    executable,
+		ImageUrl:      spec.ImageUrl,
+		CacheDir:      spec.CacheDir,
+		PassEnv:       spec.PassEnv,
+		MountCWD:      spec.MountCWD,
+		OverlayOwner:  spec.OverlayOwner,
+		OverlayDriver: spec.OverlayDriver,
+		OverlayDir:    spec.OverlayDir,
 	}
 }
 
@@ -41,6 +44,18 @@ type ApptainerRuntime struct {
 	CacheDir   string
 	PassEnv    bool
 	MountCWD   bool
+	// OverlayOwner decides who provides the overlay mounts of the
+	// environments: "internal" lets apptainer create them at run time,
+	// "external" makes moat pre-create them on the host under OverlayDir.
+	// An empty value means "internal".
+	OverlayOwner string
+	// OverlayDriver selects the overlay filesystem driver. An empty value
+	// means "fuse-overlayfs".
+	OverlayDriver string
+	// OverlayDir is the managed root directory for externally owned
+	// overlays. An empty value means the default
+	// ($HOME/.cache/moat/overlays).
+	OverlayDir string
 }
 
 // ApptainerImage describes a container image: its file name and path in
@@ -245,6 +260,17 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 		// Set working directory to current directory
 		log.Debug().Str("workingDir", workingDir).Msg("Setting working directory for current directory")
 		apptainerArgs = append(apptainerArgs, []string{"--pwd", workingDir}...)
+	}
+
+	if len(env.OverlayMounts) > 0 {
+		overlays, err := f.prepareOverlays(env, imagePath, passEnv)
+		if err != nil {
+			return 1, fmt.Errorf("prepare overlay mounts: %w", err)
+		}
+		defer overlays.close()
+		apptainerArgs[0] = "exec"
+		apptainerArgs = append(apptainerArgs, overlays.flags...)
+		args = append(overlays.command, args...)
 	}
 
 	// Add the image path to arguments
