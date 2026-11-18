@@ -53,6 +53,10 @@ func CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error {
 	}
 
 	mounts := append(slices.Clone(env.Mounts), env.ReadOnlyMounts...)
+	mounts = slices.DeleteFunc(mounts, func(mount string) bool {
+		source, _, _ := strings.Cut(mount, ":")
+		return source == utils.CwdMountSource
+	})
 	if utils.CheckMounts(mounts) {
 		return nil
 	}
@@ -114,7 +118,7 @@ func CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error {
 func CheckAndCreateOverlaySources(mounts []string, driver string, autoCreate bool) error {
 	for _, mount := range mounts {
 		source, _, explicit := strings.Cut(mount, ":")
-		if !explicit {
+		if !explicit || source == utils.CwdMountSource {
 			continue
 		}
 		info, err := os.Stat(source)

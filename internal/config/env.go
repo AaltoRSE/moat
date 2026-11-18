@@ -94,7 +94,8 @@ func ValidateOverlayMounts(mounts []string) error {
 
 // NormalizeOverlayMounts expands paths in [source:]destination entries.
 // The source must be absolute after expansion. The destination must be a
-// clean, absolute container path other than the root. Destinations must
+// clean, absolute container path other than the root. A literal @cwd source
+// is preserved for run time and may omit the destination. Destinations must
 // be distinct and cannot be nested or contain mount option delimiters.
 func NormalizeOverlayMounts(mounts []string) ([]string, error) {
 	normalized := make([]string, len(mounts))
@@ -102,6 +103,14 @@ func NormalizeOverlayMounts(mounts []string) ([]string, error) {
 	for i, mount := range mounts {
 		source, dest, explicit := strings.Cut(mount, ":")
 		if !explicit {
+			if source == utils.CwdMountSource {
+				if destinations[utils.CwdMountSource] {
+					return nil, fmt.Errorf("duplicate overlay mount destination @cwd")
+				}
+				destinations[utils.CwdMountSource] = true
+				normalized[i] = source
+				continue
+			}
 			dest = source
 		}
 		dest, err := utils.ExpandPath(dest)
@@ -120,6 +129,10 @@ func NormalizeOverlayMounts(mounts []string) ([]string, error) {
 		destinations[dest] = true
 		normalized[i] = dest
 		if explicit {
+			if source == utils.CwdMountSource {
+				normalized[i] = source + ":" + dest
+				continue
+			}
 			source, err = utils.ExpandPath(source)
 			if err != nil {
 				return nil, fmt.Errorf("invalid overlay mount %q: %w", mount, err)
@@ -131,6 +144,9 @@ func NormalizeOverlayMounts(mounts []string) ([]string, error) {
 		}
 	}
 	for dest := range destinations {
+		if dest == utils.CwdMountSource {
+			continue
+		}
 		for parent := filepath.Dir(dest); parent != "/"; parent = filepath.Dir(parent) {
 			if destinations[parent] {
 				return nil, fmt.Errorf("overlay mount destination %q is nested under %q", dest, parent)

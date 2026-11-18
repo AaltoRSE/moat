@@ -319,6 +319,12 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 		mountCWD = *env.MountCWD
 	}
 
+	cwd, err := resolveCwdMount(env, mountCWD)
+	if err != nil {
+		return 1, err
+	}
+	workingDir = cwd.source
+
 	imageUrl, err := f.Pull(passEnv)
 
 	if err != nil {
@@ -327,13 +333,12 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 
 	mounts := []string{}
 
-	workingDir, err = os.Getwd()
-	if err != nil {
-		return 1, err
-	}
-
 	// Create mount binding flags
 	for _, mount := range env.Mounts {
+		if dest, ok := cwdMountDestination(mount, workingDir); ok {
+			mounts = append(mounts, "--mount", mountSpec(workingDir, dest))
+			continue
+		}
 		mountSplit := strings.Split(mount, ":")
 		if len(mountSplit) == 1 {
 			mountSplit = append(mountSplit, mountSplit[0])
@@ -348,6 +353,10 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 
 	// Create read-only mount binding flags
 	for _, roMount := range env.ReadOnlyMounts {
+		if dest, ok := cwdMountDestination(roMount, workingDir); ok {
+			mounts = append(mounts, "--mount", mountSpec(workingDir, dest, "readonly"))
+			continue
+		}
 		roSplit := strings.Split(roMount, ":")
 		if len(roSplit) == 1 {
 			roSplit = append(roSplit, roSplit[0])
@@ -388,12 +397,16 @@ func (f *DockerRuntime) Run(env types.MoatEnv, args []string, envVars []string) 
 	dockerArgs = append(dockerArgs, []string{"--mount", groupsMount}...)
 
 	// Mount working directory if requested and not already mounted
-	if !workingDirMounted && mountCWD {
+	if cwd.workdir == "" && !workingDirMounted && mountCWD {
 		log.Debug().Str("workingDir", workingDir).Msg("Mounting working directory")
 		dockerArgs = append(dockerArgs, []string{"--mount", fmt.Sprintf("type=bind,source=%s,target=%s", workingDir, workingDir)}...)
 		// Set working directory to current directory
 		log.Debug().Str("workingDir", workingDir).Msg("Setting working directory for current directory")
 		dockerArgs = append(dockerArgs, []string{"--workdir", workingDir}...)
+	}
+
+	if cwd.workdir != "" {
+		dockerArgs = append(dockerArgs, "--workdir", cwd.workdir)
 	}
 
 	// Add env arguments to the docker arguments

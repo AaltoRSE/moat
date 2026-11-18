@@ -408,3 +408,20 @@ func (suite *EnvTestSuite) TestCreateRejectsMalformedOverlayPaths() {
 		assert.NoDirExists(suite.T(), home)
 	}
 }
+
+// TestCreatePreservesCwdMounts verifies that saving an environment keeps
+// the run-time working directory token in all three mount lists.
+func (suite *EnvTestSuite) TestCreatePreservesCwdMounts() {
+	home := suite.T().TempDir()
+	cmd := root.CreateRootCmd()
+	cmd.SetArgs([]string{"--config", suite.ConfigFile, "env", "create", "--name", "cwd", "--home", home,
+		"-m", "@cwd", "-r", "@cwd:/readonly", "-O", "@cwd:/overlay", "--yes"})
+	require.NoError(suite.T(), cmd.Execute())
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	env, err := config.GetEnv(cfg, "cwd", false)
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), []string{"@cwd"}, env.Mounts)
+	assert.Equal(suite.T(), []string{"@cwd:/readonly"}, env.ReadOnlyMounts)
+	assert.Equal(suite.T(), []string{"@cwd:/overlay"}, env.OverlayMounts)
+}

@@ -378,8 +378,8 @@ func (suite *ApptainerRuntimeTestSuite) TestRunInternalOwnerUsesFusemount() {
 	assert.Contains(suite.T(), overlayFlagValues(args, "--mount"), mountSpec(filepath.Join(scratch, "0"), stage+"/0"))
 	assert.NoDirExists(suite.T(), scratch)
 	assert.NotContains(suite.T(), args, "--overlay")
-	assert.Equal(suite.T(), []string{"/bin/sh", stage + "/run.sh", "fuse-overlayfs", "2",
-		stage + "/0", "/opt/conda", stage + "/1", "/usr/local", "echo", "hello"}, args[len(args)-10:])
+	assert.Equal(suite.T(), []string{"/bin/sh", stage + "/run.sh", "fuse-overlayfs", "", "2",
+		stage + "/0", "/opt/conda", stage + "/1", "/usr/local", "echo", "hello"}, args[len(args)-11:])
 }
 
 // TestRunInternalOwnerWithSourceUsesPersistentUpper verifies that the
@@ -447,9 +447,9 @@ func (suite *ApptainerRuntimeTestSuite) TestRunRejectsSharedOverlayStorage() {
 	runtime := suite.newOverlayRuntime("external", "kernel-overlayfs", "")
 	source := suite.T().TempDir()
 	env := types.MoatEnv{Home: suite.HomeDir, OverlayMounts: []string{source + ":/data"}}
-	plan, err := runtime.prepareOverlays(env, "", false)
+	plan, err := runtime.prepareOverlays(env, "", false, cwdMount{})
 	require.NoError(suite.T(), err)
-	_, err = runtime.prepareOverlays(env, "", false)
+	_, err = runtime.prepareOverlays(env, "", false, cwdMount{})
 	require.ErrorContains(suite.T(), err, "exclusive storage")
 	plan.close()
 	suite.runAndCaptureArgs(runtime, env, "echo", "hello")
@@ -535,4 +535,73 @@ func (suite *ApptainerRuntimeTestSuite) TestRunInternalOwnerRejectsKernelDriver(
 // a normal test function and pass our suite to suite.Run
 func TestApptainerRuntimeTestSuite(t *testing.T) {
 	suite.Run(t, new(ApptainerRuntimeTestSuite))
+}
+
+// TestRunCwdReadOnlyMount verifies that selecting an explicit working
+// directory preserves the read-only mount mode.
+func (suite *ApptainerRuntimeTestSuite) TestRunCwdReadOnlyMount() {
+	runtime := suite.newRuntime(true)
+	env := types.MoatEnv{Home: suite.HomeDir, ReadOnlyMounts: []string{"@cwd:/workspace"}}
+	args := suite.runAndCaptureArgs(runtime, env, "true")
+	assert.Contains(suite.T(), overlayFlagValues(args, "--mount"), mountSpec(suite.WorkDir, "/workspace", "ro"))
+	assert.Equal(suite.T(), []string{"/workspace"}, overlayFlagValues(args, "--pwd"))
+	assert.False(suite.T(), hasBindArg(args, suite.WorkDir))
+}
+
+// TestRunCwdCopyOverlayKeepsProjectEditsSeparate verifies that managed copies
+// survive subsequent runs and are kept separate by source project.
+func (suite *ApptainerRuntimeTestSuite) TestRunCwdCopyOverlayKeepsProjectEditsSeparate() {
+	root := suite.T().TempDir()
+	runtime := suite.newOverlayRuntime("external", "copy", root)
+	runtime.MountCWD = true
+	env := types.MoatEnv{Home: suite.HomeDir, Name: "testenv", OverlayMounts: []string{"@cwd:/workspace"}}
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(suite.WorkDir, "file"), []byte("original"), 0o600))
+	args := suite.runAndCaptureArgs(runtime, env, "true")
+	assert.Equal(suite.T(), "run", args[0])
+	assert.Equal(suite.T(), []string{"/workspace"}, overlayFlagValues(args, "--pwd"))
+	assert.Empty(suite.T(), overlayFlagValues(args, "--fusemount"))
+
+	dirs, err := os.ReadDir(filepath.Join(root, env.Name))
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), dirs, 1)
+	tree := filepath.Join(root, env.Name, dirs[0].Name(), "tree")
+	assert.Contains(suite.T(), overlayFlagValues(args, "--mount"), mountSpec(tree, "/workspace"))
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(tree, "file"), []byte("container"), 0o600))
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(suite.WorkDir, "file"), []byte("host"), 0o600))
+	suite.runAndCaptureArgs(runtime, env, "true")
+	contents, err := os.ReadFile(filepath.Join(tree, "file"))
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), "container", string(contents))
+
+	other := suite.T().TempDir()
+	require.NoError(suite.T(), os.Chdir(other))
+	defer func() { _ = os.Chdir(suite.WorkDir) }()
+	require.NoError(suite.T(), os.WriteFile(filepath.Join(other, "file"), []byte("other project"), 0o600))
+	suite.runAndCaptureArgs(runtime, env, "true")
+	dirs, err = os.ReadDir(filepath.Join(root, env.Name))
+	require.NoError(suite.T(), err)
+	assert.Len(suite.T(), dirs, 2)
+}
+
+// TestRunCwdOverlayFreezesInitialSnapshot checks that an external overlay
+// keeps its original lower even after the host project is edited.
+func (suite *ApptainerRuntimeTestSuite) TestRunCwdOverlayFreezesInitialSnapshot() {
+	root := suite.T().TempDir()
+	runtime := suite.newOverlayRuntime("external", "fuse-overlayfs", root)
+	runtime.OverlayFSSnapshot = "copy"
+	env := types.MoatEnv{Home: suite.HomeDir, Name: "testenv", OverlayMounts: []string{"@cwd:/workspace"}}
+	file := filepath.Join(suite.WorkDir, "file")
+	require.NoError(suite.T(), os.WriteFile(file, []byte("original"), 0o600))
+	args := suite.runAndCaptureArgs(runtime, env, "true")
+	assert.Len(suite.T(), overlayFlagValues(args, "--fusemount"), 1)
+	dirs, err := os.ReadDir(filepath.Join(root, env.Name))
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), dirs, 1)
+	lower := filepath.Join(root, env.Name, dirs[0].Name(), "lower")
+	assert.Contains(suite.T(), overlayFlagValues(args, "--mount"), mountSpec(lower, "/workspace", "ro"))
+	require.NoError(suite.T(), os.WriteFile(file, []byte("host changed"), 0o600))
+	suite.runAndCaptureArgs(runtime, env, "true")
+	contents, err := os.ReadFile(filepath.Join(lower, "file"))
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), "original", string(contents))
 }
