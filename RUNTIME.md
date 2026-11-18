@@ -10,7 +10,7 @@ A runtime specification consists of:
 - `cachedir` — the directory where pulled images are cached (required for `apptainer`; used as a scratch directory by `docker`),
 - `passenv` — whether the host environment variables are passed into the container,
 - `mountcwd` — whether the directory you run `moat` from is bind-mounted into the container and used as the working directory, and
-- `overlayowner`, `overlaydriver`, `overlaydir` — how the [overlay mounts](ENV.md#overlay-mounts--o--overlay-mount) of the environments that use this runtime are provided (apptainer only).
+- `overlayowner`, `overlaydriver`, `overlayfssnapshot`, `overlaydir` — how the [overlay mounts](ENV.md#overlay-mounts--o--overlay-mount) of the environments that use this runtime are provided (apptainer only).
 
 There are two sources of runtimes:
 
@@ -63,8 +63,9 @@ Names must be non-empty and contain only **alphanumeric characters, underscores,
 | `cachedir` | Directory where pulled images are cached. Required for the `apptainer` type. The directory is created automatically on first use if it does not exist. The path may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded, and relative paths are resolved to absolute ones before the runtime is stored. For the `docker` type the directory is not an image cache (Docker keeps its own); it is the scratch directory for the temporary user-identification file written for every run, and it is also created automatically on first use if it does not exist. |
 | `passenv` | Pass the host environment variables into the container (default: `true`). |
 | `mountcwd` | Bind-mount the directory you run `moat run` from, and use it as the working directory (default: `false`). |
-| `overlayowner` | Who provides the overlay mounts of the environments using this runtime: `internal` (the container engine creates the overlays at run time) or `external` (moat pre-creates them on the host). Apptainer only. Default: `internal`. With `internal`, only the `fuse-overlayfs` driver is allowed. |
-| `overlaydriver` | Overlay filesystem driver: `fuse-overlayfs`, `kernel-overlayfs`, or `btrfs`. Apptainer only. Default: `fuse-overlayfs`. |
+| `overlayowner` | Who provides the overlay mounts of the environments using this runtime: `internal` (the container engine creates the overlays at run time) or `external` (moat pre-creates them on the host). Apptainer only. Default: `internal`. Internal storage supports `fuse-overlayfs`, `copy`, and `reflink`. |
+| `overlaydriver` | Overlay driver: `fuse-overlayfs`, `kernel-overlayfs`, `btrfs`, `copy`, or `reflink`. Apptainer only. Default: `fuse-overlayfs`. |
+| `overlayfssnapshot` | Snapshot method for an OverlayFS host lower. Values are `auto` (default), `nativefs`, `reflink`, `copy`, and `none`. |
 | `overlaydir` | Managed root directory for externally owned overlays: per-environment overlay directories are created under `<overlaydir>/<env name>/`. Apptainer only. Default: `$HOME/.cache/moat/overlays`. The path may start with `~` or contain environment variables, and is resolved to an absolute path before the runtime is stored. |
 
 ### Runtime types
@@ -78,13 +79,20 @@ Both types mount the environment's fake home directory at your home directory pa
 
 ### Overlay mounts
 
-Each [overlay entry](ENV.md#overlay-mounts--o--overlay-mount) makes one image directory writable. Normal file permissions still apply.
+An [overlay entry](ENV.md#overlay-mounts--o--overlay-mount) exposes an image directory or the host working directory (`@cwd`) through private writable storage. Normal file permissions still apply.
 
-- **`overlayowner: internal`** (default) uses temporary storage for a plain destination and removes it after the run. An explicit host source persists across runs. This mode uses `fuse-overlayfs`.
-- **`overlayowner: external`** keeps writes across runs. A plain destination uses `<overlaydir>/<env name>/<SHA-256 of destination>`. An explicit source uses the named host directory.
+- **`overlayowner: internal`** (default) uses temporary storage for a plain destination and removes it after the run. An explicit host source persists across runs. This owner supports `fuse-overlayfs` and the direct directory drivers.
+- **`overlayowner: external`** keeps writes across runs. Managed storage lives under `<overlaydir>/<env name>/`. For `@cwd`, the storage key includes the resolved host directory and container destination, so different projects keep separate state. An explicit source uses the named host directory.
 - **`overlaydriver: fuse-overlayfs`** (default) runs the libfuse3-based driver inside the container with Apptainer's `--fusemount`. Moat mounts a read-only view of the SIF image at a separate path for the lower layer and binds in the writable storage. This needs `/dev/fuse` on the host and `stat` inside the image. The published Moat images include both the driver and `stat`.
 - **`overlaydriver: kernel-overlayfs`** mounts each overlay in a private mount namespace before running the command. It needs kernel support for unprivileged OverlayFS and user namespaces, plus `unshare` with `--map-current-user` and `--keep-caps`, `mount`, and `setpriv` in the container. The namespace maps the caller’s user and primary group IDs.
 - **`overlaydriver: btrfs`** uses the same kernel mounts with a btrfs subvolume for each writable layer. Moat creates missing subvolumes and adds the `upper/` and `work/` directories. This driver additionally needs the `btrfs` tools on the host and a btrfs filesystem for storage.
+
+- **`overlaydriver: copy`** binds an ordinary writable copy of the lower directory.
+- **`overlaydriver: reflink`** binds a writable directory populated by file-level copy-on-write clones. The source and backing storage must support reflinks. An image filesystem such as SquashFS typically requires the `copy` driver.
+
+For the three OverlayFS drivers, `overlayfssnapshot` controls how to capture an `@cwd` lower. The default `auto` tries a native btrfs subvolume snapshot, then reflinks, then a full copy. A native snapshot requires a btrfs subvolume as the source and compatible backing storage on the same filesystem. With nested subvolumes, `auto` falls back to a file-level method so their files are included. When creating a snapshot, an explicit `nativefs` or `reflink` request fails if the requested operation is unavailable. `none` uses the live project directory and emits a warning. Avoid host edits while a live OverlayFS mount is active. Image-backed OverlayFS entries already have an immutable lower and skip this setting. Copies and reflinks capture files individually at startup. Finish host edits before startup if you need a consistent point-in-time tree. Host copies and reflinks require GNU `cp` on the host. Image-backed copies use GNU `cp` inside the image.
+
+Persistent mounts keep their original snapshot or writable tree across runs, including container edits and deletions. To start from the current project files, stop the environment and remove the associated backing directory. The `--debug` log includes the backing directory for each mount. Switching an external `@cwd` OverlayFS mount between live and snapshotted operation selects separate managed storage.
 
 Overlay sources are exclusive during a run. Use separate sources for simultaneous runs that need writable copies of the same destination. Overlay settings are available for Apptainer runtimes.
 
@@ -112,7 +120,7 @@ At run time, the image is pulled (for `apptainer` into `cachedir`, reusing a cac
 Create a new runtime and write it to the config file.
 
 ```
-moat runtime create -n NAME --type TYPE [--executable EXEC] [--imageurl URL] [--cachedir DIR] [--passenv] [--mountcwd] [--overlayowner OWNER] [--overlaydriver DRIVER] [--overlaydir DIR]
+moat runtime create -n NAME --type TYPE [--executable EXEC] [--imageurl URL] [--cachedir DIR] [--passenv] [--mountcwd] [--overlayowner OWNER] [--overlaydriver DRIVER] [--overlayfssnapshot MODE] [--overlaydir DIR]
 ```
 
 | Flag | Required | Description |
@@ -125,12 +133,13 @@ moat runtime create -n NAME --type TYPE [--executable EXEC] [--imageurl URL] [--
 | `--passenv` | no | Pass the environment variables to the container (default: `true`) |
 | `--mountcwd` | no | Bind-mount the caller's current working directory into the container (default: `false`) |
 | `--overlayowner` | no | Who provides the overlay mounts of the environments using this runtime: `internal` or `external` (apptainer only; default: `internal`; see [Overlay mounts](#overlay-mounts)) |
-| `--overlaydriver` | no | Overlay filesystem driver: `fuse-overlayfs`, `kernel-overlayfs`, or `btrfs` (apptainer only; default: `fuse-overlayfs`; `internal` owner only supports `fuse-overlayfs`) |
+| `--overlaydriver` | no | Overlay filesystem driver: `fuse-overlayfs`, `kernel-overlayfs`, `btrfs`, `copy`, or `reflink` (apptainer only; default: `fuse-overlayfs`; `internal` supports `fuse-overlayfs`, `copy`, and `reflink`) |
+| `--overlayfssnapshot` | no | Snapshot mode for an OverlayFS host lower (default: `auto`) |
 | `--overlaydir` | no | Managed root directory for externally owned overlays (apptainer only; default: `$HOME/.cache/moat/overlays`) |
 
 Behavior:
 
-- The runtime specification is **validated before it is written to disk**: `type` must be given, and for the `apptainer` type so must `--imageurl` and `--cachedir`. For the `docker` type they are optional, but a runtime without `--imageurl` cannot pull an image at run time. The overlay flags are only allowed for the `apptainer` type, `internal` only supports the `fuse-overlayfs` driver, and the full resulting configuration is re-validated as well. On failure the config file is left untouched.
+- The runtime specification is **validated before it is written to disk**: `type` must be given, and for the `apptainer` type so must `--imageurl` and `--cachedir`. For the `docker` type they are optional, but a runtime without `--imageurl` cannot pull an image at run time. The overlay flags are only allowed for the `apptainer` type, `internal` supports `fuse-overlayfs`, `copy`, and `reflink`, and the full resulting configuration is re-validated as well. On failure the config file is left untouched.
 - If a user runtime with the same name already exists, nothing is done (`Runtime already exists.`).
 - Creating a runtime with the name of a **default** runtime is allowed and overwrites that default in all lookups (see [Default and user runtimes](#default-and-user-runtimes)).
 - The `--cachedir` and `--overlaydir` paths are expanded and resolved to absolute paths before they are stored.
@@ -180,7 +189,7 @@ moat runtime create -n custom-exe --type apptainer \
 Change one or more variables of an **existing** runtime. Only the flags you give are modified; every other variable of the runtime (and all other runtimes) keeps its current value. The change is written to the config file.
 
 ```
-moat runtime set -n NAME ( [--type TYPE] | [--executable EXEC] | [--imageurl URL] | [--cachedir DIR] | [--passenv VAL] | [--mountcwd VAL] | [--overlayowner OWNER] | [--overlaydriver DRIVER] | [--overlaydir DIR] )...
+moat runtime set -n NAME ( [--type TYPE] | [--executable EXEC] | [--imageurl URL] | [--cachedir DIR] | [--passenv VAL] | [--mountcwd VAL] | [--overlayowner OWNER] | [--overlaydriver DRIVER] | [--overlayfssnapshot MODE] | [--overlaydir DIR] )...
 ```
 
 | Flag | Required | Description |
@@ -193,15 +202,16 @@ moat runtime set -n NAME ( [--type TYPE] | [--executable EXEC] | [--imageurl URL
 | `--passenv` | see note | Pass the host environment variables into the container (default: `true`) |
 | `--mountcwd` | see note | Bind-mount the caller's current working directory into the container (default: `false`) |
 | `--overlayowner` | see note | Who provides the overlay mounts of the environments using this runtime: `internal` or `external` (apptainer only) |
-| `--overlaydriver` | see note | New overlay filesystem driver: `fuse-overlayfs`, `kernel-overlayfs`, or `btrfs` (apptainer only) |
+| `--overlaydriver` | see note | New overlay filesystem driver: `fuse-overlayfs`, `kernel-overlayfs`, `btrfs`, `copy`, or `reflink` (apptainer only) |
+| `--overlayfssnapshot` | see note | Snapshot mode for an OverlayFS host lower |
 | `--overlaydir` | see note | New managed root directory for externally owned overlays (apptainer only) |
 
-At least one of `--type`, `--executable`, `--imageurl`, `--cachedir`, `--passenv`, `--mountcwd`, `--overlayowner`, `--overlaydriver`, or `--overlaydir` must be given. For the boolean flags, `VAL` is `true` or `false` (the bare flag means `true`). The runtime must already exist, either as a user runtime or as a default runtime.
+At least one of `--type`, `--executable`, `--imageurl`, `--cachedir`, `--passenv`, `--mountcwd`, `--overlayowner`, `--overlaydriver`, `--overlayfssnapshot`, or `--overlaydir` must be given. For the boolean flags, `VAL` is `true` or `false` (the bare flag means `true`). The runtime must already exist, either as a user runtime or as a default runtime.
 
 Behavior:
 
 - When the given runtime is a **default** runtime (e.g. `apptainer`), a **user** runtime with the same name is created from the default runtime's settings with the given changes applied, so that it overwrites the default runtime in all lookups (see [Default and user runtimes](#default-and-user-runtimes)). Nothing under `defaults.runtimes` is modified.
-- The updated specification is **validated before it is written to disk** (e.g. the `apptainer` type requires `imageurl` and `cachedir`; the overlay flags are only allowed for `apptainer`, and `internal` only supports `fuse-overlayfs`), and the full resulting configuration is re-validated as well. On failure the config file is left untouched.
+- The updated specification is **validated before it is written to disk** (e.g. the `apptainer` type requires `imageurl` and `cachedir`; the overlay flags are only allowed for `apptainer`, and `internal` supports `fuse-overlayfs`, `copy`, and `reflink`), and the full resulting configuration is re-validated as well. On failure the config file is left untouched.
 - The `--cachedir` and `--overlaydir` paths are expanded and resolved to absolute paths before they are stored.
 - The configuration currently requires `passenv` to be `true`; setting `--passenv=false` is rejected by validation.
 - On success, prints `Set NAME.field = [value]` for every changed variable and `Runtime updated successfully.`
@@ -295,7 +305,7 @@ moat runtime cache list -n moat-v0-1-0
 - To fine-tune an individual field of an existing runtime, use [`moat runtime set`](#moat-runtime-set). To modify a field under `defaults.runtimes.{name}.*` directly (which `moat runtime set` never touches), use [`moat config set`](CONFIG.md#moat-config-set) on `defaults.runtimes.{name}.*` keys, or open the file with [`moat config edit`](CONFIG.md#moat-config-edit).
 - There is no `runtime remove` yet: to get rid of a user runtime, delete its `runtimes.{name}` entry from the config file (or reset it with `moat config edit`).
 - `mountcwd` set here is the runtime-level default; an environment's own `mountcwd` field takes precedence when set (see [ENV.md](ENV.md)).
-- The overlay settings (`overlayowner`, `overlaydriver`, `overlaydir`) are runtime-level: environments declare **which** container paths to overlay via `envs.{name}.overlaymounts` (see [ENV.md](ENV.md#overlay-mounts--o--overlay-mount)); the runtime decides **how** the overlays are provided (see [Overlay mounts](#overlay-mounts)). With `overlayowner: external`, the persistent overlay directories live under `overlaydir` in per-environment subdirectories; delete them manually if you want to reset an environment's overlays.
+- The overlay settings (`overlayowner`, `overlaydriver`, `overlayfssnapshot`, `overlaydir`) are runtime-level: environments declare **which** container paths to overlay via `envs.{name}.overlaymounts` (see [ENV.md](ENV.md#overlay-mounts--o--overlay-mount)); the runtime decides **how** the overlays are provided (see [Overlay mounts](#overlay-mounts)). With `overlayowner: external`, the persistent overlay directories live under `overlaydir` in per-environment subdirectories; delete them manually if you want to reset an environment's overlays.
 - To free the disk space used by an `apptainer` runtime's cache, delete the `.sif` files listed by [`moat runtime cache list`](#moat-runtime-cache-list); the image is pulled again on the next run. The `docker` type needs no manual cache management — Docker prunes its own images.
 
 ## Typical workflow

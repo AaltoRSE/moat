@@ -18,6 +18,7 @@ The `moat env` command group lets you create, inspect, copy, modify, and remove 
   - [Fake home (`-H/--home`)](#fake-home--h--home)
   - [Mounts (`-m/--mount`, `-r/--ro-mount`)](#mounts--m--mount--r--ro-mount)
   - [Overlay mounts (`-O/--overlay-mount`)](#overlay-mounts--o--overlay-mount)
+  - [Mounting the current directory with `@cwd`](#mounting-the-current-directory-with-cwd)
   - [Working directory mounting (`mountcwd`)](#working-directory-mounting-mountcwd)
   - [Command (`-C/--command`)](#command--c--command)
   - [Non-interactive mode (`-y/--yes`)](#non-interactive-mode--y--yes)
@@ -70,11 +71,21 @@ Overlay mounts are given as `dest` or `source:dest`, where `dest` is an absolute
 - `--overlay-mount /opt/conda` — overlay the container path `/opt/conda`.
 - `--overlay-mount /home/user/myoverlay:/data` — overlay the container path `/data`, storing the writable layer in the host directory `/home/user/myoverlay` (its `upper/` and `work/` subdirectories are created when missing).
 
-Repeat the flag to overlay several directories. Each destination must name an existing directory in the image. Use clean absolute paths with distinct, non-nested destinations. Destination names cannot contain whitespace, commas, colons, or backslashes. Host sources must also be absolute. Both paths support a leading `~` and environment variables.
+Repeat the flag to overlay several directories. Image-backed entries require a directory in the image. An `@cwd` overlay may target a new container path. Use clean absolute paths with distinct, non-nested destinations. Destination names cannot contain whitespace, commas, colons, or backslashes. Host sources must also be absolute. Both paths support a leading `~` and environment variables.
 
 The [runtime's overlay settings](RUNTIME.md#overlay-mounts) determine where writes are stored. With the default `internal` owner, writes to a plain destination are discarded after the run. With the `external` owner, writes persist in the managed overlay directory. An explicit source keeps writes in that host directory with either owner. Moat creates missing explicit sources with confirmation, or automatically with `-y`. The btrfs driver creates a subvolume for the source.
 
 Set overlay mounts with the `-O/--overlay-mount` flag of `moat env create`, `moat env copy`, or `moat env set`, or with `moat config set envs.{name}.overlaymounts ...` / `moat config append envs.{name}.overlaymounts ...` (see [CONFIG.md](CONFIG.md#moat-config-set)). Inspect them with `moat env show`.
+
+### Mounting the current directory with `@cwd`
+
+Use `@cwd` as the source of a mount to map the directory where you invoke `moat run`. A bare `@cwd` maps it at the same absolute path. Use `@cwd:/workspace` to choose a different container path. This works in environment flags and in the YAML lists. Quote entries that start with `@` in YAML, for example `- "@cwd:/workspace"`. The saved configuration keeps the token across runs.
+
+- `-m @cwd:/workspace` binds the host directory read-write.
+- `-r @cwd:/workspace` binds it read-only.
+- `-O @cwd:/workspace` exposes the project through the selected overlay driver. Container writes go to private storage. See [overlay drivers and snapshot modes](RUNTIME.md#overlay-mounts).
+
+With `mountcwd: true`, the explicit mapping supplies the container's starting directory and replaces the automatic bind. Specify a single `@cwd` mapping when `mountcwd` is enabled. With `mountcwd: false`, you can mount the working directory at several distinct paths. An in-place mapping conflicts with the fake home if you run from the home directory itself. Choose a different destination in that case.
 
 ### Working directory mounting (`mountcwd`)
 

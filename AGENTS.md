@@ -211,7 +211,7 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 |---|---|---|
 | `Config` | `config.go` | Root config struct: `Defaults`, `Envs map[string]MoatEnv`, `Runtimes map[string]RuntimeSpec` |
 | `Defaults` | `config.go` | Default runtime settings: `Runtime string`, `Runtimes map[string]RuntimeSpec` |
-| `RuntimeSpec` | `runtimespec.go` | Config fields for any runtime (type, executable, imageurl, cachedir, passenv, mountcwd, overlayowner, overlaydriver, overlaydir) |
+| `RuntimeSpec` | `runtimespec.go` | Config fields for any runtime (type, executable, imageurl, cachedir, passenv, mountcwd, overlayowner, overlaydriver, overlayfssnapshot, overlaydir) |
 | `RuntimeUpdate` | `runtimespec.go` | A single field/value pair used by `moat runtime set` to change one runtime field |
 | `MoatEnv` | `moatenv.go` | An individual named environment (home, mounts, readonlymounts, overlaymounts, mountcwd, runtime, passenv, command; `Name` is metadata set by the config lookups, never persisted) |
 | `SemVersion` | `version.go` | A parsed semantic version: the raw version string, the major/minor/patch version numbers, and the commit hash of a git-describe suffix |
@@ -289,6 +289,8 @@ Subcommands of subcommands (nested command groups) follow the same pattern one l
 - The `Runtime` interface requires two methods: `Run(env types.MoatEnv, args []string, envVars []string) (int, error)` and `Shell(env types.MoatEnv) (int, error)`.
 - The runtime spec's `MountCWD` setting controls whether the runtime bind-mounts the caller's current working directory: when `ApptainerRuntime` is constructed from a spec with `MountCWD` enabled, `Run` adds `--bind <cwd> --pwd <cwd>` to the apptainer command line (unless the working directory is already given as an environment mount). The environment's `MountCWD` (`types.MoatEnv.MountCWD`) has priority over the runtime's `MountCWD`: when it is non-nil, its value overwrites the runtime's setting. The `mountcwd` default for the apptainer runtime is registered as `false` in `internal/config.CreateDefaultConfig`.
 - `apptainer_overlay.go` stages each Apptainer overlay mount. The FUSE driver uses a read-only SIF image bind for the lower layer and a separate bind for the writable layer. The kernel and btrfs drivers mount each destination in a private mount namespace. Internal storage is temporary unless the entry specifies a source. External storage is keyed by environment name and destination hash unless the entry specifies a source. The runtime locks storage for the duration of the run.
+- `cwdmount.go` resolves `@cwd` sources at run time, checks destination conflicts, and selects the startup directory when `mountcwd` is enabled.
+- `overlay_tree.go` prepares immutable lower views for host-backed OverlayFS mounts and writable trees for the direct copy and reflink drivers. Managed trees are published atomically and retained across runs.
 - Each runtime is implemented in its own file: `apptainerruntime.go`, and future runtimes in `{name}.go`.
 - Implementation-specific helper structs that are **private to one runtime** (e.g. `ApptainerImage`) may be defined in the same file as the implementation.
 - The `Runtime` interface itself must stay in `runtime.go`; if it is referenced from another package, do not duplicate it — import from `internal/engines`.
