@@ -46,35 +46,30 @@ func ValidateRuntimeSpec(spec types.RuntimeSpec) error {
 	return nil
 }
 
-// validateRuntimeSpecRules applies the cross-field validation rules of a
-// user-specified RuntimeSpec that cannot be expressed with validator tags:
-// the overlay settings are only supported for the apptainer runtime type,
-// and the internal overlay owner only supports the fuse-overlayfs driver
-// (an empty owner is treated as internal, an empty driver as
-// fuse-overlayfs). The apptainer-only rule applies to user-specified
-// runtimes, where the combination is explicitly chosen; for the default
-// runtimes moat registers the overlay settings only for apptainer, and the
-// runtime lookup rejects them for any other type at run time. It returns
-// an error if a rule is violated.
+// validateRuntimeSpecRules validates overlay settings on a user runtime.
+// Default runtime types are also checked when selecting the runtime engine.
 func validateRuntimeSpecRules(spec types.RuntimeSpec) error {
 	if spec.Type != "" && spec.Type != "apptainer" &&
-		(spec.OverlayOwner != "" || spec.OverlayDriver != "" || spec.OverlayDir != "") {
-		return fmt.Errorf("overlay settings (overlayowner, overlaydriver, overlaydir) are only supported for the apptainer runtime type, not %q", spec.Type)
+		(spec.OverlayOwner != "" || spec.OverlayDriver != "" || spec.OverlayFSSnapshot != "" || spec.OverlayDir != "") {
+		return fmt.Errorf("overlay settings (overlayowner, overlaydriver, overlayfssnapshot, overlaydir) are only supported for the apptainer runtime type, not %q", spec.Type)
 	}
 	return validateOverlayOwnerDriver(spec)
 }
 
-// validateOverlayOwnerDriver applies the overlay owner/driver consistency
-// rule of a RuntimeSpec: the internal overlay owner only supports the
-// fuse-overlayfs driver (an empty owner is treated as internal, an empty
-// driver as fuse-overlayfs). It returns an error if the rule is violated.
+// validateOverlayOwnerDriver checks the owner, driver, and snapshot
+// settings together. An empty owner means internal and an empty driver
+// means fuse-overlayfs.
 func validateOverlayOwnerDriver(spec types.RuntimeSpec) error {
 	owner := spec.OverlayOwner
 	if owner == "" {
 		owner = "internal"
 	}
-	if owner == "internal" && spec.OverlayDriver != "" && spec.OverlayDriver != "fuse-overlayfs" {
-		return fmt.Errorf("overlayowner \"internal\" only supports overlaydriver \"fuse-overlayfs\", got %q", spec.OverlayDriver)
+	direct := spec.OverlayDriver == "copy" || spec.OverlayDriver == "reflink"
+	if owner == "internal" && !direct && spec.OverlayDriver != "" && spec.OverlayDriver != "fuse-overlayfs" {
+		return fmt.Errorf("overlayowner \"internal\" only supports overlaydriver fuse-overlayfs, copy, or reflink, got %q", spec.OverlayDriver)
+	}
+	if direct && spec.OverlayFSSnapshot != "" && spec.OverlayFSSnapshot != "auto" {
+		return fmt.Errorf("overlayfssnapshot applies only to OverlayFS drivers, got overlaydriver %q", spec.OverlayDriver)
 	}
 	return nil
 }

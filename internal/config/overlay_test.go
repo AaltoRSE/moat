@@ -18,6 +18,7 @@ func TestDefaultConfigOverlayDefaults(t *testing.T) {
 	cfg := CreateDefaultConfig()
 	assert.Equal(t, "internal", cfg.GetString("defaults.runtimes.apptainer.overlayowner"))
 	assert.Equal(t, "fuse-overlayfs", cfg.GetString("defaults.runtimes.apptainer.overlaydriver"))
+	assert.Equal(t, "auto", cfg.GetString("defaults.runtimes.apptainer.overlayfssnapshot"))
 	assert.Equal(t, "$HOME/.cache/moat/overlays", cfg.GetString("defaults.runtimes.apptainer.overlaydir"))
 	// The docker default runtime has no overlay settings
 	assert.Empty(t, cfg.GetString("defaults.runtimes.docker.overlayowner"))

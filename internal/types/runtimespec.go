@@ -11,23 +11,25 @@ package types
 // "internal" (the container engine creates the overlays at run time) or
 // "external" (moat pre-creates them on the host under OverlayDir),
 // OverlayDriver selects the overlay filesystem driver, and OverlayDir is
-// the managed root directory for externally owned overlays.
+// the managed root directory for externally owned overlays. OverlayFSSnapshot
+// controls snapshotting of host lower directories for OverlayFS drivers.
 type RuntimeSpec struct {
-	Type          string `yaml:"type" validate:"required"`
-	Executable    string `yaml:"executable,omitempty"`
-	ImageUrl      string `yaml:"imageurl,omitempty" validate:"required_if=Type apptainer"`
-	CacheDir      string `yaml:"cachedir,omitempty" validate:"required_if=Type apptainer"`
-	PassEnv       bool   `yaml:"passenv" validate:"required"`
-	MountCWD      bool   `yaml:"mountcwd"`
-	OverlayOwner  string `yaml:"overlayowner,omitempty" validate:"omitempty,oneof=internal external"`
-	OverlayDriver string `yaml:"overlaydriver,omitempty" validate:"omitempty,oneof=fuse-overlayfs kernel-overlayfs btrfs"`
-	OverlayDir    string `yaml:"overlaydir,omitempty"`
+	Type              string `yaml:"type" validate:"required"`
+	Executable        string `yaml:"executable,omitempty"`
+	ImageUrl          string `yaml:"imageurl,omitempty" validate:"required_if=Type apptainer"`
+	CacheDir          string `yaml:"cachedir,omitempty" validate:"required_if=Type apptainer"`
+	PassEnv           bool   `yaml:"passenv" validate:"required"`
+	MountCWD          bool   `yaml:"mountcwd"`
+	OverlayOwner      string `yaml:"overlayowner,omitempty" validate:"omitempty,oneof=internal external"`
+	OverlayDriver     string `yaml:"overlaydriver,omitempty" validate:"omitempty,oneof=fuse-overlayfs kernel-overlayfs btrfs reflink copy"`
+	OverlayFSSnapshot string `yaml:"overlayfssnapshot,omitempty" validate:"omitempty,oneof=auto none copy reflink nativefs"`
+	OverlayDir        string `yaml:"overlaydir,omitempty"`
 }
 
 // RuntimeUpdate pairs a RuntimeSpec field with the value to set it to in
 // the moat runtime set command. Field is the yaml field name of
 // RuntimeSpec (type, executable, imageurl, cachedir, passenv, mountcwd,
-// overlayowner, overlaydriver or overlaydir), and Value holds the value(s)
+// overlayowner, overlaydriver, overlayfssnapshot or overlaydir), and Value holds the value(s)
 // as given on the command line.
 type RuntimeUpdate struct {
 	Field string

@@ -415,7 +415,7 @@ func (suite *RuntimeTestSuite) TestSetOverlaySettings() {
 	capture.StartCapture()
 	rootCmd := root.CreateRootCmd()
 	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "set", "--name", "custom",
-		"--overlayowner", "external", "--overlaydriver", "kernel-overlayfs", "--overlaydir", overlayDir})
+		"--overlayowner", "external", "--overlaydriver", "kernel-overlayfs", "--overlayfssnapshot", "none", "--overlaydir", overlayDir})
 	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
 	require.NoError(suite.T(), err)
@@ -430,6 +430,7 @@ func (suite *RuntimeTestSuite) TestSetOverlaySettings() {
 	assert.True(suite.T(), exists)
 	assert.Equal(suite.T(), "external", updatedSpec.OverlayOwner)
 	assert.Equal(suite.T(), "kernel-overlayfs", updatedSpec.OverlayDriver)
+	assert.Equal(suite.T(), "none", updatedSpec.OverlayFSSnapshot)
 	assert.Equal(suite.T(), overlayDir, updatedSpec.OverlayDir)
 	assert.Equal(suite.T(), spec.ImageUrl, updatedSpec.ImageUrl)
 	assert.Equal(suite.T(), spec.CacheDir, updatedSpec.CacheDir)

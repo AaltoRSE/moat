@@ -275,7 +275,7 @@ func (suite *RuntimeTestSuite) TestCreateWithOverlaySettings() {
 		"--name", "custom", "--type", "apptainer",
 		"--imageurl", "ghcr.io/aaltorse/moat:custom",
 		"--cachedir", tests.MoatTestDir + "/runtime_create_cache",
-		"--overlayowner", "external", "--overlaydriver", "kernel-overlayfs", "--overlaydir", overlayDir})
+		"--overlayowner", "external", "--overlaydriver", "kernel-overlayfs", "--overlayfssnapshot", "copy", "--overlaydir", overlayDir})
 	require.NoError(suite.T(), rootCmd.Execute())
 	capturedOutput, err := capture.StopCapture()
 	require.NoError(suite.T(), err)
@@ -287,6 +287,7 @@ func (suite *RuntimeTestSuite) TestCreateWithOverlaySettings() {
 	assert.True(suite.T(), exists)
 	assert.Equal(suite.T(), "external", spec.OverlayOwner)
 	assert.Equal(suite.T(), "kernel-overlayfs", spec.OverlayDriver)
+	assert.Equal(suite.T(), "copy", spec.OverlayFSSnapshot)
 	assert.Equal(suite.T(), overlayDir, spec.OverlayDir)
 }
 

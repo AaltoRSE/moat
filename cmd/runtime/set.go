@@ -113,6 +113,14 @@ Examples:
 				}
 				updates = append(updates, types.RuntimeUpdate{Field: "overlaydriver", Value: []string{value}})
 			}
+			if cmd.Flags().Changed("overlayfssnapshot") {
+				value, err := cmd.Flags().GetString("overlayfssnapshot")
+				if err != nil {
+					log.Error().Msgf("could not get overlayfssnapshot flag: %v", err)
+					return
+				}
+				updates = append(updates, types.RuntimeUpdate{Field: "overlayfssnapshot", Value: []string{value}})
+			}
 			if cmd.Flags().Changed("overlaydir") {
 				value, err := cmd.Flags().GetString("overlaydir")
 				if err != nil {
@@ -123,7 +131,7 @@ Examples:
 			}
 
 			if len(updates) == 0 {
-				log.Error().Msgf("no variables to set: give at least one of --type, --executable, --imageurl, --cachedir, --passenv, --mountcwd, --overlayowner, --overlaydriver or --overlaydir")
+				log.Error().Msgf("no variables to set: give at least one of --type, --executable, --imageurl, --cachedir, --passenv, --mountcwd, --overlayowner, --overlaydriver, --overlayfssnapshot or --overlaydir")
 				return
 			}
 
@@ -141,7 +149,8 @@ Examples:
 	setCmd.Flags().Bool("passenv", true, "Pass the environment variables to the container")
 	setCmd.Flags().Bool("mountcwd", false, "Bind-mount the caller's current working directory into the container")
 	setCmd.Flags().String("overlayowner", "", "Who provides the overlay mounts of the environments: internal or external — apptainer only")
-	setCmd.Flags().String("overlaydriver", "", "Overlay filesystem driver: fuse-overlayfs, kernel-overlayfs or btrfs — apptainer only")
+	setCmd.Flags().String("overlaydriver", "", "Overlay driver: fuse-overlayfs, kernel-overlayfs, btrfs, copy or reflink — apptainer only")
+	setCmd.Flags().String("overlayfssnapshot", "", "Snapshot method for OverlayFS host lowers: auto, nativefs, reflink, copy or none (default: auto)")
 	setCmd.Flags().String("overlaydir", "", "Managed directory for externally owned overlays — apptainer only")
 
 	if err := setCmd.MarkFlagRequired("name"); err != nil {

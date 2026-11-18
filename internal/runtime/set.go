@@ -180,6 +180,13 @@ func applyRuntimeUpdate(spec *types.RuntimeSpec, name string, update types.Runti
 		}
 		spec.OverlayDriver = value
 		applied = value
+	case "overlayfssnapshot":
+		value, err := singleRuntimeUpdateValue(update)
+		if err != nil {
+			return "", err
+		}
+		spec.OverlayFSSnapshot = value
+		applied = value
 	case "overlaydir":
 		value, err := singleRuntimeUpdateValue(update)
 		if err != nil {
