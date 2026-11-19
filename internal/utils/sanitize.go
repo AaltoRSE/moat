@@ -11,6 +11,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// CwdMountSource selects the caller's working directory at run time.
+const CwdMountSource = "@cwd"
+
 // SanitizePath expands a leading `~` or `~/` prefix to the current
 // user's home directory, expands environment variables in the path, and
 // resolves the result to an absolute path. The UID variable expands to the
@@ -21,16 +24,27 @@ import (
 // resolved.
 func SanitizePath(path string) (string, error) {
 	log.Debug().Msgf("Sanitizing path: %s", path)
-	expanded, err := expandTilde(path)
+	expanded, err := ExpandPath(path)
 	if err != nil {
 		return "", err
 	}
-	absPath, err := filepath.Abs(os.ExpandEnv(expandUID(expanded)))
+	absPath, err := filepath.Abs(expanded)
 	if err != nil {
 		return "", err
 	}
 	log.Debug().Msgf("Sanitized path: %s", absPath)
 	return absPath, nil
+}
+
+// ExpandPath expands a leading tilde and environment variables in path
+// using the same rules as [SanitizePath]. It leaves relative paths and path
+// elements intact and returns an error if the home directory is unavailable.
+func ExpandPath(path string) (string, error) {
+	expanded, err := expandTilde(path)
+	if err != nil {
+		return "", err
+	}
+	return os.ExpandEnv(expandUID(expanded)), nil
 }
 
 // expandTilde replaces a leading `~` or `~/` in path with the current
@@ -76,13 +90,30 @@ func expandUID(path string) string {
 // `src:dest`, or `src:dest1:dest2`. Every path (source and destinations)
 // is sanitized with [SanitizePath]: a leading `~` is expanded to the
 // home directory, environment variables are expanded, and the result is
-// resolved to an absolute path. It returns an error if any path cannot be
-// sanitized.
+// resolved to an absolute path. A literal @cwd source is retained for run
+// time. It returns an error if any path cannot be sanitized.
 func SanitizeMountsPaths(mounts []string) ([]string, error) {
 	sanitizedMounts := make([]string, len(mounts))
 	for i, mount := range mounts {
 		// Split the mount string by colon to handle multiple paths in a single mount string
 		paths := strings.Split(mount, ":")
+		if paths[0] == CwdMountSource {
+			if len(paths) > 2 {
+				return nil, fmt.Errorf("invalid working directory mount %q", mount)
+			}
+			if len(paths) == 2 {
+				dest, err := ExpandPath(paths[1])
+				if err != nil {
+					return nil, err
+				}
+				if !filepath.IsAbs(dest) || strings.ContainsAny(dest, ":\r\n\x00") {
+					return nil, fmt.Errorf("working directory mount destination %q must be an absolute path without mount delimiters", paths[1])
+				}
+				paths[1] = filepath.Clean(dest)
+			}
+			sanitizedMounts[i] = strings.Join(paths, ":")
+			continue
+		}
 		// Sanitize every entry of paths (the source path and the destination paths)
 		for j, path := range paths {
 			sanitizedPath, err := SanitizePath(path)

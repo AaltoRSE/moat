@@ -612,3 +612,26 @@ func (suite *DockerRuntimeTestSuite) TestCacheListEmptyImageUrl() {
 func TestDockerRuntimeTestSuite(t *testing.T) {
 	suite.Run(t, new(DockerRuntimeTestSuite))
 }
+
+// TestRunRejectsOverlayMounts tests that the docker runtime fails with an
+// error when the environment has overlay mounts, because overlay mounts
+// are only supported by the apptainer runtime.
+func (suite *DockerRuntimeTestSuite) TestRunRejectsOverlayMounts() {
+	runtime := suite.newRuntime(false)
+	env := types.MoatEnv{Home: suite.HomeDir, Name: "testenv", OverlayMounts: []string{"/opt/conda"}}
+
+	code, err := runtime.Run(env, []string{"echo", "hello"}, nil)
+	require.Error(suite.T(), err)
+	assert.Equal(suite.T(), 1, code)
+	assert.Contains(suite.T(), err.Error(), "only the apptainer runtime does")
+}
+
+// TestRunCwdBindUsesExplicitDestination verifies that a relocated workdir
+// replaces the automatic in-place bind when mountcwd is enabled.
+func (suite *DockerRuntimeTestSuite) TestRunCwdBindUsesExplicitDestination() {
+	env := types.MoatEnv{Home: suite.HomeDir, Mounts: []string{"@cwd:/workspace"}}
+	args := suite.runAndCaptureArgs(suite.newRuntime(true), env, "true")
+	assert.Contains(suite.T(), overlayFlagValues(args, "--mount"), mountSpec(suite.WorkDir, "/workspace"))
+	assert.True(suite.T(), hasWorkdirArg(args, "/workspace"))
+	assert.NotContains(suite.T(), args, suite.cwdMountValue())
+}

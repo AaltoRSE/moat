@@ -60,6 +60,10 @@ Every default configuration key can be overridden with an environment variable o
 | `defaults.runtimes.apptainer.cachedir` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_CACHEDIR` |
 | `defaults.runtimes.apptainer.passenv` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_PASSENV` |
 | `defaults.runtimes.apptainer.mountcwd` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_MOUNTCWD` |
+| `defaults.runtimes.apptainer.overlayowner` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_OVERLAYOWNER` |
+| `defaults.runtimes.apptainer.overlaydriver` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_OVERLAYDRIVER` |
+| `defaults.runtimes.apptainer.overlayfssnapshot` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_OVERLAYFSSNAPSHOT` |
+| `defaults.runtimes.apptainer.overlaydir` | `MOAT_DEFAULTS_RUNTIMES_APPTAINER_OVERLAYDIR` |
 | `defaults.runtimes.docker.type` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_TYPE` |
 | `defaults.runtimes.docker.executable` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_EXECUTABLE` |
 | `defaults.runtimes.docker.imageurl` | `MOAT_DEFAULTS_RUNTIMES_DOCKER_IMAGEURL` |
@@ -111,6 +115,10 @@ defaults:
             cachedir: $HOME/.cache/moat/images
             passenv: true
             mountcwd: false
+            overlayowner: internal
+            overlaydriver: fuse-overlayfs
+            overlayfssnapshot: auto
+            overlaydir: $HOME/.cache/moat/overlays
         docker:
             type: docker
             executable: docker
@@ -126,6 +134,8 @@ envs:
             - /run/dbus
         readonlymounts:
             - /usr/local
+        overlaymounts:
+            - /opt/conda
         mountcwd: true
         passenv: true
         command: code --wait .
@@ -183,7 +193,7 @@ The **type of the key** decides how many values a command accepts:
 |---|---|---|
 | string | exactly one value | `envs.vscode.command`, `defaults.runtime` |
 | bool | exactly one value (`true`/`false`) | `envs.vscode.mountcwd`, `defaults.runtimes.apptainer.passenv` |
-| list | one or more values (for `set`) / exactly one (for `append`/`prepend`) | `envs.vscode.mounts`, `envs.vscode.readonlymounts` |
+| list | one or more values (for `set`) / exactly one (for `append`/`prepend`) | `envs.vscode.mounts`, `envs.vscode.readonlymounts`, `envs.vscode.overlaymounts` |
 
 Unknown keys are rejected with an error such as `key "envs.vscode.bogus" not found in configuration`.
 
@@ -198,16 +208,23 @@ Unknown keys are rejected with an error such as `key "envs.vscode.bogus" not fou
 | `defaults.runtimes.{name}.cachedir` | string | Directory where container images are cached (for `docker`: scratch directory for run-time files — see [RUNTIME.md](RUNTIME.md#runtime-types)) |
 | `defaults.runtimes.{name}.passenv` | bool | Pass the host environment variables into the container |
 | `defaults.runtimes.{name}.mountcwd` | bool | Bind-mount the directory you run `moat run` from, and use it as the working directory, for every environment that uses this runtime (default: `false`) |
+| `defaults.runtimes.{name}.overlayowner` | string | Who provides the overlay mounts of the environments using this runtime: `internal` or `external` (apptainer only; default: `internal`; see [RUNTIME.md](RUNTIME.md#overlay-mounts)) |
+| `defaults.runtimes.{name}.overlaydriver` | string | Overlay driver: `fuse-overlayfs`, `kernel-overlayfs`, `btrfs`, `copy`, or `reflink` (apptainer only; default: `fuse-overlayfs`; `internal` supports `fuse-overlayfs`, `copy`, and `reflink`) |
+| `defaults.runtimes.{name}.overlayfssnapshot` | string | Snapshot mode for an OverlayFS host lower (default: `auto`; see [RUNTIME.md](RUNTIME.md#overlay-mounts)) |
+| `defaults.runtimes.{name}.overlaydir` | string | Managed root directory for externally owned overlays (apptainer only; default: `$HOME/.cache/moat/overlays`) |
 | `runtimes.{name}.*` | as above | Runtime specs here override the matching `defaults.runtimes.{name}` entry |
 | `envs.{name}.home` | string | Fake home directory (`$HOME` inside the container) |
 | `envs.{name}.mounts` | list | Read-write mounts, `source` or `source:dest` |
 | `envs.{name}.readonlymounts` | list | Read-only mounts, `source` or `source:dest` |
+| `envs.{name}.overlaymounts` | list | Overlay-mounted container paths, `dest` or `source:dest` (apptainer runtimes only; see [ENV.md](ENV.md#overlay-mounts--o--overlay-mount) and [RUNTIME.md](RUNTIME.md#overlay-mounts)) |
 | `envs.{name}.mountcwd` | bool | Bind-mount the directory you run `moat run` from, and use it as the working directory (overrides `defaults.runtimes.{name}.mountcwd`) |
 | `envs.{name}.runtime` | string | Runtime name for this environment (overrides `defaults.runtime`) |
 | `envs.{name}.passenv` | bool | Pass host environment variables (overrides the runtime default) |
 | `envs.{name}.command` | string | Default command run when `moat run -n {name}` gets no arguments |
 
 Mounts use the same syntax as the `moat env` flags: `source` mounts at the same path, `source:dest` mounts at a different destination. Paths may start with `~` (expanded to the home directory) or contain environment variables (e.g. `$HOME`), which are expanded when used. Source and destination paths are sanitized the same way: `~` and environment variables are expanded in both, and relative paths are resolved to absolute ones (see [ENV.md](ENV.md#mounts--m--mount--r--ro-mount)).
+
+Overlay mounts (`envs.{name}.overlaymounts`) use the same list syntax: `dest` overlays the container path `dest`, `source:dest` additionally stores the writable layer in the host directory `source`. `@cwd` and `@cwd:/workspace` use the directory from which you run Moat (see [ENV.md](ENV.md#mounting-the-current-directory-with-cwd)). Overlay destinations must be clean, absolute paths inside the container. They must be distinct, non-nested directories below `/` and cannot contain whitespace, commas, colons, or backslashes. An environment with overlay mounts must resolve to an `apptainer` runtime — this is checked whenever the configuration is validated.
 
 ---
 
@@ -327,6 +344,10 @@ defaults:
             executable: apptainer
             imageurl: ghcr.io/aaltorse/moat:latest
             mountcwd: false
+            overlaydir: $HOME/.cache/moat/overlays
+            overlaydriver: fuse-overlayfs
+            overlayfssnapshot: auto
+            overlayowner: internal
             passenv: true
             type: apptainer
         docker:
@@ -342,6 +363,8 @@ envs:
         home: /home/user/.local/share/code-app/home
         mounts:
             - /home/user/projects
+        overlaymounts:
+            - /opt/conda
         mountcwd: true
 ```
 
@@ -371,6 +394,10 @@ defaults:
             executable: apptainer
             imageurl: ghcr.io/aaltorse/moat:v0.1.0
             mountcwd: false
+            overlaydir: $HOME/.cache/moat/overlays
+            overlaydriver: fuse-overlayfs
+            overlayfssnapshot: auto
+            overlayowner: internal
             passenv: true
             type: apptainer
         docker:
@@ -446,6 +473,8 @@ moat init -o /home/user/backups/moat/moat-config.yaml
 - A failed change never modifies the config file: the key, the value types, and the full resulting configuration are all checked first.
 - `config set` on a list key **replaces** the list; to grow a list without losing entries, use `append` or `prepend`.
 - `envs.{name}.mountcwd`, `envs.{name}.runtime`, and `envs.{name}.passenv` are overrides: when unset, the environment falls back to `defaults.runtime`, the runtime's `mountcwd` setting, and the runtime's own defaults.
+- The overlay keys are validated when the configuration is loaded: `overlayowner`/`overlaydriver`/`overlayfssnapshot`/`overlaydir` are only allowed on `apptainer` runtimes (for user runtimes at validation time, for any runtime at run time), `overlayowner: internal` only supports `overlaydriver: fuse-overlayfs
+            overlayfssnapshot: auto`, and an environment with `overlaymounts` must resolve to an `apptainer` runtime (see [RUNTIME.md](RUNTIME.md#overlay-mounts)).
 
 ## Typical workflow
 

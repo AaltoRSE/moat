@@ -22,6 +22,10 @@ func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv, autoCre
 
 	// Get existing environments from the configuration
 	var envs = config.GetEnvs(cfg)
+	// The environment name is metadata, not a configuration value
+	for envName := range envs {
+		envs[envName] = clearEnvName(envs[envName])
+	}
 
 	if _, exists := envs[name]; exists {
 		fmt.Println("Environment already exists.")
@@ -50,6 +54,18 @@ func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv, autoCre
 		return err
 	}
 
+	env.OverlayMounts, err = config.NormalizeOverlayMounts(env.OverlayMounts)
+	if err != nil {
+		return err
+	}
+	spec, err := config.ResolveEnvOverlayRuntime(cfg, env)
+	if err != nil {
+		return err
+	}
+	if err := prompts.CheckAndCreateOverlaySources(env.OverlayMounts, spec.OverlayDriver, autoCreate); err != nil {
+		return err
+	}
+
 	// Ensure that the fake home directory and the mount source directories
 	// exist, creating missing ones automatically or after asking the user
 	if err := prompts.CheckAndCreateMounts(env, autoCreate); err != nil {
@@ -60,7 +76,7 @@ func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv, autoCre
 	// Create environment configuration
 	fmt.Printf("Creating environment '%s'\n", name)
 
-	envs[name] = env
+	envs[name] = clearEnvName(env)
 	cfg.Set("envs", envs)
 
 	// Write the updated configuration back to the config file
@@ -70,4 +86,11 @@ func CreateEnvironment(cfg *viper.Viper, name string, env types.MoatEnv, autoCre
 
 	fmt.Println("Environment created successfully.")
 	return nil
+}
+
+// clearEnvName returns env with its Name field cleared, so that the
+// environment name is never written to the configuration file.
+func clearEnvName(env types.MoatEnv) types.MoatEnv {
+	env.Name = ""
+	return env
 }

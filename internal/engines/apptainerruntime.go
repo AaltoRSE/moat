@@ -23,11 +23,15 @@ func NewApptainerRuntimeFromSpec(spec *types.RuntimeSpec) *ApptainerRuntime {
 		executable = "apptainer"
 	}
 	return &ApptainerRuntime{
-		Executable: executable,
-		ImageUrl:   spec.ImageUrl,
-		CacheDir:   spec.CacheDir,
-		PassEnv:    spec.PassEnv,
-		MountCWD:   spec.MountCWD,
+		Executable:        executable,
+		ImageUrl:          spec.ImageUrl,
+		CacheDir:          spec.CacheDir,
+		PassEnv:           spec.PassEnv,
+		MountCWD:          spec.MountCWD,
+		OverlayOwner:      spec.OverlayOwner,
+		OverlayDriver:     spec.OverlayDriver,
+		OverlayFSSnapshot: spec.OverlayFSSnapshot,
+		OverlayDir:        spec.OverlayDir,
 	}
 }
 
@@ -41,6 +45,20 @@ type ApptainerRuntime struct {
 	CacheDir   string
 	PassEnv    bool
 	MountCWD   bool
+	// OverlayOwner decides who provides the overlay mounts of the
+	// environments: "internal" lets apptainer create them at run time,
+	// "external" makes moat pre-create them on the host under OverlayDir.
+	// An empty value means "internal".
+	OverlayOwner string
+	// OverlayDriver selects the overlay filesystem driver. An empty value
+	// means "fuse-overlayfs".
+	OverlayDriver string
+	// OverlayFSSnapshot controls snapshots of host lowers for OverlayFS.
+	OverlayFSSnapshot string
+	// OverlayDir is the managed root directory for externally owned
+	// overlays. An empty value means the default
+	// ($HOME/.cache/moat/overlays).
+	OverlayDir string
 }
 
 // ApptainerImage describes a container image: its file name and path in
@@ -188,6 +206,12 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 		mountCWD = *env.MountCWD
 	}
 
+	cwd, err := resolveCwdMount(env, mountCWD)
+	if err != nil {
+		return 1, err
+	}
+	workingDir = cwd.source
+
 	imagePath, err := f.Pull(passEnv)
 
 	if err != nil {
@@ -196,13 +220,12 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 
 	mounts := []string{}
 
-	workingDir, err = os.Getwd()
-	if err != nil {
-		return 1, err
-	}
-
 	// Create mount binding flags
 	for _, mount := range env.Mounts {
+		if dest, ok := cwdMountDestination(mount, workingDir); ok {
+			mounts = append(mounts, "--mount", mountSpec(workingDir, dest))
+			continue
+		}
 		source = strings.Split(mount, ":")[0]
 		if source == workingDir {
 			workingDirMounted = true
@@ -212,6 +235,10 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 
 	// Create read-only mount binding flags
 	for _, roMount := range env.ReadOnlyMounts {
+		if dest, ok := cwdMountDestination(roMount, workingDir); ok {
+			mounts = append(mounts, "--mount", mountSpec(workingDir, dest, "ro"))
+			continue
+		}
 		roSplit := strings.Split(roMount, ":")
 		if len(roSplit) == 1 {
 			roSplit = append(roSplit, roSplit[0])
@@ -239,12 +266,29 @@ func (f *ApptainerRuntime) Run(env types.MoatEnv, args []string, envVars []strin
 	)
 
 	// Mount working directory if requested and not already mounted
-	if !workingDirMounted && mountCWD {
+	if cwd.workdir == "" && !workingDirMounted && mountCWD {
 		log.Debug().Str("workingDir", workingDir).Msg("Mounting working directory")
 		apptainerArgs = append(apptainerArgs, []string{"--bind", workingDir}...)
 		// Set working directory to current directory
 		log.Debug().Str("workingDir", workingDir).Msg("Setting working directory for current directory")
 		apptainerArgs = append(apptainerArgs, []string{"--pwd", workingDir}...)
+	}
+
+	if len(env.OverlayMounts) > 0 {
+		overlays, err := f.prepareOverlays(env, imagePath, passEnv, cwd)
+		if err != nil {
+			return 1, fmt.Errorf("prepare overlay mounts: %w", err)
+		}
+		defer overlays.close()
+		apptainerArgs = append(apptainerArgs, overlays.flags...)
+		if len(overlays.command) > 0 {
+			apptainerArgs[0] = "exec"
+			args = append(overlays.command, args...)
+			cwd.workdir = ""
+		}
+	}
+	if cwd.workdir != "" {
+		apptainerArgs = append(apptainerArgs, "--pwd", cwd.workdir)
 	}
 
 	// Add the image path to arguments

@@ -3,7 +3,9 @@
 package prompts
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -14,11 +16,11 @@ import (
 )
 
 // CheckAndCreateMounts checks that the paths referenced by the environment
-// exist: the fake home directory and the source paths of the mounts and
-// read-only mounts. Mount sources may be directories or files: existing
-// files are left untouched, while missing source paths are created as
-// directories. Missing paths are created automatically when autoCreate is
-// true; otherwise the user is asked whether they should be created. It
+// exist: the fake home directory and the sources of regular and read-only
+// bind mounts. Mount sources may be directories or files:
+// existing files are left untouched, while missing source paths are created
+// as directories. Missing paths are created automatically when autoCreate
+// is true; otherwise the user is asked whether they should be created. It
 // returns an error when the user declines to create the missing paths, when
 // their creation fails, or when a path is invalid (e.g. an empty mount
 // source path).
@@ -50,8 +52,11 @@ func CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error {
 		fmt.Printf("Fake home directory created: %s\n", absFakeHome)
 	}
 
-	// Check the sources of both mounts and read-only mounts in one go
 	mounts := append(slices.Clone(env.Mounts), env.ReadOnlyMounts...)
+	mounts = slices.DeleteFunc(mounts, func(mount string) bool {
+		source, _, _ := strings.Cut(mount, ":")
+		return source == utils.CwdMountSource
+	})
 	if utils.CheckMounts(mounts) {
 		return nil
 	}
@@ -103,6 +108,44 @@ func CheckAndCreateMounts(env types.MoatEnv, autoCreate bool) error {
 	// missing.
 	if !utils.CheckMounts(mounts) {
 		return fmt.Errorf("one or more mount paths are invalid")
+	}
+	return nil
+}
+
+// CheckAndCreateOverlaySources checks the explicit host sources in mounts.
+// Missing sources are created after confirmation unless autoCreate is true.
+// The btrfs driver requires each source to be a subvolume.
+func CheckAndCreateOverlaySources(mounts []string, driver string, autoCreate bool) error {
+	for _, mount := range mounts {
+		source, _, explicit := strings.Cut(mount, ":")
+		if !explicit || source == utils.CwdMountSource {
+			continue
+		}
+		info, err := os.Stat(source)
+		if err == nil && !info.IsDir() {
+			return fmt.Errorf("overlay source %q must be a directory", source)
+		}
+		if errors.Is(err, os.ErrNotExist) {
+			if !autoCreate {
+				ready, err := confirm(fmt.Sprintf("Create overlay source %s?", source))
+				if err != nil {
+					return err
+				}
+				if !ready {
+					return fmt.Errorf("overlay source %q was not created", source)
+				}
+			}
+		} else if err != nil {
+			return err
+		}
+		if driver == "btrfs" {
+			err = utils.EnsureBtrfsSubvolume(source)
+		} else if info == nil {
+			err = os.MkdirAll(source, 0o700)
+		}
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

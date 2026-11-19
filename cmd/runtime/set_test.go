@@ -403,3 +403,88 @@ func (suite *RuntimeTestSuite) TestSetLeavesOtherRuntimesUnchanged() {
 	assert.True(suite.T(), exists)
 	assert.Equal(suite.T(), otherSpec, otherUpdatedSpec)
 }
+
+// TestSetOverlaySettings tests that runtime set updates the overlay owner,
+// driver, and directory of an existing user runtime, resolving the overlay
+// directory to an absolute path, and leaves the other variables untouched.
+func (suite *RuntimeTestSuite) TestSetOverlaySettings() {
+	spec := suite.createSetRuntime()
+	overlayDir := filepath.Join(tests.MoatTestDir, "runtime_set_overlays")
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "set", "--name", "custom",
+		"--overlayowner", "external", "--overlaydriver", "kernel-overlayfs", "--overlayfssnapshot", "none", "--overlaydir", overlayDir})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Set custom.overlayowner = [external]")
+	assert.Contains(suite.T(), capturedOutput, "Set custom.overlaydriver = [kernel-overlayfs]")
+	assert.Contains(suite.T(), capturedOutput, "Set custom.overlaydir = ["+overlayDir+"]")
+	assert.Contains(suite.T(), capturedOutput, "Runtime updated successfully.")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	updatedSpec, exists := config.GetUserRuntimes(cfg)["custom"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), "external", updatedSpec.OverlayOwner)
+	assert.Equal(suite.T(), "kernel-overlayfs", updatedSpec.OverlayDriver)
+	assert.Equal(suite.T(), "none", updatedSpec.OverlayFSSnapshot)
+	assert.Equal(suite.T(), overlayDir, updatedSpec.OverlayDir)
+	assert.Equal(suite.T(), spec.ImageUrl, updatedSpec.ImageUrl)
+	assert.Equal(suite.T(), spec.CacheDir, updatedSpec.CacheDir)
+}
+
+// TestSetOverlayDefaultRuntime tests that runtime set on the default
+// apptainer runtime creates a user runtime that carries the default
+// overlay settings plus the given changes.
+func (suite *RuntimeTestSuite) TestSetOverlayDefaultRuntime() {
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "set", "--name", "apptainer",
+		"--overlayowner", "external", "--overlaydriver", "btrfs"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Overriding default runtime 'apptainer' with a new user runtime")
+	assert.Contains(suite.T(), capturedOutput, "Runtime updated successfully.")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	updatedSpec, exists := config.GetUserRuntimes(cfg)["apptainer"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), "external", updatedSpec.OverlayOwner)
+	assert.Equal(suite.T(), "btrfs", updatedSpec.OverlayDriver)
+	// The overlay dir default of the apptainer runtime is carried over
+	assert.Equal(suite.T(), "$HOME/.cache/moat/overlays", updatedSpec.OverlayDir)
+	// The resolved spec sees the user runtime
+	resolved, err := config.GetRuntimeSpec(cfg, "apptainer")
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), "btrfs", resolved.OverlayDriver)
+}
+
+// TestSetInternalOwnerWithKernelDriverFails tests that runtime set rejects
+// the combination of the internal overlay owner with a non-fuse driver and
+// leaves the runtime unchanged.
+func (suite *RuntimeTestSuite) TestSetInternalOwnerWithKernelDriverFails() {
+	suite.createSetRuntime()
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "set", "--name", "custom",
+		"--overlayowner", "internal", "--overlaydriver", "kernel-overlayfs"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.NotContains(suite.T(), capturedOutput, "Runtime updated successfully.")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	updatedSpec, exists := config.GetUserRuntimes(cfg)["custom"]
+	assert.True(suite.T(), exists)
+	assert.Empty(suite.T(), updatedSpec.OverlayOwner)
+	assert.Empty(suite.T(), updatedSpec.OverlayDriver)
+}

@@ -36,6 +36,14 @@ func GetRuntime(cfg *viper.Viper, name string) (Runtime, error) {
 		return nil, err
 	}
 
+	// Safety net for hand-edited configurations: overlay settings are only
+	// supported by the apptainer runtime (config validation normally
+	// rejects them for other types already).
+	if runtimeSpec.Type != "apptainer" &&
+		(runtimeSpec.OverlayOwner != "" || runtimeSpec.OverlayDriver != "" || runtimeSpec.OverlayFSSnapshot != "" || runtimeSpec.OverlayDir != "") {
+		return nil, fmt.Errorf("runtime %q: overlay settings are only supported for the apptainer type", name)
+	}
+
 	// Call the right constructor based on the runtime type
 	switch runtimeSpec.Type {
 	case "apptainer":

@@ -261,3 +261,77 @@ func (suite *RuntimeTestSuite) TestCreateMissingImageurl() {
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), suite.BaseOutput, string(contents))
 }
+
+// TestCreateWithOverlaySettings tests that runtime create stores the
+// overlay owner, driver, and directory settings of a new runtime, resolving
+// the overlay directory to an absolute path.
+func (suite *RuntimeTestSuite) TestCreateWithOverlaySettings() {
+	overlayDir := filepath.Join(tests.MoatTestDir, "runtime_create_overlays")
+
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "create",
+		"--name", "custom", "--type", "apptainer",
+		"--imageurl", "ghcr.io/aaltorse/moat:custom",
+		"--cachedir", tests.MoatTestDir + "/runtime_create_cache",
+		"--overlayowner", "external", "--overlaydriver", "kernel-overlayfs", "--overlayfssnapshot", "copy", "--overlaydir", overlayDir})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.Contains(suite.T(), capturedOutput, "Runtime created successfully.")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	spec, exists := config.GetUserRuntimes(cfg)["custom"]
+	assert.True(suite.T(), exists)
+	assert.Equal(suite.T(), "external", spec.OverlayOwner)
+	assert.Equal(suite.T(), "kernel-overlayfs", spec.OverlayDriver)
+	assert.Equal(suite.T(), "copy", spec.OverlayFSSnapshot)
+	assert.Equal(suite.T(), overlayDir, spec.OverlayDir)
+}
+
+// TestCreateDockerWithOverlaySettingsFails tests that creating a runtime of
+// a non-apptainer type with overlay settings is rejected and the config
+// file is left unmodified.
+func (suite *RuntimeTestSuite) TestCreateDockerWithOverlaySettingsFails() {
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "create",
+		"--name", "custom", "--type", "docker",
+		"--imageurl", "ghcr.io/aaltorse/moat:custom",
+		"--overlayowner", "internal"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.NotContains(suite.T(), capturedOutput, "Runtime created successfully.")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	assert.Empty(suite.T(), config.GetUserRuntimes(cfg))
+	contents, err := os.ReadFile(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	assert.Equal(suite.T(), suite.BaseOutput, string(contents))
+}
+
+// TestCreateInternalOwnerWithKernelDriverFails tests that the combination
+// of the internal overlay owner with a non-fuse driver is rejected.
+func (suite *RuntimeTestSuite) TestCreateInternalOwnerWithKernelDriverFails() {
+	capture := utils.OutputCapture{}
+	capture.StartCapture()
+	rootCmd := root.CreateRootCmd()
+	rootCmd.SetArgs([]string{"--config", suite.ConfigFile, "runtime", "create",
+		"--name", "custom", "--type", "apptainer",
+		"--imageurl", "ghcr.io/aaltorse/moat:custom",
+		"--cachedir", tests.MoatTestDir + "/runtime_create_cache",
+		"--overlayowner", "internal", "--overlaydriver", "kernel-overlayfs"})
+	require.NoError(suite.T(), rootCmd.Execute())
+	capturedOutput, err := capture.StopCapture()
+	require.NoError(suite.T(), err)
+	assert.NotContains(suite.T(), capturedOutput, "Runtime created successfully.")
+
+	cfg, err := config.InitConfig(suite.ConfigFile)
+	require.NoError(suite.T(), err)
+	assert.Empty(suite.T(), config.GetUserRuntimes(cfg))
+}

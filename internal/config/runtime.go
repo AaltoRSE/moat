@@ -12,9 +12,10 @@ import (
 )
 
 // ValidateRuntimeSpec validates a RuntimeSpec using the
-// go-playground/validator tags of types.RuntimeSpec. On validation failure
-// it logs each validation error in detail. It returns an error if the spec
-// fails validation.
+// go-playground/validator tags of types.RuntimeSpec plus the cross-field
+// overlay rules of validateRuntimeSpecRules. On validation failure it logs
+// each validation error in detail. It returns an error if the spec fails
+// validation.
 func ValidateRuntimeSpec(spec types.RuntimeSpec) error {
 	var validate = validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(&spec)
@@ -37,6 +38,38 @@ func ValidateRuntimeSpec(spec types.RuntimeSpec) error {
 			}
 		}
 		return err
+	}
+	if err := validateRuntimeSpecRules(spec); err != nil {
+		log.Error().Err(err).Msg("Invalid runtime spec")
+		return err
+	}
+	return nil
+}
+
+// validateRuntimeSpecRules validates overlay settings on a user runtime.
+// Default runtime types are also checked when selecting the runtime engine.
+func validateRuntimeSpecRules(spec types.RuntimeSpec) error {
+	if spec.Type != "" && spec.Type != "apptainer" &&
+		(spec.OverlayOwner != "" || spec.OverlayDriver != "" || spec.OverlayFSSnapshot != "" || spec.OverlayDir != "") {
+		return fmt.Errorf("overlay settings (overlayowner, overlaydriver, overlayfssnapshot, overlaydir) are only supported for the apptainer runtime type, not %q", spec.Type)
+	}
+	return validateOverlayOwnerDriver(spec)
+}
+
+// validateOverlayOwnerDriver checks the owner, driver, and snapshot
+// settings together. An empty owner means internal and an empty driver
+// means fuse-overlayfs.
+func validateOverlayOwnerDriver(spec types.RuntimeSpec) error {
+	owner := spec.OverlayOwner
+	if owner == "" {
+		owner = "internal"
+	}
+	direct := spec.OverlayDriver == "copy" || spec.OverlayDriver == "reflink"
+	if owner == "internal" && !direct && spec.OverlayDriver != "" && spec.OverlayDriver != "fuse-overlayfs" {
+		return fmt.Errorf("overlayowner \"internal\" only supports overlaydriver fuse-overlayfs, copy, or reflink, got %q", spec.OverlayDriver)
+	}
+	if direct && spec.OverlayFSSnapshot != "" && spec.OverlayFSSnapshot != "auto" {
+		return fmt.Errorf("overlayfssnapshot applies only to OverlayFS drivers, got overlaydriver %q", spec.OverlayDriver)
 	}
 	return nil
 }
