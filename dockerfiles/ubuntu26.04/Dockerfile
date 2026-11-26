@@ -96,7 +96,7 @@ RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
 
 # Install basic command line tools
 RUN apt-get update && \
-  apt-get install -y git vim neovim emacs nano bash zsh jq ripgrep ddgr file fd-find && \
+  apt-get install -y git vim neovim emacs nano bash zsh jq ripgrep ddgr file fd-find less && \
   rm -rf /var/lib/apt/lists/*
 
 # Install codex (release assets use the rust target triple: x86_64 / aarch64)
