@@ -1,5 +1,7 @@
 FROM ubuntu:26.04
 
+# Target architecture, set automatically by BuildKit for multi-platform builds
+# (falls back to the build host's architecture for a plain `docker build`)
 ARG TARGETARCH
 
 # Arguments and software versions (an empty version resolves to the latest release on GitHub)
@@ -7,6 +9,9 @@ ARG VSCODIUM_VERSION=""
 ARG CODEX_VERSION=""
 ARG NVM_VERSION=""
 ARG NODE_VERSION=26
+
+# Needed in this stage so the slurm install glob matches the copied debs
+ARG SLURM_VERSION=26.05.4
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -34,8 +39,8 @@ RUN ls -l /opt/slurm-binaries
 RUN ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" && \
   apt-get update && \
   apt-get install -y \
-    /opt/slurm-binaries/slurm-smd-client_*_${ARCH}.deb \
-    /opt/slurm-binaries/slurm-smd_*_${ARCH}.deb \
+    /opt/slurm-binaries/slurm-smd-client_*${SLURM_VERSION}*_${ARCH}.deb \
+    /opt/slurm-binaries/slurm-smd_*${SLURM_VERSION}*_${ARCH}.deb \
     munge && \
   rm -rf /var/lib/apt/lists/*
 

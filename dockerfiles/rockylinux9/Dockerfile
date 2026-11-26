@@ -9,6 +9,7 @@ ARG VSCODIUM_VERSION=""
 ARG CODEX_VERSION=""
 ARG NVM_VERSION=""
 ARG NODE_VERSION=26
+
 # Needed in this stage so the slurm install glob matches the copied RPMs
 ARG SLURM_VERSION=26.05.4
 
