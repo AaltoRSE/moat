@@ -123,13 +123,6 @@ RUN curl -fsSL https://claude.ai/install.sh | bash && \
   mv /root/.local/share/claude /usr/local/share/claude && \
   ln -s $CLAUDE_TARGET /usr/local/bin/claude
 
-# Install OpenCode
-ENV OPENCODE_INSTALL_DIR=/usr/local/bin
-ENV OPENCODE_DISABLE_AUTOUPDATE=1
-RUN curl -fsSL https://opencode.ai/install | \
-    sed 's/INSTALL_DIR=.*/INSTALL_DIR=$OPENCODE_INSTALL_DIR/' | \
-    bash
-
 # Install goose CLI
 RUN curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | CONFIGURE=false GOOSE_BIN_DIR=/usr/local/bin bash
 
@@ -149,6 +142,9 @@ RUN . /opt/nvm/nvm.sh && \
 
 # Install pi.dev
 RUN . /opt/nvm/nvm.sh && npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+
+# Install opencode
+RUN . /opt/nvm/nvm.sh && npm install -g @opencode/cli@latest
 
 # Install cline
 RUN . /opt/nvm/nvm.sh && npm install -g cline
