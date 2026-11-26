@@ -12,8 +12,6 @@ ARG NODE_VERSION=26
 # Needed in this stage so the slurm install glob matches the copied RPMs
 ARG SLURM_VERSION=26.05.4
 
-ENV DEBIAN_FRONTEND=noninteractive
-
 RUN dnf update -y && \
   dnf clean all
 
